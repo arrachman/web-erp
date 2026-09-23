@@ -251,6 +251,30 @@ state `urlRoutingEnabled` **tanpa** mereset workspace tabs (berbeda dari
 `erp-set-url-routing` yang memang reset tabs untuk manual toggle). Ini
 mengatasi skenario cross-device / localStorage cleared.
 
+**Posisi Menu Vertical/Horizontal (2026-09-23).** Kartu "Menu Sidebar" di
+Tampilan direstrukturisasi: knob utama = **Posisi Menu** (`Vertical` /
+`Horizontal`); row **Template** (`Ikon` / `Ikon + Label`) + row **Mode Menu**
+(`Flyout` / `Accordion`) hanya tampil saat Vertical. Nilai persist tetap satu
+field `metadata.sidebar` = `'icon' | 'label' | 'horizontal'` (tidak ada
+migrasi): Vertical = `icon`/`label`, Horizontal = `horizontal` — kartu hanya
+mepresentasikan ulang knob lama. Saat pindah Horizontal → Vertical kembali,
+template default ke `icon` (nilai template sebelumnya tidak disimpan terpisah).
+
+**Layout horizontal diperbaiki (2026-09-23).** Sebelumnya `html[data-
+sidebar='horizontal'] .app` hanya punya 1 row `'topbar' 'main'` dan
+`.sidebar` **menumpuk** `.topbar` di `grid-area: topbar` yang sama —
+breadcrumb/search/notif/user menu tertutup di balik menu bar. Sekarang grid =
+3 row `'menubar' 'topbar' 'main'` (token baru `--menubar-h: 52px`;
+`--topbar-h` kembali default 44px untuk row topbar), `.sidebar` → area
+`menubar`. Submenu dropdown mode horizontal = `position: fixed` pada koordinat
+viewport (lolos clip `overflow-x: auto` nav bar; lihat `sidebar.tsx`) dengan
+clamp kiri/lebar ke viewport, dan tidak lagi auto-expand modul aktif saat
+load (hover-driven). `applyServerPrefs` kini juga dispatch
+`erp-set-sidebar` / `erp-set-sidebar-menu` agar state React AppShell
+(`sidebarMode`/`sidebarMenuMode`) sinkron dengan server prefs — sebelumnya
+hanya atribut DOM yang di-set (divergensi saat localStorage usang/cross-device).
+Listener event = `use-app-shell-keyboard.ts` (validasi nilai di listener).
+
 ---
 
 ### 2.14 Tab navigator = drag-and-drop reorder via @dnd-kit (2026-05-20)

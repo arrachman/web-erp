@@ -109,7 +109,11 @@ export function AppearancePage(_props: AppearancePageProps) {
           {t('Tema')} {theme} ·{' '}
           {t(SWATCHES.find((s) => s.v === tw.primary)?.label || tw.primary)} ·{' '}
           {t('Ukuran')} {fontScale} · {t(tw.density === 'compact' ? 'Compact' : 'Comfortable')} ·{' '}
-          {t('Menu Sidebar')} {t((tw.sidebar || 'icon') === 'icon' ? 'Ikon' : (tw.sidebar || 'icon') === 'horizontal' ? 'Horizontal' : 'Ikon + Label')} · {t((tw.sidebarMenu || 'flyout') === 'flyout' ? 'Flyout' : 'Accordion')} ·{' '}
+          {t('Menu Sidebar')}{' '}
+          {tw.sidebar === 'horizontal'
+            ? t('Horizontal')
+            : `${t('Vertical')} · ${t((tw.sidebar || 'icon') === 'icon' ? 'Ikon' : 'Ikon + Label')} · ${t((tw.sidebarMenu || 'flyout') === 'flyout' ? 'Flyout' : 'Accordion')}`}{' '}
+          ·{' '}
           {t('URL')} {tw.urlRouting ? t('Per-halaman URL') : t('Internal')}
         </span>
       </div>

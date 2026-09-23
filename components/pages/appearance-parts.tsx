@@ -196,7 +196,9 @@ const PREVIEW_ITEMS = [
   { ic: 'cart', lb: 'Pembelian' },
 ] as const;
 
-/** Sidebar mode SetCard — extracted to keep appearance.tsx ≤400 lines. */
+/** Sidebar mode SetCard — extracted to keep appearance.tsx ≤400 lines.
+ * Orientation (vertical/horizontal) is the primary knob; icon-vs-label
+ * template and flyout-vs-accordion menu mode apply to vertical only. */
 export function SidebarModeCard({
   sidebar,
   sidebarMenu,
@@ -210,21 +212,33 @@ export function SidebarModeCard({
   onMenuMode: (v: SidebarMenuMode) => void;
   t: Translator;
 }) {
+  const isHorizontal = sidebar === 'horizontal';
   return (
     <SetCard icon="database" title={t('Menu Sidebar')} sub={t('Template navigasi samping')}>
-      <SetRow label={t('Template')} hint={t('Ikon saja, dengan label teks, atau horizontal di atas')}>
+      <SetRow label={t('Posisi Menu')} hint={t('Vertical: sidebar kiri · Horizontal: menu bar di atas')}>
         <Seg
-          value={sidebar || 'icon'}
-          onChange={(v) => onChange(v as SidebarMode)}
+          value={isHorizontal ? 'horizontal' : 'vertical'}
+          onChange={(v) => onChange(v === 'horizontal' ? 'horizontal' : (isHorizontal ? 'icon' : sidebar))}
           options={[
-            { v: 'icon', label: t('Ikon'), icon: 'boxes' },
-            { v: 'label', label: t('Ikon + Label'), icon: 'database' },
+            { v: 'vertical', label: t('Vertical'), icon: 'boxes' },
             { v: 'horizontal', label: t('Horizontal'), icon: 'layers' },
           ]}
         />
       </SetRow>
+      {!isHorizontal && (
+        <SetRow label={t('Template')} hint={t('Ikon saja atau dengan label teks')}>
+          <Seg
+            value={sidebar || 'icon'}
+            onChange={(v) => onChange(v as SidebarMode)}
+            options={[
+              { v: 'icon', label: t('Ikon'), icon: 'boxes' },
+              { v: 'label', label: t('Ikon + Label'), icon: 'database' },
+            ]}
+          />
+        </SetRow>
+      )}
       {/* Mode Menu only shown when sidebar is vertical (icon/label) */}
-      {sidebar !== 'horizontal' && (
+      {!isHorizontal && (
         <SetRow label={t('Mode Menu')} hint={t('Flyout: submenu muncul di kanan saat hover · Accordion: submenu expand di bawah modul')}>
           <Seg
             value={sidebarMenu || 'flyout'}

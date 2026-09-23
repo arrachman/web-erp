@@ -48,4 +48,13 @@ export function applyServerPrefs(
       detail: { enabled: !!(meta as unknown as { urlRouting?: boolean }).urlRouting },
     }));
   }
+
+  // Sync the AppShell's React sidebar state with server prefs — the DOM
+  // attribute alone drives CSS but not the Sidebar component props, which
+  // diverges when localStorage is stale (e.g. cross-device). Listeners live
+  // in use-app-shell-keyboard; they validate the mode values themselves.
+  if (meta.sidebar)
+    window.dispatchEvent(new CustomEvent('erp-set-sidebar', { detail: { mode: meta.sidebar } }));
+  if (meta.sidebarMenu)
+    window.dispatchEvent(new CustomEvent('erp-set-sidebar-menu', { detail: { mode: meta.sidebarMenu } }));
 }
