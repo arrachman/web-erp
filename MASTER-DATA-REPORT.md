@@ -209,13 +209,13 @@
 
 | Artefak | Path | Keterangan |
 | --- | --- | --- |
-| DB Design | `apps/web-erp/db-design/entities-m1-master-data.md` | Katalog field-level entitas M1 |
-| DB Design Hub | `apps/web-erp/db-design/README.md` | Keputusan, konvensi, open decisions |
-| Decision Log | `apps/web-erp/DECISIONS.md` | Log per-fitur (appearance, item form, geo, CoA, dll) |
+| DB Design | `opt/web-erp/db-design/entities-m1-master-data.md` | Katalog field-level entitas M1 |
+| DB Design Hub | `opt/web-erp/db-design/README.md` | Keputusan, konvensi, open decisions |
+| Decision Log | `opt/web-erp/DECISIONS.md` | Log per-fitur (appearance, item form, geo, CoA, dll) |
 | ERP Pages Registry | `components/templates/shell-route-renderer.tsx` (L149–247) | Mapping route → komponen |
 | Route Meta | `lib/erp-route-meta.ts` (L32–98) | Judul & breadcrumb tiap route M1 |
 | Seed Menu | `apps/api-gateway/prisma/seed-erp.ts` (L408–494) | Entry `sys_menus` untuk M1 |
-| API Client | `apps/web-erp/lib/api/*.ts` | Satu file per entitas (`listX`, `createX`, `updateX`, `deleteX`) |
+| API Client | `opt/web-erp/lib/api/*.ts` | Satu file per entitas (`listX`, `createX`, `updateX`, `deleteX`) |
 
 ---
 

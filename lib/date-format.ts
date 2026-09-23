@@ -1,7 +1,7 @@
 /**
  * Date display formatting — single source of truth.
  * Format token (moment-style) is dynamic via sys_settings `system/format/date_format`
- * (lihat apps/web-erp/CLAUDE.md §2.31). Cache di module-level + hook, sejajar
+ * (lihat opt/web-erp/CLAUDE.md §2.31). Cache di module-level + hook, sejajar
  * dengan lib/format.ts untuk angka.
  *
  * Selalu pakai `formatDate()` untuk display tanggal — jangan `new Date().toLocale*`

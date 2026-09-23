@@ -9,7 +9,7 @@ Query/Table, react-hook-form + zod, Vitest). Anggota npm workspace
 
 > **Reversal keputusan terkunci sebelumnya.** Frontend TIDAK lagi
 > "lanjutkan prototype standalone CDN-React". Sekarang: **app Next.js
-> penuh di `apps/web-erp/`**, stack disamakan dengan web-althea.
+> penuh di `opt/web-erp/`**, stack disamakan dengan web-althea.
 > `prototype/` turun status jadi **referensi desain saja** (sumber port
 > design system + shell). `preferensi/` tetap referensi legacy MyERP+.
 > `db-design/` & `DB-DESIGN.md` tetap dokumen desain DB.
@@ -20,7 +20,7 @@ Port **3219** (`config/ports.json → apps.web-erp`, env `WEB_ERP_PORT`).
 Dev server bind `0.0.0.0` (LAN) — butuh UFW dibuka (lihat root `CLAUDE.md §4.1`).
 
 ```bash
-cd apps/web-erp
+cd opt/web-erp
 npm run dev          # next dev (Turbopack) :3219
 npm run typecheck    # tsc --noEmit
 npm run lint
@@ -115,7 +115,7 @@ Data layer = `lib/registry.ts` (generator deterministik, mock).
 ## Catatan setup
 
 - SWC native (`@next/swc-linux-x64-gnu`) di-install isolated ke
-  `apps/web-erp/node_modules` — Turbopack tak jalan di WASM fallback.
+  `opt/web-erp/node_modules` — Turbopack tak jalan di WASM fallback.
 - `npm install -w web-erp` gagal (`workspace:` protocol di paket lain
   monorepo); pakai install isolated di dir app bila perlu re-install.
 - `config/ports.json` di-deny harness untuk Edit; port di-set via

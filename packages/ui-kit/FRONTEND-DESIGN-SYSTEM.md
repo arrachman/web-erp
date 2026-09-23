@@ -2,7 +2,7 @@
 
 > **Status:** Canonical standard for every Senti product frontend — `web-erp`, `web-mdp`,
 > `web-hr`, and any future `web-*` app.
-> **Reference implementation:** [`apps/web-erp`](../../apps/web-erp). When this document and
+> **Reference implementation:** [`opt/web-erp`](../../opt/web-erp). When this document and
 > `web-erp` disagree, `web-erp` wins and this document is the bug — open a fix.
 > **Why it exists:** so that ERP, MDP, HR, … look, feel, and are wired identically. A user
 > moving between products should not notice they changed apps.
@@ -22,7 +22,7 @@
 
 ## 1. Canonical stack (pin these)
 
-Taken from `apps/web-erp/package.json`. New apps copy these versions verbatim.
+Taken from `opt/web-erp/package.json`. New apps copy these versions verbatim.
 
 | Concern              | Choice                                  | Notes |
 | -------------------- | --------------------------------------- | ----- |
@@ -127,7 +127,7 @@ each under 400 lines and matches the backend's one-module-per-resource layout.
 
 ### 4.2 `client.ts` — copy verbatim, change only the base URL
 
-The reference client (`apps/web-erp/lib/api/client.ts`) provides:
+The reference client (`opt/web-erp/lib/api/client.ts`) provides:
 
 - `request<T>()` private helper: `credentials: 'include'`, JSON headers, query-string builder,
   `204 → undefined`, and a **uniform error envelope** decode into `ErpApiError { code, message, details }`.
@@ -160,7 +160,7 @@ return the inner type.
 
 ### 4.4 Resource module shape (the template every `<resource>.ts` follows)
 
-From `apps/web-erp/lib/api/branches.ts` — copy this skeleton for every entity:
+From `opt/web-erp/lib/api/branches.ts` — copy this skeleton for every entity:
 
 ```ts
 import { apiGet, apiPost, apiPatch, apiDelete } from './client';
@@ -203,7 +203,7 @@ Tokens are **CSS variables**, not Tailwind config. Tailwind v4 consumes them via
 
 - **File:** `styles/<product>-tokens.css` defines the palette under `:root`/`[data-theme='light']`
   and `.dark`/`[data-theme='dark']`.
-- **Required token groups** (see `apps/web-erp/styles/erp-tokens.css`): Surfaces (`--bg`,
+- **Required token groups** (see `opt/web-erp/styles/erp-tokens.css`): Surfaces (`--bg`,
   `--panel`, `--border`), Text (`--fg`, `--fg-muted`, …), Primary palette (`--primary*`),
   Status (`--success/danger/warn/info` + `-soft`), Metrics (`--row-h`, `--header-h`, `--topbar-h`,
   `--sidebar-w`, `--radius`), Elevation (`--shadow-*`), Type families (`--font-*`).
@@ -238,7 +238,7 @@ There are **two** styling layers, and every `web-*` app uses both:
 ### 5.5.1 The CSS files (copy the whole set)
 
 `styles/erp-components.css` is an index that `@import`s the sub-files; `globals.css` imports it.
-Reference: [`apps/web-erp/styles/`](../../apps/web-erp/styles).
+Reference: [`opt/web-erp/styles/`](../../opt/web-erp/styles).
 
 | File | Owns |
 | ---- | ---- |
@@ -252,7 +252,7 @@ Reference: [`apps/web-erp/styles/`](../../apps/web-erp/styles).
 ### 5.5.2 Canonical page skeleton (list screen)
 
 Every list/master page renders this exact structure (see
-[`generic-list-parts.tsx`](../../apps/web-erp/components/pages/generic-list-parts.tsx)):
+[`generic-list-parts.tsx`](../../opt/web-erp/components/pages/generic-list-parts.tsx)):
 
 ```tsx
 <div className="page">
@@ -284,10 +284,10 @@ Every list/master page renders this exact structure (see
 </div>
 ```
 
-This is the **canonical modern organism** ([`erp-list-layout.tsx`](../../apps/web-erp/components/organisms/erp-list-layout.tsx),
+This is the **canonical modern organism** ([`erp-list-layout.tsx`](../../opt/web-erp/components/organisms/erp-list-layout.tsx),
 mirrored by web-hr's `list-layout.tsx` and web-mdp's `master-crud-page.tsx`): `.page-header` →
 `.filter-bar` → `.page-body` (the scroller) → footer. A legacy prototype-port variant
-([`generic-list.tsx`](../../apps/web-erp/components/pages/generic-list.tsx)) uses `.toolbar` +
+([`generic-list.tsx`](../../opt/web-erp/components/pages/generic-list.tsx)) uses `.toolbar` +
 `.chip` filters and a `.pager` footer instead, with `.tbl-wrap scrollbar` self-scrolling (no
 `.page-body`). Both are valid; **new apps follow `erp-list-layout`** (`.filter-bar` + `.page-body`).
 
@@ -471,8 +471,8 @@ not the template.
 ---
 
 ### Source references
-- Reference app: `apps/web-erp`
-- Client: `apps/web-erp/lib/api/client.ts` · Resource template: `apps/web-erp/lib/api/branches.ts`
-- Query hooks: `apps/web-erp/lib/api/hooks.ts` · Provider: `apps/web-erp/shared/providers/query-provider.tsx`
-- Layout: `apps/web-erp/app/layout.tsx` · Tokens: `apps/web-erp/styles/erp-tokens.css`
+- Reference app: `opt/web-erp`
+- Client: `opt/web-erp/lib/api/client.ts` · Resource template: `opt/web-erp/lib/api/branches.ts`
+- Query hooks: `opt/web-erp/lib/api/hooks.ts` · Provider: `opt/web-erp/shared/providers/query-provider.tsx`
+- Layout: `opt/web-erp/app/layout.tsx` · Tokens: `opt/web-erp/styles/erp-tokens.css`
 - Repo rules: `CLAUDE.md` (§5 conventions, §4.1 UFW) · cross-lang types: `packages/shared-types`

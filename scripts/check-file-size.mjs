@@ -41,5 +41,5 @@ console.error(`\nFAIL — ${offenders.length} file(s) exceed ${MAX_LINES} lines:
 for (const { file, lines } of offenders) {
   console.error(`  ${lines.toString().padStart(5)}  ${file}`);
 }
-console.error('\nSplit each file into modules < 400 lines (see apps/web-erp/CLAUDE.md §3).\n');
+console.error('\nSplit each file into modules < 400 lines (see opt/web-erp/CLAUDE.md §3).\n');
 process.exit(1);

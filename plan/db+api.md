@@ -21,11 +21,11 @@
   react-compiler di `app-shell.tsx` + `use-erp-list.ts` dibereskan (extract
   `useAppShellTabs` hook, `useErpList` pakai `useReducer`); Menu Manager
   pakai DnD sibling-only via `@dnd-kit`.
-- **Playwright smoke** (`apps/web-erp/scripts/erp-smoke.mjs`): tools
+- **Playwright smoke** (`opt/web-erp/scripts/erp-smoke.mjs`): tools
   intercept fetch prod → local api-gateway + inject Bearer token; navigasi
   via mutasi localStorage workspace state + reload. 24 route ERP →
   **24/24 OK** (login + render + listX called, 0 console error).
-- **Vitest 27/27** (`apps/web-erp/__tests__/`): 24 smoke render-test per
+- **Vitest 27/27** (`opt/web-erp/__tests__/`): 24 smoke render-test per
   halaman + 3 interaction test (units create, menus create, journal-entries
   create dengan 2 lines). Mocking pola `vi.hoisted` + `vi.mock('@/lib/api/...')`.
   Helper `render-page.tsx` + `feedback-mock.ts` di `__tests__/helpers/`.
@@ -35,7 +35,7 @@
   hanya bisa otomasi); ⬜ `dist.root-owned.bak` di api-gateway perlu
   `sudo rm -rf` dari user; ⬜ root `npm install` masih diblokir
   `workspace:0.2.0` di `apps/open-design` — DnD agent terpaksa materialisasi
-  `@dnd-kit/*` langsung ke `apps/web-erp/node_modules/`, deklarasi
+  `@dnd-kit/*` langsung ke `opt/web-erp/node_modules/`, deklarasi
   `package.json` sudah benar dan akan kembali nyambung saat root install
   pulih.
 
@@ -176,7 +176,7 @@ Semua route di bawah prefix global `/api/erp/...`:
 
 ## 3. Rencana selanjutnya — Frontend web-erp
 
-DB dan API sudah siap. Langkah berikut adalah membangun frontend `apps/web-erp`.
+DB dan API sudah siap. Langkah berikut adalah membangun frontend `opt/web-erp`.
 Urutan ini mengikuti **CLAUDE.md §2** (design system dulu, baru slicing) +
 **§2.1** (atomic design wajib).
 
@@ -189,7 +189,7 @@ Urutan ini mengikuti **CLAUDE.md §2** (design system dulu, baru slicing) +
 - Tipografi (font family, size scale, weight)
 - Spacing scale (4px base grid)
 - Border radius, shadow, breakpoint
-- File: `apps/web-erp/src/styles/tokens.css` (atau Tailwind config extend)
+- File: `opt/web-erp/src/styles/tokens.css` (atau Tailwind config extend)
 
 **F0.2 — Atoms** (komponen terkecil, tanpa business logic)
 - `Button` (variant: primary/secondary/ghost/danger, size: sm/md/lg, state: loading/disabled)
@@ -306,10 +306,10 @@ Setiap modul transaksional: **schema design review → Prisma write + migration 
 
 | Dokumen | Path | Isi |
 |---|---|---|
-| DB Design (otoritatif) | `apps/web-erp/db-design/README.md` | Hub semua keputusan DB, ERD, enum catalog |
+| DB Design (otoritatif) | `opt/web-erp/db-design/README.md` | Hub semua keputusan DB, ERD, enum catalog |
 | Prisma Schema | `apps/api-gateway/prisma/schema.prisma` | Source of truth model DB |
 | Migration ERP | `apps/api-gateway/prisma/migrations/20260518_001_erp_mvp_m0_m1_init/` | SQL migration yang sudah applied |
 | Seed ERP | `apps/api-gateway/prisma/seed-erp.ts` | Data awal idempotent |
 | API Swagger | `http://localhost:3203/api/docs` | Auto-generated dari kode (perlu server jalan) |
-| Module Roadmap | `apps/web-erp/db-design/module-roadmap.md` | Peta domain m2–m12 |
-| CLAUDE.md web-erp | `apps/web-erp/CLAUDE.md` | Aturan baku: naming, atomic design, 400 baris |
+| Module Roadmap | `opt/web-erp/db-design/module-roadmap.md` | Peta domain m2–m12 |
+| CLAUDE.md web-erp | `opt/web-erp/CLAUDE.md` | Aturan baku: naming, atomic design, 400 baris |

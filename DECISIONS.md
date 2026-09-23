@@ -59,7 +59,7 @@ Keputusan: Senti ERP membangun **custom report engine sendiri** — tanpa 3rd-pa
 (Carbone.io, Stimulsoft, pdfme, LibreOffice, dll).
 
 **Riset dilakukan** dengan mempelajari 622+ file `.mrt` (Stimulsoft XML) dari legacy
-MyERP+ di `apps/web-erp/preferensi/Backened - myerpplus/report/mrt/m2`, `m4`, `m5`:
+MyERP+ di `opt/web-erp/preferensi/Backened - myerpplus/report/mrt/m2`, `m4`, `m5`:
 - Template format: **JSON** (bukan XML/DOCX/XLSX)
 - Data source: **REST API endpoint** per report (tidak embed SQL di template)
 - Output: **PDF** + HTML preview
@@ -75,7 +75,7 @@ MyERP+ di `apps/web-erp/preferensi/Backened - myerpplus/report/mrt/m2`, `m4`, `m
 - Tidak ada Chart/CrossTab/Barcode/SubReport di seluruh m4+m5 (622 file)
 - 3 pola report: Form Dokumen, List/Tabulasi, Buku Besar/Ledger
 
-**Dokumen lengkap:** `apps/web-erp/report-engine/README.md` — living doc, update di sana.
+**Dokumen lengkap:** `opt/web-erp/report-engine/README.md` — living doc, update di sana.
 
 ---
 
@@ -3336,7 +3336,7 @@ preview ala ERP modern + video pendek per item).
 
 Route `/admin/report-designer` (live `erp.fr-labs.my.id/app/admin/report-designer`)
 sekarang menampilkan **Report Studio** — port React **fungsional penuh** dari
-mockup `apps/web-erp/Report-Designer-ERP-Profesional/ReportStudio.dc.html`
+mockup `opt/web-erp/Report-Designer-ERP-Profesional/ReportStudio.dc.html`
 (export dc-runtime). Menggantikan `MockReportDesigner` lama (whole-route,
 keputusan user 2026-06-17). UI gaya ribbon MS-Office: quickbar (undo/redo, nama
 laporan, pilih template, lang/tema, Ekspor) + ribbon Home/Page/Layout/View +
@@ -3687,8 +3687,8 @@ Saat delete/akses API 400/500 di master (contoh partner-types:
 **Perbaikan:**
 - `packages/ui-kit/src/api/client.ts` — parse kedua envelope (Nest string
   `error` + nested `ApiError`); prioritaskan `message` (string|string[]).
-- `apps/web-erp/lib/api/import.ts` — mirror parse yang sama.
-- `apps/web-erp/lib/error-message.ts` `toToastMessage` — untuk pesan bisnis
+- `opt/web-erp/lib/api/import.ts` — mirror parse yang sama.
+- `opt/web-erp/lib/error-message.ts` `toToastMessage` — untuk pesan bisnis
   (fallback branch) tampilkan raw message API, bukan title generik.
 
 Berlaku global untuk semua app yang pakai `createApiClient` (ERP/HR/MDP).

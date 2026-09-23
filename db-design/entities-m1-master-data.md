@@ -224,7 +224,7 @@ Semua FK intra-domain `md` ditegakkan (named `@relation` + back-pointer di paren
 > **✅ IMPLEMENTED 2026-05-30 — price tiers 1–10** (`md_item_prices`, model
 > `ErpItemPrice`) + `md_items.purchaseDiscount`. Mengakhiri "tiers 2–10
 > deferred". Migrasi `20260530_001_erp_item_price_tiers` (additive). Detail
-> keputusan model + pemetaan field MyERP+ = `apps/web-erp/CLAUDE.md §2.32`.
+> keputusan model + pemetaan field MyERP+ = `opt/web-erp/CLAUDE.md §2.32`.
 
 ### Item Price Tiers (`md_item_prices` / `ErpItemPrice`) — child of `md_items`
 

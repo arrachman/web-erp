@@ -10,7 +10,7 @@
 > builder owns DATA* (template SQL/`dataSources` diabaikan untuk laporan ber-`reportKey`).
 > Binding via kolom `rpt_templates.report_key` (`<module>.<report>`). Finance: 14 report
 > ter-wire ke engine (fallback pdfkit bila tak ada template aktif). Detail keputusan:
-> `apps/web-erp/DECISIONS.md` §"Report Engine — Wiring reports → Report Designer templates".
+> `opt/web-erp/DECISIONS.md` §"Report Engine — Wiring reports → Report Designer templates".
 
 Dokumen ini adalah **single source of truth** untuk desain custom report engine Senti ERP.
 Baca ini sebelum menyentuh apapun di `/report-engine/`.

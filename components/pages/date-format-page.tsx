@@ -3,7 +3,7 @@
 /**
  * Halaman admin /admin/date-format — atur token format tanggal global
  * (sys_settings `system/format/date_format`). Dipakai oleh DateInput &
- * formatDate (lib/date-format.ts). Lihat apps/web-erp/CLAUDE.md §2.31.
+ * formatDate (lib/date-format.ts). Lihat opt/web-erp/CLAUDE.md §2.31.
  */
 
 import * as React from 'react';

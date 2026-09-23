@@ -3,7 +3,7 @@
 /**
  * Halaman admin /admin/number-format — atur 3 knob sys_settings group
  * `number-format`: thousands sep, decimal sep, decimals default.
- * Lihat apps/web-erp/CLAUDE.md §2.31.
+ * Lihat opt/web-erp/CLAUDE.md §2.31.
  */
 
 import * as React from 'react';

@@ -1,7 +1,7 @@
 # Web-ERP — Module Roadmap (legacy m2–m12 → modern domains)
 
 > Status: **ROADMAP (coarse mapping)** — entity inventory only, **no field catalog**.
-> Date: 2026-05-17 · Product: Senti ERP, `apps/web-erp`.
+> Date: 2026-05-17 · Product: Senti ERP, `opt/web-erp`.
 > Per-module field-level catalogs (like `entities-m0-administrator.md` /
 > `entities-m1-master-data.md`) are produced **one module at a time, after review**.
 

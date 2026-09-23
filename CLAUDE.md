@@ -1,9 +1,9 @@
 # Web-ERP — Aturan Baku untuk AI Agent (Claude)
 
-Scope: **hanya** `apps/web-erp/**`. Berlaku di atas root `CLAUDE.md` repo
+Scope: **hanya** `opt/web-erp/**`. Berlaku di atas root `CLAUDE.md` repo
 (tidak menggantikannya). Singkat, deklaratif, non-negosiabel.
 
-Produk: **Senti ERP**. Legacy `apps/web-erp/preferensi/` = **referensi
+Produk: **Senti ERP**. Legacy `opt/web-erp/preferensi/` = **referensi
 fitur/business-logic/flow saja**, bukan sumber struktur kode/DB.
 
 > 📒 **Decision log per-fitur** (appearance, item form, menu manager, geo, price
@@ -79,7 +79,7 @@ Aturan turunan:
   `sys_`/`adm_`/`md_` tidak beririsan dengan prefix platform — ERP tidak
   menumpang/reuse tabel platform.
 
-> Dokumen desain DB otoritatif = `apps/web-erp/db-design/` (`README.md` hub +
+> Dokumen desain DB otoritatif = `opt/web-erp/db-design/` (`README.md` hub +
 > `entities-m0-administrator.md` + `entities-m1-master-data.md` +
 > `entities-m2-finance.md` + `entities-m2-finance-enterprise.md` +
 > `entities-m3-inventory.md` + `entities-m4-purchasing.md`
@@ -171,7 +171,7 @@ Konsekuensi:
 
 ### 2.2 Penamaan file frontend (WAJIB)
 
-- **Dilarang** prefix `erp-` pada nama file di `apps/web-erp/**` (mis.
+- **Dilarang** prefix `erp-` pada nama file di `opt/web-erp/**` (mis.
   `components/pages/erp-items-page.tsx`). Path sudah berada di bawah
   `web-erp`, jadi prefix produk pada filename = redundant noise.
 - `kebab-case` + akhiran semantik per tingkat atomic: `-page.tsx`,
@@ -285,7 +285,7 @@ terms, partner-categories, accounts, document-numberings) sudah diganti
 
 ### 2.7 Standar baku setiap halaman list ERP (WAJIB, 2026-05-20)
 
-**Setiap** halaman list master/transaksi di `apps/web-erp/**` **wajib**
+**Setiap** halaman list master/transaksi di `opt/web-erp/**` **wajib**
 menyediakan fitur-fitur berikut. Tidak ada list page yang boleh ship tanpa
 ini — kalau salah satu hilang, halaman itu **belum** selesai. Implementasi
 **harus** lewat organism reusable (`erp-list-layout.tsx` + turunannya),
@@ -746,7 +746,7 @@ di [`DECISIONS.md`](DECISIONS.md).
 
 ## 3. Clean code & batas 400 baris (WAJIB)
 
-Saat vibe coding di `apps/web-erp/**`, kode **harus clean code** — dan
+Saat vibe coding di `opt/web-erp/**`, kode **harus clean code** — dan
 **tidak boleh > 400 baris per file**. Ini menguatkan root `CLAUDE.md §5`,
 khusus web-erp tanpa pengecualian.
 
@@ -773,7 +773,7 @@ khusus web-erp tanpa pengecualian.
 
 ## 4. Setelah vibe coding: commit + merge ke `dev` (WAJIB)
 
-Setiap selesai satu unit kerja vibe coding di `apps/web-erp/**`, **wajib**
+Setiap selesai satu unit kerja vibe coding di `opt/web-erp/**`, **wajib**
 commit lalu merge ke branch `dev` — jangan tinggalkan kerja menggantung di
 working tree atau feature branch.
 

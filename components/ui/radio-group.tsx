@@ -21,7 +21,7 @@ type RadioGroupProps<T extends string = string> = {
 
 /**
  * Segmented radio group untuk pilihan biner / sangat sedikit opsi
- * (lihat apps/web-erp/CLAUDE.md §2.6). Pakai ini menggantikan `Select`
+ * (lihat opt/web-erp/CLAUDE.md §2.6). Pakai ini menggantikan `Select`
  * saat opsi hanya 2.
  */
 export function RadioGroup<T extends string = string>({

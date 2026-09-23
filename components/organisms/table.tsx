@@ -203,7 +203,7 @@ export function SortableHead({
 
 /**
  * Code cell rendered as a clickable blue link. Canonical pattern per
- * `apps/web-erp/CLAUDE.md` — KODE column is the entity's primary link
+ * `opt/web-erp/CLAUDE.md` — KODE column is the entity's primary link
  * to open detail/edit. Stops row-click propagation.
  */
 export function CodeLinkCell({
@@ -234,7 +234,7 @@ export function CodeLinkCell({
 /**
  * Full-width empty-state cell. Renders an illustrated empty state with
  * icon, title, description, and optional CTA. Two variants per
- * `apps/web-erp/CLAUDE.md §2.9`:
+ * `opt/web-erp/CLAUDE.md §2.9`:
  *
  * - `empty` (default): no data yet — invites first entry.
  * - `filtered`: filter/search returned nothing — invites reset.

@@ -3,7 +3,7 @@
  * Single source of truth — import here, never use Intl.NumberFormat inline.
  *
  * Format separator + decimals dynamic via sys_settings group `number-format`
- * (lihat apps/web-erp/CLAUDE.md §2.31). Cache di module-level + hook.
+ * (lihat opt/web-erp/CLAUDE.md §2.31). Cache di module-level + hook.
  */
 
 import * as React from 'react';

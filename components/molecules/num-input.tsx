@@ -2,7 +2,7 @@
 
 /**
  * Numeric input dgn live thousand-separator masking. Format dinamis dari
- * sys_settings group `number-format` (lihat apps/web-erp/CLAUDE.md §2.31).
+ * sys_settings group `number-format` (lihat opt/web-erp/CLAUDE.md §2.31).
  *
  * - `value` = raw canonical string ("12345" / "12345.5" / "" / "-12.5").
  * - `onChange(raw)` emit raw canonical (decimal sep = ".") ke parent.

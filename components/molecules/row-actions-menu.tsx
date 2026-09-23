@@ -67,7 +67,7 @@ export function RowActionsMenu({ items }: { items: RowActionItem[] }) {
 
 /**
  * Right-click context menu for a table row. Renders the **same** items as
- * `RowActionsMenu` (kebab) — per `apps/web-erp/CLAUDE.md §2.11`, kanan-klik
+ * `RowActionsMenu` (kebab) — per `opt/web-erp/CLAUDE.md §2.11`, kanan-klik
  * di baris = paritas opsi dengan titik tiga. Pakai `asChild` agar trigger
  * langsung jadi `<tr>` tanpa membungkus elemen non-table di dalam `<tbody>`.
  */
