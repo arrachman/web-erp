@@ -1,0 +1,643 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="module1_creationCompleteHandler()">
+	<fx:Script> 
+		<![CDATA[
+			import com.adobe.fiber.core.model_internal;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.DateField;
+			import mx.core.FlexGlobals;
+			
+			import spark.components.ComboBox;
+			import spark.components.Image;
+			import spark.components.TextInput;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			
+			protected var o:Object = {}, img:Image, i:int, b:Object, t:TextInput, d:DateField, ob:Object, gb:Object; 
+			
+			protected function module1_creationCompleteHandler():void
+			{
+				o.opDate = new ArrayCollection([{l:"="}, {l:"<>"}, {l:">"}, {l:"<"}, {l:">="}, {l:"<="}]);
+				o.opString = new ArrayCollection([{l:"="}, {l:"Berisi"}, {l:"<>"}, {l:"Diawali"}, {l:"Diakhiri"}]);
+				o.opAngka = new ArrayCollection([{l:"="}, {l:"Berisi"}, {l:"<>"}, {l:">"}, {l:"<"}, {l:">="},{l:"<="}]);
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				
+				function f_mbSimpan():void
+				{
+					var m:Object, s:String = '', a:String = '', c:String = '', p1:String = '', ar:Array = [];
+					// Filter
+					if(b != null)
+						for(i=0;i<b.length;i++){
+							
+							m = o['item'+[i]];
+							if(b[i].k == 2 && p1 == "")
+								if(int(b[i].s) == 0)
+									p1 = parentApplication.F_paramDate(m.text, m.text);
+								else{
+									p1 = parentApplication.F_paramDate(m.text, o['item2'+[i]].text);
+								} 
+							if(cmbreport.dataProvider[cmbreport.selectedIndex].rquery == 2){
+								if(b[i].k == 3) // combobox
+									ar[ar.length] = m.selectedItem.v;
+								else ar[ar.length] = l(m.text);
+								if(int(b[i].s) == 1) //jika s.d
+									if(b[i].k == 3) // combobox
+										ar[ar.length] = o['item2'+[i]].selectedItem.v;
+									else ar[ar.length] = l(o['item2'+[i]].text);
+							}else{
+								if(int(b[i].s) == 0){ //jika tidak s.d
+									if(b[i].k == 3){ // combobox
+										if(m.selectedIndex >= 0 && m.selectedItem.v != 'Semua'){
+											if(s == '')
+												s = "(" + b[i].f + d(m.selectedItem.v)+ ")";
+											else
+												s += " AND (" + b[i].f + d(m.selectedItem.v) + ")";
+										}
+									}else if(b[i].k == 1){ //pencarian
+										if(m.text != ''){
+											if(s == '')
+												s = "(" + b[i].f + "=" + m.text + ")";
+											else
+												s += " AND (" + b[i].f + "=" + m.text + ")";
+										}
+									}else{ // selain property combo box, pencarian {text biasa, tanggal}
+										if(m.text != ''){
+											if(s == '')
+												s = "(" + b[i].f + d(l(m.text)) + ")";
+											else
+												s += " AND (" + b[i].f + d(l(m.text)) + ")";
+										}
+									}
+								}else if(int(b[i].s) == 1){ // jika s.d
+									if(b[i].k == 3){ // jika combo box
+										if(m.selectedIndex >= 0 && m.selectedItem.v != 'Semua'){
+											if(s == '')
+												s = "(" + b[i].f + " BETWEEN '" + m.selectedItem.v + "' AND '" + o['item2'+[i]].selectedItem.v + "')";
+											else
+												s += " AND (" + b[i].f + " BETWEEN '" + m.selectedItem.v + "' AND '" + o['item2'+[i]].selectedItem.v + "')";
+										}
+									}else{// selain property combo box {text biasa, pencarian, tanggal}
+										if(m.text != ''){
+											if(s == '')
+												s = "(" + b[i].f + " BETWEEN '" + l(m.text) + "' AND '" + l(o['item2'+[i]].text) + "')";
+											else
+												s += " AND (" + b[i].f + " BETWEEN '" + l(m.text) + "' AND '" + l(o['item2'+[i]].text) + "')";
+										}
+									}
+								}
+							}
+					}
+					
+					function l(s:String):String
+					{
+						if(b[i].k == 2)
+							return FlexGlobals.topLevelApplication.F_tglFormatDB(s);
+						return s;
+					}
+					
+					function d(s:String):String
+					{
+						switch(b[i].k){
+							case 0:
+							case 3:
+								switch(o['opString'+[i]].selectedIndex){
+									case 0:return " = '"+s+"'"; break;
+									case 1:return " like '%"+s+"%'"; break;
+									case 2:return " <> '"+s+"'";	break;
+									case 7:return " like '"+s+"%'"; break;
+									case 8:return " like '%"+s+"'";	break;
+								}
+								break;
+							case 2:
+								switch(o['opDate'+[i]].selectedIndex){
+									case 0:return " = '"+s+"'"; break;
+									case 2:return " <> '"+s+"'";	break;
+									case 3:return " > '"+s+"'";	break;
+									case 4:return " < '"+s+"'"; break;
+									case 5:return " >= '"+s+"'";	break;
+									case 6:return " <= '"+s+"'"; break;
+								}
+								break;
+							case 4:
+								switch(o['opAngka'+[i]].selectedIndex){
+									case 0:return " = '"+s+"'"; break;
+									case 1:return " like '%"+s+"%'"; break;
+									case 2:return " <> '"+s+"'";	break;
+									case 3:return " > '"+s+"'";	break;
+									case 4:return " < '"+s+"'"; break;
+									case 5:return " >= '"+s+"'";	break;
+									case 6:return " <= '"+s+"'"; break;
+								}
+								break;
+						}
+						return " = '"+s+"'";
+					}
+					if(cmbreport.dataProvider[cmbreport.selectedIndex].rquery == 2){
+						s = FlexGlobals.topLevelApplication.F_splitArrayToString(ar);
+						s = s.split(FlexGlobals.topLevelApplication.sptField).join(FlexGlobals.topLevelApplication.sptRow);
+					}
+					// Order By
+					for(i=0;i<ob.id;i++){
+						m = o['itemo'+[i]];
+						if(m.selectedIndex >= 0){
+							if(a == '')
+								a = m.selectedItem.v +" "+o['itemo2'+[i]].selectedItem.l;
+							else
+								a += ", "+m.selectedItem.v +" "+o['itemo2'+[i]].selectedItem.l;
+						}
+					}
+					// Group By
+					for(i=0;i<gb.id;i++){
+						m = o['itemb'+[i]];
+						if(m.selectedIndex >= 0)
+							if(c == '')
+								c = m.selectedItem.v
+							else
+								c += ", "+m.selectedItem.v;
+					}
+					FlexGlobals.topLevelApplication.F_openReport(o.mod, o.menut, cmbreport.selectedItem.ritem, s, a, c, 0, p1);
+				}
+				
+				cmbreport.dataProvider = FlexGlobals.topLevelApplication.f_getReportMenuLaporan(FlexGlobals.topLevelApplication.currentModuleID, parentApplication.m.currentMenuIDT);
+				parentApplication.F_ComboBoxStandard([cmbreport]);
+				cmbreport.selectedIndex = 0;
+				for(i=0;i<parentApplication.m.laporan.length;i++){
+					if(parentApplication.m.laporan[i].n == FlexGlobals.topLevelApplication.currentModuleID+"_"+FlexGlobals.topLevelApplication.currentMenuID){
+						o.i = i;
+						o.mod = FlexGlobals.topLevelApplication.currentModuleID;
+						o.menu = FlexGlobals.topLevelApplication.currentMenuID;
+						o.menut = parentApplication.m.currentMenuIDT;
+						o.d = cmbreport.dataProvider[0].rid;
+						b = parentApplication.m.laporan[i][o.d][0].property;
+						ob = parentApplication.m.laporan[i][o.d][1];
+						gb = parentApplication.m.laporan[i][o.d][2];
+						break;
+					}
+				}
+				if(b == null || ob == null || gb == null)
+					return;
+				
+				f_add();
+			}
+			
+			protected function f_add():void
+			{
+				var w:int = 0, l:int = 0, j:int, a:Array;
+				
+				grpf.removeAllElements();
+				grpo.removeAllElements();
+				grpg.removeAllElements();
+				
+				o.l = new Label;
+				o.l.text = "Filter";
+				o.l.setStyle('fontSize', '15');
+				o.l.setStyle('fontWeight', 'bold');
+				grpf.addElement(o.l);
+				if(int(ob.id) > 0){
+					o.l = new Label;
+					o.l.text = "Order By";
+					o.l.setStyle('fontSize', '15');
+					o.l.setStyle('fontWeight', 'bold');
+					grpo.addElement(o.l);
+				}
+				if(int(gb.id) > 0){
+					o.l = new Label;
+					o.l.text = "Group By";
+					o.l.setStyle('fontSize', '15');
+					o.l.setStyle('fontWeight', 'bold');
+					grpg.addElement(o.l);
+				}
+				
+				// menyiapkan filter
+				for(i=0;i<b.length;i++){
+					w += 21;
+					switch(int(b[i].k)){
+						case 0://text biasa
+							l += 23;
+							o.l = new Label;
+							o.l.left = 20;
+							o.l.top = l;
+							o.l.text = b[i].l;
+							grpf.addElement(o.l);
+							
+							// membuat operator jika buka s.d
+							if(int(b[i].s) == 0){
+								o['op'+[i]] = new ComboBox;
+								o['op'+[i]].id = 'op'+[i];
+								o['op'+[i]].width = 70;
+								o['op'+[i]].left = 110;
+								o['op'+[i]].dataProvider = o.opString;
+								o['op'+[i]].top = w;
+								grpf.addElement(o['op'+[i]]);
+								parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+								o['op'+[i]].selectedIndex = 0;
+							}
+							
+							o['item'+[i]] = new TextInput;
+							o['item'+[i]].id = 'item'+[i];
+							o['item'+[i]].width = b[i].w;
+							o['item'+[i]].left = 190;
+							o['item'+[i]].text = b[i].p;
+							o['item'+[i]].top = w;
+							grpf.addElement(o['item'+[i]]);
+							parentApplication.F_SetNavigasiKeyboard([o['item'+[i]]]);
+							
+							// jika s.d
+							if(int(b[i].s) == 1){
+								o['item'+[i]].left = 110;
+								o.l = new Label;
+								o.l.left = 270;
+								o.l.top = (l+2);
+								o.l.text = 's.d';
+								grpf.addElement(o.l);
+								
+								o['item2'+[i]] = new TextInput;
+								o['item2'+[i]].id = 'item2'+[i];
+								o['item2'+[i]].width = b[i].w;
+								o['item2'+[i]].left = 300;
+								o['item2'+[i]].text = b[i].p;
+								o['item2'+[i]].top = w;
+								grpf.addElement(o['item2'+[i]]);
+								parentApplication.F_SetNavigasiKeyboard([o['item2'+[i]]]);
+							}
+							if(int(b[i].s) == 0){
+								l -= 2;
+								w += 1;
+							}
+							break;
+						case 1://pencarian
+							o.l = new Label;
+							o.l.left = 20;
+							l += 23;
+							o.l.top = l;
+							o.l.text = b[i].l;
+							grpf.addElement(o.l);
+							
+							o['item'+[i]] = new TextInput;
+							o['item'+[i]].id = 'item'+[i];
+							o['item'+[i]].width = b[i].w;
+							o['item'+[i]].left = 110;
+							o['item'+[i]].top = w;
+							grpf.addElement(o['item'+[i]]);
+							parentApplication.F_txtpencarian([o['item'+[i]]]);
+							o['item'+[i]].text = b[i].p.split('▼')[0];
+							
+							if(int(b[i].s) == 1){
+								o.l = new Label;
+								o.l.left = 270;
+								o.l.top = (l+2);
+								o.l.text = 's.d';
+								grpf.addElement(o.l);
+								
+								o['item2'+[i]] = new TextInput;
+								o['item2'+[i]].id = 'item2'+[i];
+								o['item2'+[i]].width = b[i].w;
+								o['item2'+[i]].left = 300;
+								o['item2'+[i]].top = w;
+								grpf.addElement(o['item2'+[i]]);
+								parentApplication.F_txtpencarian([o['item2'+[i]]]);
+								o['item2'+[i]].text = b[i].p.split('▼')[0];
+							}
+							if(int(b[i].s) == 0){
+								l -= 2;
+								w += 1;
+							}
+							break;
+						case 2://date
+							o.l = new Label;
+							o.l.left = 20;
+							l += 23;
+							o.l.top = l;
+							o.l.text = b[i].l;
+							grpf.addElement(o.l);
+							
+							if(int(b[i].s) == 0){
+								o['op'+[i]] = new ComboBox;
+								o['op'+[i]].id = 'op'+[i];
+								o['op'+[i]].width = 70;
+								o['op'+[i]].left = 110;
+								o['op'+[i]].dataProvider = o.opDate;
+								o['op'+[i]].top = w;
+								grpf.addElement(o['op'+[i]]);
+								parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+								o['op'+[i]].selectedIndex = 0;
+							}
+							
+							o['item'+[i]] = new DateField;
+							o['item'+[i]].id = 'item'+[i];
+							o['item'+[i]].width = b[i].w;
+							o['item'+[i]].left = 190;
+							o['item'+[i]].text = b[i].p;
+							o['item'+[i]].top = w;
+							grpf.addElement(o['item'+[i]]);
+							parentApplication.F_DateFieldStandard([o['item'+[i]]]);
+							
+							if(int(b[i].s) == 1){
+								o['item'+[i]].left = 110;
+								o.l = new Label;
+								o.l.left = 270;
+								o.l.top = l;
+								o.l.text = "s.d";
+								grpf.addElement(o.l);
+								
+								o['item2'+[i]] = new DateField;
+								o['item2'+[i]].id = 'item2'+[i];
+								o['item2'+[i]].width = b[i].w;
+								o['item2'+[i]].left = 300;
+								o['item2'+[i]].text = b[i].p;
+								o['item2'+[i]].top = w;
+								grpf.addElement(o['item2'+[i]]);
+								parentApplication.F_DateFieldStandard([o['item2'+[i]]]);
+							}
+							if(int(b[i].s) == 0){
+								l -= 3;
+								w += 1;
+							}
+							
+							break;
+						case 3://combobox
+							l += 25;
+							o.l = new Label;
+							o.l.left = 20;
+							o.l.top = l;
+							o.l.text = b[i].l;
+							grpf.addElement(o.l);
+							if(int(b[i].s) == 0){
+								o['op'+[i]] = new ComboBox;
+								o['op'+[i]].id = 'op'+[i];
+								o['op'+[i]].width = 70;
+								o['op'+[i]].left = 110;
+								o['op'+[i]].dataProvider = o.opString;
+								o['op'+[i]].top = w;
+								grpf.addElement(o['op'+[i]]);
+								parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+								o['op'+[i]].selectedIndex = 0;
+							}
+							
+							o['item'+[i]] = new ComboBox;
+							o['item'+[i]].id = 'item'+[i];
+							o['item'+[i]].width = b[i].w;
+							o['item'+[i]].left = 190;
+							o['item'+[i]].dataProvider = new ArrayCollection;
+							a = b[i].p.split('|')[1].split('▲');
+							for(j=0;j<a.length;j++)
+								o['item'+[i]].dataProvider.addItem({l:a[j].split('▼')[0], v:a[j].split('▼')[1]});
+							o['item'+[i]].top = w;
+							grpf.addElement(o['item'+[i]]);
+							parentApplication.F_ComboBoxStandard([o['item'+[i]]]);
+							o['item'+[i]].selectedIndex = int(b[i].p.split('|')[0]);
+							
+							if(int(b[i].s) == 1){
+								o['item'+[i]].left = 110;
+								o.l = new Label;
+								o.l.left = 270;
+								o.l.top = (l+2);
+								o.l.text = 's.d';
+								grpf.addElement(o.l);
+								
+								o['item2'+[i]] = new ComboBox;
+								o['item2'+[i]].id = 'item2'+[i];
+								o['item2'+[i]].width = b[i].w;
+								o['item2'+[i]].left = 300;
+								o['item2'+[i]].dataProvider = new ArrayCollection;
+								a = b[i].p.split('|')[1].split('▲');
+								for(j=0;j<a.length;j++)
+									o['item2'+[i]].dataProvider.addItem({l:a[j].split('▼')[0], v:a[j].split('▼')[1]});
+								o['item2'+[i]].top = w;
+								grpf.addElement(o['item2'+[i]]);
+								parentApplication.F_ComboBoxStandard([o['item2'+[i]]]);
+								o['item2'+[i]].selectedIndex = int(b[i].p.split('|')[0]);
+							}
+							l -= 2;
+							w += 1;
+							break;
+						case 4: //Angka
+							l += 23;
+							o.l = new Label;
+							o.l.left = 20;
+							o.l.top = l;
+							o.l.text = b[i].l;
+							grpf.addElement(o.l);
+							
+							// membuat operator jika buka s.d
+							if(int(b[i].s) == 0){
+								o['op'+[i]] = new ComboBox;
+								o['op'+[i]].id = 'op'+[i];
+								o['op'+[i]].width = 70;
+								o['op'+[i]].left = 110;
+								o['op'+[i]].dataProvider = o.opAngka;
+								o['op'+[i]].top = w;
+								grpf.addElement(o['op'+[i]]);
+								parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+								o['op'+[i]].selectedIndex = 0;
+							}
+							
+							o['item'+[i]] = new TextInput;
+							o['item'+[i]].id = 'item'+[i];
+							o['item'+[i]].width = b[i].w;
+							o['item'+[i]].left = 190;
+							o['item'+[i]].text = b[i].p;
+							o['item'+[i]].top = w;
+							o['item'+[i]]..restrict = parentApplication.m.nfNominal.decimalSeparator+"0-9\\-";
+							grpf.addElement(o['item'+[i]]);
+							parentApplication.F_SetNavigasiKeyboard([o['item'+[i]]]);
+							
+							// jika s.d
+							if(int(b[i].s) == 1){
+								o['item'+[i]].left = 110;
+								o.l = new Label;
+								o.l.left = 270;
+								o.l.top = (l+2);
+								o.l.text = 's.d';
+								grpf.addElement(o.l);
+								
+								o['item2'+[i]] = new TextInput;
+								o['item2'+[i]].id = 'item2'+[i];
+								o['item2'+[i]].width = b[i].w;
+								o['item2'+[i]].left = 300;
+								o['item2'+[i]].text = b[i].p;
+								o['item2'+[i]].top = w;
+								o['item2'+[i]]..restrict = parentApplication.m.nfNominal.decimalSeparator+"0-9\\-";
+								grpf.addElement(o['item2'+[i]]);
+								parentApplication.F_SetNavigasiKeyboard([o['item2'+[i]]]);
+							}
+							if(int(b[i].s) == 0){
+								l -= 2;
+								w += 1;
+							}
+							break;
+					}
+				}
+				
+				// order by
+				o.arr = new ArrayCollection;
+				for(i=0;i<ob.property.length;i++){
+					o.arr.addItem({l:ob.property[i].l, v:ob.property[i].f});
+				}
+				o.sort = new ArrayCollection;
+				o.sort.addItem({l:"ASC"});
+				o.sort.addItem({l:"DESC"});
+				w = 0;
+				for(i=0;i<int(ob.id);i++){
+					o['itemo'+[i]] = new ComboBox;
+					o['itemo'+[i]].id = 'itemo'+[i];
+					o['itemo'+[i]].width = 153;
+					o['itemo'+[i]].left = 20;
+					o['itemo'+[i]].dataProvider = o.arr;
+					w += 21;
+					o['itemo'+[i]].top = w;
+					grpo.addElement(o['itemo'+[i]]);
+					parentApplication.F_ComboBoxStandard([o['itemo'+[i]]]);
+					o['itemo'+[i]].selectedIndex = -1;
+					
+					o['itemo2'+[i]] = new ComboBox;
+					o['itemo2'+[i]].id = 'itemo2'+[i];
+					o['itemo2'+[i]].width = 100;
+					o['itemo2'+[i]].left = 180;
+					o['itemo2'+[i]].dataProvider = o.sort;
+					o['itemo2'+[i]].top = w;
+					w += 1;
+					grpo.addElement(o['itemo2'+[i]]);
+					parentApplication.F_ComboBoxStandard([o['itemo2'+[i]]]);
+					o['itemo2'+[i]].selectedIndex = 0;
+				}
+				
+				// group by
+				o.arr2 = new ArrayCollection;
+				for(i=0;i<gb.property.length;i++){
+					o.arr2.addItem({l:gb.property[i].l, v:gb.property[i].f});
+				}
+				w = 0;
+				for(i=0;i<int(gb.id);i++){
+					o['itemb'+[i]] = new ComboBox;
+					o['itemb'+[i]].id = 'itemb'+[i];
+					o['itemb'+[i]].width = 153;
+					o['itemb'+[i]].left = 20;
+					o['itemb'+[i]].dataProvider = o.arr2;
+					w += 21;
+					o['itemb'+[i]].top = w;
+					w += 1;
+					grpg.addElement(o['itemb'+[i]]);
+					parentApplication.F_ComboBoxStandard([o['itemb'+[i]]]);
+					o['itemb'+[i]].selectedIndex = -1;
+				}
+				grpf.validateNow();
+				grpo.validateNow();
+				grpg.validateNow();
+				w = 80;
+				grpf.top = w;
+				w += 10+grpf.contentHeight;
+				grpo.top = w;
+				w += 10+grpo.contentHeight;
+				grpg.top = w;
+				grpf.left = 10;
+				grpo.left = 10;
+				grpg.left = 10;
+				grpf.visible = true;
+				grpo.visible = true;
+				grpg.visible = true;
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				var a:Array;
+				for(i=0;i<b.length;i++){
+					if(('item'+[i]) == target){
+						a = b[i].p.split('▼');
+						paket = a[1];
+						wsfilter = a[2]+" = '"+o['item'+[i]].text+"'";
+						checkbox = Boolean(int(a[4]));
+						break; 
+					}else if('item2'+[i] == target){
+						a = b[i].p.split('▼');
+						paket = a[1];
+						wsfilter = a[2]+" = '"+o['item2'+[i]].text+"'";
+						checkbox = Boolean(int(a[4]));
+						break;
+					}
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var m:Object, s:String = parentApplication.subject, i:int;
+				if(parentApplication.wsSuccess == true){
+					if(parentApplication.wsArrUtama.getItemAt.length >= 0)m = parentApplication.wsArrUtama.getItemAt(0);
+					for(i=0;i<b.length;i++){
+						if(('item'+[i]) == s){
+							o['item'+[i]].text = m[b[i].p.split('▼')[2]];
+							break;
+						}else if('item2'+[i] == s){
+							o['item2'+[i]].text = m[b[i].p.split('▼')[2]];
+							break;
+						}
+					}
+				}else{
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) == true){
+					}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				for(i=0;i<b.length;i++){
+					if(('item'+[i]) == target){
+						o['item'+[i]].text = '';
+						break;
+					}else if(('item2'+[i]) == target){
+						o['item2'+[i]].text = '';
+						break;
+					}
+				}
+			}
+			
+			protected function cmbreport_changeHandler(event:IndexChangeEvent):void
+			{
+				o.d = cmbreport.dataProvider[cmbreport.selectedIndex].rid;
+				if(parentApplication.m.laporan.hasOwnProperty(o.i)){
+					if(parentApplication.m.laporan[o.i].hasOwnProperty(o.d)){
+						b = parentApplication.m.laporan[o.i][o.d][0].property;
+						ob = parentApplication.m.laporan[o.i][o.d][1];
+						gb = parentApplication.m.laporan[o.i][o.d][2];
+						f_add();
+					}else{
+						grpf.removeAllElements();
+						grpo.removeAllElements();
+						grpg.removeAllElements();
+					}
+				}else{
+					grpf.removeAllElements();
+					grpo.removeAllElements();
+					grpg.removeAllElements();
+				}
+			
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Cetak" icon="tbprint" enabled="true"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>	
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:Label x="10" y="44" text="Report : "/>
+	<s:ComboBox id="cmbreport" left="55" top="40" width="350" change="cmbreport_changeHandler(event)"/>
+	<s:Group id="grpf" visible="false"/>
+	<s:Group id="grpo" visible="false"/>
+	<s:Group id="grpg" visible="false"/>
+</s:Module>

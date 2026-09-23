@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			
+			import spark.events.GridEvent;
+			import spark.events.GridSelectionEvent;
+			import spark.events.GridSortEvent;
+			public var arr:Array, arrColumn:Array, arrHistory:Array;
+			public var saveas:Boolean=false, vgMyCol:int, vgMyRow:int;
+			public var vfileextention:int=0;
+			public var o:Object = {};
+			[Bindable]protected var arrMenuBar:ArrayCollection;
+			public function f_grid_change():void{
+				arr[9] = ["ContactCat",dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).pcnama,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).pcskategori];
+			}
+			public function f_focusOnMe():void
+			{
+				txtkategoripos.setFocus();
+			}
+			
+			protected function f_persiapan():void
+			{ 
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tkode, tnama]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtkategoripos, txtcabang, txtlokasi])
+				FlexGlobals.topLevelApplication.F_persiapanFormMaster();
+				arr = new Array;
+				arr[0] = 'M12_Pos_VoucherSearch'; //ws Tampil
+				arr[1] = 'vikategori asc, vikode asc'; //ws Sort Default
+				arr[2] = 'Voucher POS'; //nama Form Input
+				arr[3] = 'mod/m12/m12_MasterVoucherInput.swf'; //link Form Input
+				arr[4] = '650'; //width Form Input
+				arr[5] = '500'; //height Form Input
+				arr[6] = 'M12_Pos_VoucherDelete'; //ws Delete
+				arr[7] = 'M12_Pos_CategoryTerkait'; //ws Delete
+				arr[8] = [12,6]; //menu
+				
+				arrColumn = ['vikategori', 'vikode', 'vijml'];
+				FlexGlobals.topLevelApplication.F_setGridJson(12, 6);
+				FlexGlobals.topLevelApplication.registerGrid([dg]);
+				// Daftarkan fungsi-fungsi text input
+				parentApplication.F_SetNavigasiKeyboard([txtnovoucher1, txtnovoucher2]);
+//				F_persiapanFormMaster();
+				f_kondisiAwal();
+			}
+			public function f_cetak():void
+			{
+				var flt:String="";var srt:String="";var grp:String="";
+				if (txtkategoripos.text !=""){
+					flt+="vikategori like '%" + txtkategoripos.text.split('"').join('\\"') + "%'"
+				}
+				if (txtnovoucher2.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+="pcnama like '%" + txtnovoucher1.text.split('"').join('\\"') + "%'"
+				}
+				
+				FlexGlobals.topLevelApplication.F_openReport(12,6,1,flt,srt,grp,vfileextention);
+				vfileextention = 0;
+			}
+			public function f_kondisiAwal():void
+			{
+				txtkategoripos.text = FlexGlobals.topLevelApplication.m.ArrSettingPOS[0].pcskategori;
+				lblkategori.text = FlexGlobals.topLevelApplication.m.ArrSettingPOS[0].pcnama;
+				f_focusOnMe();
+				parentApplication.F_KosongkanText([txtnovoucher1, txtnovoucher2, txtcabang, txtlokasi]);
+				if(dg.dataProvider != null){
+					dg.dataProvider.removeAll();
+				}
+				//				parentApplication.f_formMasterTampil();
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkategoripos': //no rek
+						paket = 'CdM12_Pos_Category';
+						wsfilter = 'pcaktif=1 and pckode ="'+txtkategoripos.text+'"';
+						csfilter = 'pcaktif=1';
+						sort = 'pckode asc';
+						break;
+					case 'txtcabang': //no rek
+						paket = 'CdM1_Branch';
+						wsfilter = 'baktif=1 AND bkode = "'+txtcabang.text+'"';
+						csfilter = 'baktif=1';
+						sort = 'bkode asc';
+						break;
+					case 'txtlokasi': //no rek
+						if(txtcabang.text.length > 0){
+							paket = 'CdM1_Location';
+							wsfilter = 'laktif=1 AND lcabang = "'+txtcabang.text+'" AND lkode = "'+txtlokasi.text+'"';
+							csfilter = 'laktif=1 AND lcabang = "'+txtcabang.text+'"';
+							sort = 'lkode asc';
+						}else{
+							Alert.show("Cabang harus diisi terlebih dahulu", "informasi")
+						}
+						
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			public function f_wsHasil():void{
+				var ws:Object, s:String = parentApplication.subject, i:int;
+				if(parentApplication.wsSuccess == true){
+					switch(s){	
+						case 'tampilForm':
+							if(FlexGlobals.topLevelApplication.wsArrUtama[i].vimodifikasiusernama == "")
+								FlexGlobals.topLevelApplication.wsArrUtama[i].vimodifikasitgl = ""
+							dg.dataProvider = FlexGlobals.topLevelApplication.wsArrUtama; 
+							dg.setSelectedCell(0,0);
+							FlexGlobals.topLevelApplication.rowIndex = 0;
+							imgfirst.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgprevious.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgnext.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							imglast.enabled =FlexGlobals.topLevelApplication. wsIsNext;
+							txtpaging.text = FlexGlobals.topLevelApplication.wsCurPage;
+							for(i=0;i<dg.dataProviderLength;i++)
+								dg.dataProvider[i].no = (((FlexGlobals.topLevelApplication.wsCurPage-1)*20)+(i+1));
+							FlexGlobals.topLevelApplication.F_dgRefresh(dg);
+							dg.setFocus();
+							dg.setSelectedCell(0,0);
+							break;
+						case 'txtkategoripos':
+							ws = parentApplication.wsArrUtama.getItemAt(0);
+							txtkategoripos.text = ws.pckode;
+							lblkategori.text = ws.pcnama;
+							break
+						case 'txtcabang':
+							ws = parentApplication.wsArrUtama.getItemAt(0);
+							txtcabang.text = ws.bkode;
+							txtlokasi.text = "";
+							break
+						case 'txtlokasi':
+							ws = parentApplication.wsArrUtama.getItemAt(0);
+							txtlokasi.text = ws.lkode;
+							break;
+						
+					}
+				}else{					
+					if(FlexGlobals.topLevelApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txtkategoripos':
+								txtkategoripos.text = "";
+								lblkategori.text = "";
+								break
+							case 'txtcabang':
+								txtcabang.text = "";
+								break
+							case 'txtlokasi':
+								txtlokasi.text = "";
+								break
+							case "tampilForm":
+								if(dg.dataProvider != null){
+									dg.dataProvider.removeAll()
+								}
+								break;
+						}
+				}
+			}
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkategoripos':
+						txtkategoripos.text = "";
+						lblkategori.text = "";
+						break;
+					case 'txtcabang':
+						txtcabang.text = "";
+						break;
+					case 'txtlokasi':
+						txtlokasi.text = "";
+						break;
+					case "tampilForm":
+						if(dg.dataProvider != null){
+							dg.dataProvider.removeAll()
+						}
+						break;
+				}
+			}
+			public function f_cekterpilih():Boolean{if(dg.selectedCell == null){return false}else{return true}}
+			public function f_paramDelete():String{return dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).viid}
+			
+			public function f_filterdata():String{
+				var f:String = '';
+				if(txtkategoripos.text != '')
+					f = parentApplication.TambahFilter(f, "vikategori = '"+txtkategoripos.text.split('"').join('\\"')+"'");
+				if(txtnovoucher1.text != '' && txtnovoucher2.text != '')
+					f = parentApplication.TambahFilter(f, "vikode BETWEEN '"+txtnovoucher1.text.split('"').join('\\"')+"' AND '"+txtnovoucher2.text.split('"').join('\\"')+"'");
+				else if(txtnovoucher1.text != '') 
+					f = parentApplication.TambahFilter(f, 'vikode >= "'+txtnovoucher1.text.split('"').join('\\"')+'"'); 
+				else if(txtnovoucher2.text != '')
+					f = parentApplication.TambahFilter(f, 'vikode <= "'+txtnovoucher2.text.split('"').join('\\"')+'"'); 
+				if(txtcabang.text != '')
+					f = parentApplication.TambahFilter(f, "vicabang = '"+txtcabang.text.split('"').join('\\"')+"'");
+				if(txtlokasi.text != '')
+					f = parentApplication.TambahFilter(f, "vilokasi = '"+txtlokasi.text.split('"').join('\\"')+"'");
+				
+				return f;
+			}
+			
+			public function f_formMasterTampil(page:int = 1, sort:String = ''):void
+			{
+				if(FlexGlobals.topLevelApplication.apaBisaAkses(arr[8][0], arr[8][1], 4) == true){
+					
+					if(sort == '')sort = arr[1];
+					FlexGlobals.topLevelApplication.F_wsSearch("tampilForm", arr[0], page, 20, f_filterdata(), sort);
+				}
+			}
+			
+			public function F_persiapanFormMaster():void
+			{
+				var vSort:Boolean = true, vPosisi:int = 0, vCMI:ContextMenuItem;
+				
+				o = FlexGlobals.topLevelApplication.m[FlexGlobals.topLevelApplication.idmod].child;
+				o.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_KEY_DOWN);
+				// Config Paging
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign","center");
+				txtpaging.text = "0";
+				txtpaging.maxChars = 4;
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				
+				function f_KEY_DOWN(e:KeyboardEvent):void
+				{
+					
+					switch(e.keyCode){
+						case Keyboard.HOME:
+							if(int(txtpaging.text)>1)
+								f_formMasterTampil();
+							break;
+						case Keyboard.PAGE_UP:
+							if(int(txtpaging.text)-1>0)
+								f_formMasterTampil(int(txtpaging.text)-1);
+							break;
+						case Keyboard.PAGE_DOWN:
+							f_formMasterTampil(int(txtpaging.text)+1);
+							break;
+						case Keyboard.END:
+							f_formMasterTampil(-1);
+							break;
+						case Keyboard.F2:
+							f_tambah();
+							break;
+						case Keyboard.E:
+							if(e.ctrlKey)
+								f_edit();
+							break;
+						case Keyboard.N:
+							if(e.ctrlKey)
+								f_tambah();
+							break;
+						
+						case Keyboard.R:
+							if(e.ctrlKey)
+								f_reset();
+							break;
+					}
+				}
+				
+				
+				function f_firstCLICK():void
+				{
+					
+					if(int(txtpaging.text)>1)
+						f_formMasterTampil();
+				}
+				
+				function f_previousCLICK():void
+				{
+					
+					if(int(txtpaging.text)-1>0)
+						f_formMasterTampil(int(txtpaging.text)-1);
+				}
+				
+				function f_nextCLICK():void
+				{
+					
+					f_formMasterTampil(int(txtpaging.text)+1);
+				}
+				
+				function f_lastCLICK():void
+				{
+					
+					f_formMasterTampil(int(-1));
+				}
+				
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					
+					if(e.keyCode == Keyboard.ENTER)
+						if(int(txtpaging.text)>0)
+							f_formMasterTampil(int(txtpaging.text));
+				}
+				// Config Grid
+				//dg.dataProvider = new ArrayCollection();
+				dg.addEventListener(GridSortEvent.SORT_CHANGING, f_dgSort_changing);
+				dg.addEventListener(flash.events.MouseEvent.DOUBLE_CLICK, f_dgDOUBLE_CLICK);
+				dg.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_dgKEY_DOWN);
+				dg.addEventListener(GridEvent.GRID_ROLL_OVER, f_GRID_ROLL_OVER);
+				dg.addEventListener(GridSelectionEvent.SELECTION_CHANGE, f_GRID_CHANGE);
+				dg.selectionMode = "singleCell";
+				dg.doubleClickEnabled = true;
+				dg.contextMenu = new ContextMenu;
+				dg.contextMenu.hideBuiltInItems();
+				dg.contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT, f_dgMENU_SELECT);
+				vCMI = new ContextMenuItem(FlexGlobals.topLevelApplication.l('Edit'))     
+				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_edit);  
+				dg.contextMenu.customItems.push(vCMI);    
+				vCMI = new ContextMenuItem(FlexGlobals.topLevelApplication.l('Hapus Data'))     
+				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_hapus);  
+				dg.contextMenu.customItems.push(vCMI);    
+				
+				dg.contextMenu.customItems.push(vCMI); 
+				function f_GRID_ROLL_OVER(e:GridEvent):void
+				{
+					vgMyRow = e.rowIndex;
+					vgMyCol = e.columnIndex;
+				}
+				
+				function  f_GRID_CHANGE(e:GridSelectionEvent):void{
+					f_grid_change();
+				}
+				
+				function f_dgMENU_SELECT():void
+				{
+					dg.setSelectedCell(vgMyRow, vgMyCol);
+				}
+				
+				function f_dgKEY_DOWN(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.DELETE)
+						if(FlexGlobals.topLevelApplication.apaBisaAkses(arr[8][0], arr[8][1], 3) == true)
+							Alert.show(FlexGlobals.topLevelApplication.l('Hapus data ini ?'), FlexGlobals.topLevelApplication.l('Konfirmasi'), 3, null, function(e:Object):void{	
+								if(e.detail == Alert.YES)
+									f_hapus()
+							});
+				}
+				
+				// Config Menu Bar
+				arrMenuBar = new ArrayCollection([
+					{label:"Tampilkan", icon:"tbpreview"},
+					{label:"Reset", icon:"tbreset"},
+					{label:"Tambah", icon:"tbadd"},
+					{label:"Edit", icon:"tbedit"},
+					{label:"Hapus", icon:"tbdelete"}]);
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_tampilkan); // tampil
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_reset); // reset
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_tambah); // tambah
+				mb.menuBarItems[3].addEventListener(MouseEvent.CLICK, f_edit); // edit
+				mb.menuBarItems[4].addEventListener(MouseEvent.CLICK, f_hapus); // hapus
+				
+				
+				function f_dgSort_changing(e:GridSortEvent):void
+				{
+					var ob:Object = dg.columns.getItemAt(int(e.columnIndices)).dataField;
+					if(ob != "no")
+						if(vSort == true){ 
+							vSort = false;
+							f_formMasterTampil(1, String(ob));
+						}else if(vPosisi != int(e.columnIndices)){
+							vSort = false;
+							f_formMasterTampil(1, String(ob));
+						}else{
+							vSort = true;dg.dataProvider.removeAll();
+							f_formMasterTampil(1, ob+' DESC');
+						}
+				}
+				
+				function f_dgDOUBLE_CLICK():void
+				{
+					f_edit();
+				}
+				
+				function f_tampilkan():void
+				{
+						
+					if(int(txtpaging.text) == 0)
+						f_formMasterTampil();
+					else
+						f_formMasterTampil(int(txtpaging.text));
+				}
+				
+				function f_hapus():void
+				{
+					
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(arr[8][0], arr[8][1], 3) == true){
+						if(dg.dataProviderLength > 0)
+							Alert.show('Data akan dihapus, lanjutkan?', 'Confirmation', 3, null, function(e:Object):void{	
+								if(e.detail == Alert.YES){
+									FlexGlobals.topLevelApplication.F_wsDelete(FlexGlobals.topLevelApplication.sptParam+'terkaitFormMaster', arr[6], FlexGlobals.topLevelApplication.userid, f_paramDelete(), 1, 20, f_filterdata(), arr[1]);
+									
+								}
+							});
+					}
+				}
+				
+				function f_reset():void
+				{
+					f_kondisiAwal();
+				}
+				
+				function f_tambah():void
+				{
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(arr[8][0], arr[8][1], 1) == true){
+						FlexGlobals.topLevelApplication.openFormX(arr[2], 1, arr[3], arr[5], arr[4])
+					}
+				}
+				
+				function f_edit():void
+				{
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(arr[8][0], arr[8][1], 2) == true){
+						saveas = false;
+						if(dg.dataProviderLength > 0)
+							FlexGlobals.topLevelApplication.openFormX(arr[2], 1, arr[3], arr[5], arr[4], 't1', '@')
+					}
+				}
+				
+				
+			}
+			
+			// set import icon menu bar
+			[Bindable] [Embed(source="assets/tb/txt.png")] public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/preview.png")] public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")] public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")] public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")] public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")] public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")] public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")] public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")] public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")] public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")] public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")] public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")]  public var tbexport:Class;
+			// set import icon paging
+			[Bindable] [Embed(source="assets/nav/f.png")] public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")] public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")] public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")] public var navl:Class;
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	<mx:DividedBox top="30" width="100%" height="100%">
+		<mx:Canvas width="100%" height="95" minHeight="145" maxHeight="145">
+			<s:Group left="10" top="10" width="443">
+				<s:Label id="tkode" left="0" top="6" width="109" text="Kode Kategori"/>
+				<s:Label id="lblkategori" left="249" top="4"/>
+				<s:Label id="tnama" left="0" top="29" width="110" text="No Voucher"/>
+				<s:Label id="tnama0" left="224" top="29" width="25" text="s/d"/>
+				<s:TextInput id="txtkategoripos" left="91" top="0"/>
+				<s:TextInput id="txtnovoucher1" left="91" top="21" width="128"/>
+				<s:TextInput id="txtnovoucher2" left="248" top="21" width="128" focusIn="txtnovoucher2.text = txtnovoucher1.text"/>
+			</s:Group>
+			
+			<s:Group right="32" top="10" width="201">
+				<s:TextInput id="txtcabang" left="73" top="0" width="128"/>
+				<s:TextInput id="txtlokasi" left="73" top="21" width="128"/>
+				<s:Label id="tkode0" x="0" y="5" width="109" text="Cabang"/>
+				<s:Label id="tkode1" x="0" y="26" width="109" text="Lokasi"/>
+			</s:Group>
+		</mx:Canvas>
+		<mx:Canvas width="100%" height="95%">
+			<s:DataGrid id="dg" left="10" right="10" top="0" bottom="10"/>
+		</mx:Canvas>
+	</mx:DividedBox>
+</s:Module>

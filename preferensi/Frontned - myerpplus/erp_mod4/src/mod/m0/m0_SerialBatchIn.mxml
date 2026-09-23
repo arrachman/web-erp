@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="650" height="350" creationComplete="f_persiapan()">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.events.GridSelectionEvent;
+			import spark.events.IndexChangeEvent;
+			public var i:int, obj:Object = {}, o:Object = {};
+			[Bindable] public var acserial:ArrayCollection = new ArrayCollection();
+			[Bindable] public var acbatch:ArrayCollection = new ArrayCollection();
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void{}
+			protected function f_persiapan():void{
+				obj.a = false;
+				obj.p = FlexGlobals.topLevelApplication.m[parentApplication.idmodcurr].child;
+				txtawalan.text = obj.p.o.sumber.toUpperCase();
+				txtformat.text = FlexGlobals.topLevelApplication.getSetting(0,'options','FormatSerial');
+//				FlexGlobals.topLevelApplication.F_TextInputNumberOnlyMode([txtnoawal]);
+				txtnoawal.text = '1';
+				FlexGlobals.topLevelApplication.F_tabvalidatenow(tab);
+				FlexGlobals.topLevelApplication.F_RegGrid(0,7,[dg2,dg7,dgfbatch,dgfserial],'transaksi');
+				obj.p = FlexGlobals.topLevelApplication.m[parentApplication.idmodcurr].child;
+					//BATCH
+					setbatch();
+					//SERIAL
+					setSerial();
+			}
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{
+				var i:int, n:Number, a:Array, dgrid1:Object;
+				o.a = column.split('|');
+				o.b = false;
+				if(column == 'add' || o.a[0] == 'add'){
+					if(dg7.selectedCell != null && dgfbatch.selectedCell != null){
+						for(i=0;i<dg7.dataProviderLength;i++){
+							if(dg7.dataProvider[i].nbtjml > 1){
+								o.b = true;
+								o.i = i;
+								break;
+							}
+						}
+						if(!o.b){
+							if(o.a.length == 2)dg7.dataProvider.removeItemAt(o.a[1]);
+							else dg7.dataProvider.removeItemAt(dg7.dataProviderLength-1);
+							return;
+						}
+						if(o.a.length == 1)dgrid1 = dg7.dataProvider[dg7.dataProviderLength-1];
+						else dgrid1 = dg7.dataProvider[o.a[1]];
+						dgrid1.kodebarang = dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].kodebarang;
+						dgrid1.nbtjml = 1;
+						dg7.dataProvider[o.i].nbtjml = dg7.dataProvider[o.i].nbtjml-1;
+						dgrid1.nbtid=0; dgrid1.nbtjenismutasi=1; 
+						dgrid1.nbtidbarang=dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].idbarang; 
+						dgrid1.nbtkode=''; 
+						dgrid1.nbtsumber=dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].sumber; 
+						dgrid1.nbtidtransaksi=dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].idtransaksi; 
+						dgrid1.nbtsatuan=dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].satuan;   
+						dgrid1.nbtcustomtext1=''; dgrid1.nbtcustomtext2=''; dgrid1.nbtcustomtext3=''; 
+						dgrid1.nbtcustomdbl1=0; dgrid1.nbtcustomdbl2=0; dgrid1.nbtcustomdbl3=0; 
+						dgrid1.nbtcustomdate1=FlexGlobals.topLevelApplication.DefaultTanggal; 
+						dgrid1.nbtcustomdate2= FlexGlobals.topLevelApplication.DefaultTanggal; 
+						dgrid1.nbtcustomdate3= FlexGlobals.topLevelApplication.DefaultTanggal;
+						dgrid1.nbtgudang = obj.p.o.gudang;
+						dgrid1.nbtidbatchin = 0;
+						
+						FlexGlobals.topLevelApplication.F_dgColumnFirst(dg7, dg7.dataProviderLength-1);
+					}
+				}
+				
+				
+				if(column == 'del'){
+					if(tab.selectedIndex == 1){
+						f_hitungtotal();
+					}
+					//dg7.dataProvider[0].nbtjml = dg7.dataProvider[0].nbtjml + (dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].jml - dg7.dataProvider[0].nbtjml);
+				}
+				switch(column){ 
+					case "nstkode":
+						for(i = 0; i<acserial.length; i++)
+							if(dg2.dataProvider[dg2.selectedCell.rowIndex].nstkode == acserial[i].nstkode && dg2.selectedCell.rowIndex != i){
+								dg2.dataProvider[dg2.selectedCell.rowIndex].nstkode = FlexGlobals.topLevelApplication.vpVarCurrent;
+								Alert.show("Nomor Serial tidak boleh sama !",'Information');
+								break;
+							}
+						break;
+					case "nbtjml":
+						f_hitungtotal();
+						break;
+					
+				}
+				FlexGlobals.topLevelApplication.F_dgRefresh(dg);
+			}
+			
+			private function filter():void {
+				acserial.filterFunction = filterMyArrayCollection;
+				acserial.refresh();
+			}
+			
+			private function filterbatch():void{
+				acbatch.filterFunction = filterMyArrayCollectionbatch;
+				acbatch.refresh();
+			}
+			
+			private function filterMyArrayCollection(item:Object):Boolean{
+				var searchString:String;
+				var itemName:String;
+				if(tab.selectedIndex ==0){
+					searchString = dgfserial.dataProvider.getItemAt(dgfserial.selectedCell.rowIndex).kodebarang;
+					itemName = (item.kodebarang as String);
+				}
+				if(itemName == null){
+					return true;
+				}
+				return itemName.indexOf(searchString) > -1;
+			}
+			
+			private function filterMyArrayCollectionbatch(item:Object):Boolean {
+				var searchString:String;
+				var itemName:String;
+				searchString = dgfbatch.dataProvider.getItemAt(dgfbatch.selectedCell.rowIndex).kodebarang;
+				itemName = (item.kodebarang as String);
+				
+				if(itemName == null){
+					return true;
+				}
+				
+				return itemName.indexOf(searchString) > -1;
+			}
+			
+			
+			public function setbatch():void{
+				dgfbatch.dataProvider.removeAll();
+				dgfbatch.setSelectedCell(0,0);
+				for(i=0;i<obj.p[obj.p.o.idgrid].dataProviderLength;i++){
+					var jmlbarang:Number;
+					obj.dg = obj.p[obj.p.o.idgrid].dataProvider[i];
+					if(FlexGlobals.topLevelApplication.currentModuleID == 5 && FlexGlobals.topLevelApplication.currentMenuID == 8){
+						jmlbarang = int(obj.dg.jmlbarangkembali);
+					}
+					else if( obj.p.o.moduleid == 3 && obj.p.o.mnid == 6){
+						jmlbarang = int(obj.dg.jmlmasuk);
+					}
+					else{
+						jmlbarang = int(obj.dg.jmlbarang);
+					}
+					obj.utama = obj.p.o;
+					if(obj.dg.bbatch == 1 && jmlbarang > 0){
+						obj.a = true;
+						obj.bol = true;
+						for(var b:int=0;b<dgfbatch.dataProvider.length;b++)
+							if(dgfbatch.dataProvider[b].kodebarang == obj.dg.kodebarang){
+								obj.bol = false;
+								dgfbatch.dataProvider[b].jml = int(dgfbatch.dataProvider[b].jml)+jmlbarang;
+								dgfbatch.dataProvider.setItemAt(dgfbatch.dataProvider[b], b);
+								break;
+							}
+						if(obj.bol){
+							dgfbatch.dataProvider.addItem({kodebarang:obj.dg.kodebarang, idtransaksi: obj.utama[obj.p.o.sumber+"id"] , sumber: obj.p.o.sumber.toUpperCase(), satuan:obj.dg.satuanbarang, jml:jmlbarang, idbarang:obj.dg.idbarang
+							,gudang:obj.p.o.gudang});
+						}
+					}
+				}
+				
+				acbatch.removeAll();
+				
+				if(obj.p.ac_Batch.length > 0){
+					acbatch = obj.p.ac_Batch;
+				}
+				
+				var nomor : Object = {}
+				var r:Object = {}, t:int;
+				
+				for(t=0;t<acbatch.length;t++){
+					// jumlah
+					if(r[acbatch[t].nbtidbarang] == undefined) r[acbatch[t].nbtidbarang] = acbatch[t].nbtjml;
+					else r[acbatch[t].nbtidbarang] += acbatch[t].nbtjml;
+					
+					// nomer
+					if(nomor[acbatch[t].nbtidbarang] == undefined)
+						nomor[acbatch[t].nbtidbarang] = 2;
+					else 
+						nomor[acbatch[t].nbtidbarang]++;
+				}
+				
+				for(i=0;i<dgfbatch.dataProvider.length;i++){
+					
+					if(nomor[dgfbatch.dataProvider.getItemAt(i).idbarang] == undefined)
+						nomor[dgfbatch.dataProvider.getItemAt(i).idbarang] = 1;
+					if(r[dgfbatch.dataProvider.getItemAt(i).idbarang] == undefined)
+						r[dgfbatch.dataProvider.getItemAt(i).idbarang] = 0;
+					if(dgfbatch.dataProvider[i].idtransaksi == undefined)
+						dgfbatch.dataProvider[i].idtransaksi = 0;
+					
+					if(r[dgfbatch.dataProvider.getItemAt(i).idbarang] < dgfbatch.dataProvider[i].jml)
+						acbatch.addItem({no:nomor[dgfbatch.dataProvider.getItemAt(i).idbarang]++, nbtid:0,nbtjenismutasi:1, nbtidbarang:dgfbatch.dataProvider[i].idbarang, nbtkode:'', nbtsumber:dgfbatch.dataProvider[i].sumber, 
+							nbtidtransaksi:dgfbatch.dataProvider[i].idtransaksi, nbtsatuan:dgfbatch.dataProvider[i].satuan, nbtjml:(dgfbatch.dataProvider[i].jml-r[dgfbatch.dataProvider.getItemAt(i).idbarang]),  
+							nbtcustomtext1:'', nbtcustomtext2:'', nbtcustomtext3:'', nbtcustomdbl1:0, nbtcustomdbl2:0, nbtcustomdbl3:0, 
+							nbtcustomdate1:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							nbtcustomdate2: FlexGlobals.topLevelApplication.DefaultTanggal, 
+							nbtcustomdate3: FlexGlobals.topLevelApplication.DefaultTanggal,
+							kodebarang:dgfbatch.dataProvider[i].kodebarang, nbtgudang:obj.p.o.gudang, nbtidbatchin:0});
+			}
+			
+				dg7.dataProvider = acbatch;
+				dg7.validateNow();
+				dgfbatch.setSelectedCell(0,0);
+				dgfbatch.validateNow();
+				filterbatch();
+				if(dg7.dataProviderLength > 0){
+					lblbarangb.text = "Barang : " + dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].kodebarang + "";
+					lbljumlahb.text = "Jumlah : "+ dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].jml+" "+dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].satuan+"";
+				}
+			}
+			
+			public function setSerial():void{
+				dgfserial.dataProvider.removeAll();
+				//set filterserial
+				for(i=0;i<obj.p[obj.p.o.idgrid].dataProviderLength;i++){
+					var jmlbarang:Number;
+					obj.dg = obj.p[obj.p.o.idgrid].dataProvider[i];
+					if( obj.p.o.moduleid == 5 && obj.p.o.mnid == 8){
+						jmlbarang = int(obj.dg.jmlbarangkembali);
+					}
+					else if( obj.p.o.moduleid == 3 && obj.p.o.mnid == 6){
+							jmlbarang = int(obj.dg.jmlmasuk);
+					}
+					else{
+						jmlbarang = int(obj.dg.jmlbarang);
+					}
+					obj.utama = obj.p.o;
+					if(obj.dg.bserial == 1 && jmlbarang > 0){
+						obj.bol = true;
+						for(var j:int=0;j<dgfserial.dataProvider.length;j++)
+							if(dgfserial.dataProvider[j].kodebarang == obj.dg.kodebarang){
+								obj.bol = false;
+								dgfserial.dataProvider.getItemAt(j).jml = int(dgfserial.dataProvider[j].jml)+jmlbarang;
+								dgfserial.dataProvider.setItemAt(dgfserial.dataProvider[j], j);
+								break;
+							}
+						if(obj.bol){
+							dgfserial.dataProvider.addItem({kodebarang:obj.dg.kodebarang, idtransaksi: obj.utama[obj.p.o.sumber+"id"] , sumber: obj.p.o.sumber.toUpperCase(), satuan:obj.dg.satuanbarang, jml:jmlbarang, idbarang:obj.dg.idbarang});
+						}
+						
+					}
+				}
+				
+				//set dg serial
+				acserial.removeAll();
+				if(obj.p.ac_Serial.length > 0){
+					acserial = obj.p.ac_Serial;
+				}
+					var t:int = 0; var r:Object = {};
+					// menacari nomer terakhir dari barang ini dg cara menjumlah barangnya.
+					for(t=0;t<acserial.length;t++){
+						if(r[acserial[t].nstidbarang] == undefined)
+							r[acserial[t].nstidbarang] = 1;
+						else r[acserial[t].nstidbarang]++;
+					}
+					
+					r.no = {}; r.a = 0;
+				for(i=0;i<dgfserial.dataProvider.length;i++){
+					r.a += dgfserial.dataProvider[i].jml;
+					
+					if(r.a > acserial.length){
+						if(r[dgfserial.dataProvider[i].idbarang] == undefined)r[dgfserial.dataProvider[i].idbarang] = 0;
+						for(j=r[dgfserial.dataProvider[i].idbarang]; j<int(dgfserial.dataProvider[i].jml); j++){
+							if(r.no[dgfserial.dataProvider[i].idbarang] == undefined){
+								r.no[dgfserial.dataProvider[i].idbarang] = (r[dgfserial.dataProvider[i].idbarang]+1);
+							}
+							if(dgfserial.dataProvider[i].idtransaksi == undefined)
+								dgfserial.dataProvider[i].idtransaksi = 0;
+							
+							acserial.addItem({no:r.no[dgfserial.dataProvider[i].idbarang]++,nstid:0, nstjenismutasi:1, nstidbarang:dgfserial.dataProvider[i].idbarang,
+								nstkode:'', nstsumber:dgfserial.dataProvider[i].sumber, nstidtransaksi:dgfserial.dataProvider[i].idtransaksi, 
+								nstsatuan:dgfserial.dataProvider[i].satuan, 
+								nstjml:1, nstcustomtext1:'', nstcustomtext2:'', nstcustomtext3:'', 
+								nstcustomdbl1:0, nstcustomdbl2:0, nstcustomdbl3:0, 
+								nstcustomdate1:FlexGlobals.topLevelApplication.DefaultTanggal, 
+								nstcustomdate2:FlexGlobals.topLevelApplication.DefaultTanggal, 
+								nstcustomdate3:FlexGlobals.topLevelApplication.DefaultTanggal,kodebarang:dgfserial.dataProvider[i].kodebarang,
+								nstgudang:obj.p.o.gudang, nstidserialin:0});
+						}
+					}
+				}
+				
+				dg2.dataProvider = acserial;
+				dg2.validateNow();
+				dgfserial.setSelectedCell(0,0);
+				dgfserial.validateNow();
+				filter();
+				if(dg2.dataProviderLength > 0){
+					lblbarang.text = "Barang : " + dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].kodebarang + "";
+					lbljumlah.text = "Jumlah : "+ dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].jml+" "+dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].satuan+"";
+				}
+				
+			}
+			
+
+			
+			public function f_wsHasil():void{}
+			protected function btngenerate_clickHandler(event:MouseEvent):void
+			{
+				//Generate Batch
+					if(tab.selectedIndex == 1){
+						var formatbatch : String = '', noawalbatch:int = 0, ambildigitb:String = '';
+						for(var sb:int= 0; sb<Number(txtformat.text); sb++){
+							ambildigitb+="0";
+						}
+						for(i=0; i<dg7.dataProvider.length; i++)
+							if(dg7.dataProvider[i].kodebarang == dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].kodebarang){
+								noawalbatch = int(txtnoawal.text)+i;
+								if(Number(txtformat.text) - String(noawalbatch).length < 0){
+									formatbatch = '';
+								}else{
+									if(txtnoawal.text.length>0){
+										formatbatch = ambildigitb.substr(0, ambildigitb.length - String(noawalbatch).length);
+									}else{
+										formatbatch = '';
+									}
+								}
+								
+								if(txtnoawal.text.length <= 0){
+									dg7.dataProvider[i].nbtkode = txtawalan.text+formatbatch;
+								}else{
+									dg7.dataProvider[i].nbtkode = txtawalan.text+formatbatch+noawalbatch;
+								}
+								
+								
+							}
+						FlexGlobals.topLevelApplication.F_dgRefresh(dg7);
+						
+					}
+					
+					//Generate Serial
+					else if(tab.selectedIndex ==0){
+						var formatserial : String = '', noawalserial:int = 0, ambildigit:String = '';
+						for(var ss:int= 0; ss<Number(txtformat.text); ss++){
+							ambildigit+="0";
+						}
+						for(i=0; i<dg2.dataProvider.length; i++)
+							if(dg2.dataProvider[i].kodebarang == dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].kodebarang){
+								noawalserial = int(txtnoawal.text)+i;
+								if(Number(txtformat.text) - String(noawalserial).length < 0){
+									formatserial = '';
+								}else{
+									if(txtnoawal.text.length>0){
+										formatserial = ambildigit.substr(0, ambildigit.length - String(noawalserial).length);
+									}else{
+										formatserial = '';
+									}
+								}
+								
+								if(txtnoawal.text.length <= 0){
+									dg2.dataProvider[i].nstkode = txtawalan.text+formatserial;
+								}else{
+									dg2.dataProvider[i].nstkode = txtawalan.text+formatserial+noawalserial;
+								}
+								
+								
+							}
+						FlexGlobals.topLevelApplication.F_dgRefresh(dg2);
+					}
+					
+			}
+			
+			protected function btnok_clickHandler(event:MouseEvent):void
+			{
+				acserial.filterFunction = null;
+				obj.p.ac_Serial = acserial;
+				obj.p.ac_Serial.refresh();
+				if(acserial.length > 0){
+					FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg2);
+				}
+//				FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg2);
+				acbatch.filterFunction = null;
+				obj.p.ac_Batch = acbatch
+				obj.p.ac_Batch.refresh();
+				if(acbatch.length > 0){
+					FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg7);
+				}
+				
+				obj.cek = true;
+				obj.btl= true;
+				if(obj.cek){
+					for(i= 0; i< acserial.length; i++){
+						if(acserial[i].nstkode ==''){
+							obj.cek = false;
+							//Alert.show('Nomor Serial tidak boleh kosong !','Information');
+							//filter();
+							break;
+						}
+					}
+				}
+				
+				if(obj.a){
+					for(var a:int; a<dg7.dataProviderLength; a++){
+						if(dg7.dataProvider[a].nbtkode == ''){
+							obj.cek = false;
+						}
+						else if(dg7.dataProvider[a].nbtjml == 0 && o.total != obj.dg.jmlbarang){
+							obj.btl = false;
+						}
+					}
+					if(obj.btl == false){
+						Alert.show('Jumlah Batch Number dan Jumlah Barang harus sama', 'Information');
+					}
+					
+				}
+				
+				if(obj.cek == false){
+					Alert.show('Nomor Serial / Batch tidak boleh kosong', 'Information');
+				}
+				
+				
+				if(obj.cek == true && obj.btl){
+					FlexGlobals.topLevelApplication.closeFormPopUp(1);
+				}
+				//FlexGlobals.topLevelApplication.closeFormPopUp(1);
+				
+			}
+			
+			public function f_hitungtotal():void{
+				dg7.dataProvider[0].nbtjml = 0;
+				var jml: int = 0
+				for(var i: int = 1; i< dg7.dataProviderLength; i++){
+					jml += Number(dg7.dataProvider[i].nbtjml);
+				}
+				dg7.dataProvider[0].nbtjml = dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].jml - jml;
+			}
+		
+			
+			protected function dgfserial_selectionChangeHandler(event:GridSelectionEvent):void
+			{
+					filter();
+					lblbarang.text = "Barang : " + dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].kodebarang + "";
+					lbljumlah.text = "Jumlah : "+ dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].jml+" "+dgfserial.dataProvider[dgfserial.selectedCell.rowIndex].satuan+"";
+						//lblterpilih.text = "Terpilih : "+dgfserial.dataProvider[dgfserial.selectedIndex].terpilih+"";
+			}
+			
+			
+			protected function dgfbatch_selectionChangeHandler(event:GridSelectionEvent):void
+			{
+				filterbatch();
+				lblbarangb.text = "Barang : " + dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].kodebarang + "";
+				lbljumlahb.text = "Jumlah : "+ dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].jml+" "+dgfbatch.dataProvider[dgfbatch.selectedCell.rowIndex].satuan+"";
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:TextInput x="407" y="9" width="102" id="txtnoawal" textAlign="right" restrict="1234567890"/>
+	<s:TextInput x="227" y="9" width="110" id="txtformat" restrict="1234567890" textAlign="right"/>
+	<s:TextInput x="62" y="9" width="108" id="txtawalan"/>
+	<s:Label x="14" y="13" text="Awalan"/>
+	<s:Label x="192" y="14" text="Digit"/>
+	<s:Label x="353" y="15" text="No. Awal"/>
+	<s:Button right="10" top="10" width="102" id="btngenerate" label="Generate" click="btngenerate_clickHandler(event)"/>
+	<s:Button right="10" bottom="10" label="OK" id="btnok" click="btnok_clickHandler(event)"/>
+	<mx:TabNavigator left="14" right="10" top="39" id="tab" bottom="39" change="if(tab.selectedIndex == 0){txtformat.text = FlexGlobals.topLevelApplication.getSetting(0,'options','FormatSerial');}else{txtformat.text = FlexGlobals.topLevelApplication.getSetting(0,'options','FormatBatch');}">
+		<s:NavigatorContent width="100%" height="100%" label="Serial Number">
+			<s:DataGrid id="dg2" left="153" right="0" top="40" bottom="0" requestedRowCount="4"/>
+			<s:DataGrid id="dgfserial" left="0" right="479" top="0" bottom="0"
+						requestedRowCount="4" selectionChange="dgfserial_selectionChangeHandler(event)"/>
+			<s:Label id="lblbarang" x="153" y="1" fontWeight="bold"/>
+			<s:Label id="lbljumlah" x="153" y="20" fontWeight="bold"/>
+			<s:Label id="lblterpilih" x="153" y="35" fontWeight="bold" visible="false"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Batch">
+			<s:DataGrid id="dg7" left="153" right="0" top="40" bottom="0" requestedRowCount="4"/>
+			<s:DataGrid id="dgfbatch" left="0" right="479" top="0" bottom="0"
+						requestedRowCount="4" selectionChange="dgfbatch_selectionChangeHandler(event)"/>
+			<s:Label id="lblbarangb" x="153" y="1" fontWeight="bold"/>
+			<s:Label id="lbljumlahb" x="153" y="20" fontWeight="bold"/>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	
+</s:Module>

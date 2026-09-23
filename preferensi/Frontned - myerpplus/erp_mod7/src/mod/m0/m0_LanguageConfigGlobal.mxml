@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			import spark.components.Button;
+			import spark.components.CheckBox;
+			import spark.components.ComboBox;
+			import spark.components.Image;
+			import spark.components.supportClasses.ItemRenderer;
+			import spark.events.GridEvent;
+			import spark.events.GridItemEditorEvent;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			
+			public var o:Object = {}, i:int, kode:String;
+			
+			protected function f_persiapan():void
+			{
+				FlexGlobals.topLevelApplication.F_tabvalidatenow(tab);
+				
+				this.addEventListener(KeyboardEvent.KEY_DOWN, f_keydown);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				parentApplication.F_setGridJson(0, 6);
+				parentApplication.registerGrid([dgs1, dgs2], 'data');
+				parentApplication.registerGrid([dgt], 'transaksi');
+				FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M0_SentenceDetailSearch', 0, 0, '', 'ssentence');
+				
+				dgs1.addEventListener(KeyboardEvent.KEY_DOWN, f_dg1Keydown);
+				dgs2.addEventListener(KeyboardEvent.KEY_DOWN, f_dg2Keydown);
+				dgs1.addEventListener(MouseEvent.CLICK, f_dg1Click);
+				dgs2.addEventListener(MouseEvent.CLICK, f_dg2Click);
+				
+				txtsubject1.addEventListener(KeyboardEvent.KEY_DOWN, f_txtKeyDown1);
+				txtsubject2.addEventListener(KeyboardEvent.KEY_DOWN, f_txtKeyDown2);
+				
+				function f_txtKeyDown1():void
+				{
+					(dgs1.dataProvider as ArrayCollection).filterFunction = filter; 
+					(dgs1.dataProvider as ArrayCollection).refresh();  
+					function filter(item:Object):Boolean
+					{
+						var searchString:String = txtsubject1.text.toLowerCase();
+						var itemName:String = (item.s as String).toLowerCase();
+						return itemName.indexOf(searchString) > -1;	
+					} 
+				}
+				
+				function f_txtKeyDown2():void
+				{
+					(dgs2.dataProvider as ArrayCollection).filterFunction = filter; 
+					(dgs2.dataProvider as ArrayCollection).refresh();  
+					function filter(item:Object):Boolean
+					{
+						var searchString:String = txtsubject2.text.toLowerCase();
+						var itemName:String = (item.s as String).toLowerCase();
+						return itemName.indexOf(searchString) > -1;	
+					} 
+				}
+				
+				function f_dg1Keydown(e:KeyboardEvent):void
+				{
+					if((e.keyCode == Keyboard.UP || e.keyCode == Keyboard.DOWN) && dgs1.selectedCell)
+						selectTranslate(dgs1, dgs1.selectedCell.rowIndex);
+				}
+				
+				function f_dg2Keydown(e:KeyboardEvent):void
+				{
+					if((e.keyCode == Keyboard.UP || e.keyCode == Keyboard.DOWN) && dgs2.selectedCell)
+						selectTranslate(dgs2, dgs2.selectedCell.rowIndex);
+				}
+				
+				function f_dg1Click():void
+				{
+					if(dgs1.selectedCell != null)
+						selectTranslate(dgs1, dgs1.selectedCell.rowIndex);
+				}
+				
+				function f_dg2Click():void
+				{
+					if(dgs2.selectedCell != null)
+						selectTranslate(dgs2, dgs2.selectedCell.rowIndex);
+				}
+				
+				function f_mbSimpan():void
+				{
+					o.data = '';
+					for(i=0;i<o.det.length;i++){
+						o.bol = true;
+						for(o.i=0;o.i<o.detail.length;o.i++){
+							if(o.det.getItemAt(i).tlanguage == o.detail.getItemAt(o.i).tlanguage && o.det.getItemAt(i).tsentence == o.detail.getItemAt(o.i).tsentence){
+								if(o.det.getItemAt(i).ttranslate != o.detail.getItemAt(o.i).ttranslate)
+									o.data += parentApplication.F_splitArrayToString([o.det.getItemAt(i).tlanguage, o.det.getItemAt(i).tsentence, o.det.getItemAt(i).ttranslate])+'▲';
+								o.bol = false;
+								break;
+							} 
+						}
+						
+						if(o.bol == true)
+							o.data += parentApplication.F_splitArrayToString([o.det.getItemAt(i).tlanguage, o.det.getItemAt(i).tsentence, o.det.getItemAt(i).ttranslate])+'▲';
+					}
+					o.data = o.data.slice(0, o.data.length-1);	
+					if(o.data != ''){
+						o.a = [];
+						for(i=0;i<parentApplication.m[parentApplication.idmodcurr].child.dg.dataProviderLength;i++)
+							o.a[i] = parentApplication.m[parentApplication.idmodcurr].child.dg.dataProvider[i].lkode;
+						FlexGlobals.topLevelApplication.F_wsSimpan('simpanTranslate', 'M0_TranslateSimpan', parentApplication.userid, o.isUpdate, o.data, FlexGlobals.topLevelApplication.F_splitArrayToString(o.a));
+					}
+				}
+				
+				function f_keydown(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ESCAPE)
+						FlexGlobals.topLevelApplication.closeFormPopUp();
+				}
+			}
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{
+				if(column == 'add'){
+					parentApplication.vgRowInsert = dg.dataProviderLength;
+					o.add = dg.dataProvider.getItemAt(dg.dataProviderLength-1);
+					o.add.i = 0;
+					o.add.t = 0;
+					if(dg.id == 'dgs2')
+						o.add.t = 1;
+					parentApplication.F_dgColumnRefresh(dg, dg.dataProviderLength-1);
+				}else if(dg.id == 'dgs1' || dg.id == 'dgs2'){
+					o.d = dg.dataProvider.getItemAt(parentApplication.rowIndex);
+					if(o.d.i == 0)o.isUpdate = false;
+					else o.isUpdate = true;
+					o.data =  parentApplication.F_splitArrayToString([o.d.i, o.d.s, o.d.t]);
+					if(o.d.s != ''){
+						dg.setFocus();
+						dg.validateNow();
+						FlexGlobals.topLevelApplication.F_wsSimpan('simpan', 'M0_SentenceSimpan', parentApplication.userid, o.isUpdate, o.data, '');
+					}
+				}else if(dg.id == 'dgt'){
+					if(tab.selectedIndex == 0 && dgs1.selectedCell != null){
+						for(i=0;i<o.det.length;i++)
+							if(o.det.getItemAt(i).tsentence == dgs1.dataProvider.getItemAt(dgs1.selectedCell.rowIndex).i && o.det.getItemAt(i).tlanguage == dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).k)
+							{
+								o.det.getItemAt(i).ttranslate = dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).t;
+								return;
+							}
+						o.det.addItem({tlanguage:dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).k, tsentence:dgs1.dataProvider.getItemAt(dgs1.selectedCell.rowIndex).i, ttranslate:dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).t});
+					}else if(tab.selectedIndex == 1 && dgs2.selectedCell != null){
+						for(i=0;i<o.det.length;i++)
+							if(o.det.getItemAt(i).tsentence == dgs2.dataProvider.getItemAt(dgs2.selectedCell.rowIndex).i && o.det.getItemAt(i).tlanguage == dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).k)
+							{
+								o.det.getItemAt(i).ttranslate = dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).t;
+								return;
+							}
+						o.det.addItem({tlanguage:dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).k, tsentence:dgs2.dataProvider.getItemAt(dgs2.selectedCell.rowIndex).i, ttranslate:dgt.dataProvider.getItemAt(dgt.selectedCell.rowIndex).t});
+					}
+				}
+			}
+			
+			public function f_wsHasil():void
+			{
+				if(parentApplication.subject == 'tampil'){
+					o.data = parentApplication.wsArrUtama;
+					dgs1.dataProvider.removeAll();
+					dgs2.dataProvider.removeAll();
+					dgt.dataProvider.removeAll();
+					for(i=0;i<o.data.length;i++){
+						o.d = o.data.getItemAt(i);
+						if(o.d.sjenis == 0)
+							dgs1.dataProvider.addItem({i:o.d.sid, s:o.d.ssentence, t:o.d.sjenis});
+						else if(o.d.sjenis == 1)
+							dgs2.dataProvider.addItem({i:o.d.sid, s:o.d.ssentence, t:o.d.sjenis});
+					}
+					for(o.i=0;o.i<parentApplication.m[parentApplication.idmodcurr].child.dg.dataProviderLength;o.i++){
+						o.d = parentApplication.m[parentApplication.idmodcurr].child.dg.dataProvider.getItemAt(o.i);
+						dgt.dataProvider.addItem({k:o.d.lkode, k_source:o.d.lkode_source, s:'', t:''});
+					}
+					
+					o.detail = new ArrayCollection;
+					o.det = new ArrayCollection;
+					for(i=0;i<parentApplication.wsArrDetail.length;i++){
+						o.detail.addItem({tlanguage:parentApplication.wsArrDetail.getItemAt(i).tlanguage, tsentence:parentApplication.wsArrDetail.getItemAt(i).tsentence, ttranslate:parentApplication.wsArrDetail.getItemAt(i).ttranslate});
+						o.det.addItem({tlanguage:parentApplication.wsArrDetail.getItemAt(i).tlanguage, tsentence:parentApplication.wsArrDetail.getItemAt(i).tsentence, ttranslate:parentApplication.wsArrDetail.getItemAt(i).ttranslate});
+					}
+					 
+					tab.selectedIndex = 0;
+					dgs1.setSelectedCell(0,0);
+					selectTranslate(dgs1, 0);
+				}else if(parentApplication.subject == 'simpan'){
+					if(tab.selectedIndex == 0)
+						dgs1.dataProvider.getItemAt(dgs1.selectedCell.rowIndex).i = parentApplication.wsIdtransaksi;
+					else if(tab.selectedIndex == 1)
+						dgs2.dataProvider.getItemAt(dgs2.selectedCell.rowIndex).i = parentApplication.wsIdtransaksi;
+				}
+			}
+			
+			protected function selectTranslate(dg:DataGrid, lokasi:int):void
+			{
+				for(i=0;i<dgt.dataProviderLength;i++){ 
+					dgt.dataProvider.getItemAt(i).s = dg.dataProvider.getItemAt(lokasi).i;
+					dgt.dataProvider.getItemAt(i).t = cariTranslate(dgt.dataProvider.getItemAt(i).k, dg.dataProvider.getItemAt(lokasi).i);
+					parentApplication.F_dgColumnRefresh(dgt, i);
+				}
+				
+				function cariTranslate(kode:String, idx:int):String
+				{
+					for(o.j=0;o.j<o.det.length;o.j++)
+						if(o.det.getItemAt(o.j).tlanguage == kode && o.det.getItemAt(o.j).tsentence == idx){
+							return o.det.getItemAt(o.j).ttranslate;
+						}
+					return '';
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<mx:TabNavigator id="tab" left="10" top="40" bottom="10" width="48%">
+		<s:NavigatorContent width="100%" height="100%" label="Subject">
+			<s:Label x="10" y="6" text="Cari"/>
+			<s:TextInput id="txtsubject1" x="61" y="0"/>
+			<s:DataGrid id="dgs1" top="30" left="0" bottom="0" right="0"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Alert">
+			<s:Label x="10" y="6" text="Cari"/>
+			<s:TextInput id="txtsubject2" x="61" y="0"/>
+			<s:DataGrid id="dgs2" top="30" left="0" bottom="0" right="0"/>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:DataGrid id="dgt" right="10" top="40" bottom="10" width="50%"/>
+</s:Module>

@@ -1,0 +1,1 @@
+npm i && npm install pm2@latest -g && npm start

@@ -1,0 +1,3087 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="100%" height="100%" creationComplete="f_Persiapan()"
+		  keyDown="f_keydown(event)">
+	<fx:Script>
+		<![CDATA[
+			import comxls.as3xls.xls.Cell;
+			import comxls.as3xls.xls.ExcelFile;
+			import comxls.as3xls.xls.Sheet;
+			
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.components.CheckBox;
+			import spark.components.gridClasses.GridColumn;
+			import spark.events.IndexChangeEvent;
+			 
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			
+			public var module:String,inputuser:int,inputtgl:String,modifikasiuser:int,modifikasitgl:String
+			public var o:Object = {}, no:int, i:int, jum:int, arr:ArrayCollection, urutan:int, moduleid:int;
+			protected var sumber:String, idtransaksi:String, id2:String = '';
+			public var validasi:Boolean, pesanAlert:String, matauang:String, kurs:Number;
+			public var bytearrayexcel : ByteArray = new ByteArray;
+			[bindable] public var acSimpan : ArrayCollection = new ArrayCollection();
+			[Bindable] public var acKolomSumber:ArrayCollection = new ArrayCollection();
+			[Bindable] public var acImportGagal:ArrayCollection = new ArrayCollection();
+			
+			public var berhasil : Number = 0, gagal:Number = 0 //set jml import data yang berhasil
+			public var index:int = 0; //set jml import data yang berhasil
+			public var jmlProgress:int, num:Number, j:int, close:Boolean;
+			public var kodegagalimport : String = "", deskripsi : String = "";
+			
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				switch(components)
+				{
+					case "comboBox":
+						var sumberkosong : Boolean = false
+						if(dataField == 'kolomsumber')
+						{
+							return acKolomSumber;
+						}
+				}
+				return new ArrayCollection([]);
+			}
+			
+			[Bindable] public var ArrayNamaKolom:Array = []; 
+			public var ArrayDataField:Array = [];
+			[Bindable] private var gridColumns:ArrayCollection = new ArrayCollection(); 
+			
+			public function f_Persiapan():void
+			{
+				txtfile.setFocus();
+				FlexGlobals.topLevelApplication.F_DateFieldStandard([dttgl, dttglCoA]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtgudang, txtkontak, txtmatauang]);
+				FlexGlobals.topLevelApplication.F_TextInputNumberDesimalMode([txtkurs]);
+				parentApplication.F_SetNavigasiKeyboard([txturaian, txturaianCoA]);
+				FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbimport, cmbsumberAP, cmbsumberAR, cmbsheet]);
+				cmbimport.dataProvider = new ArrayCollection([{l:'Master Kontak', v:0}, {l:'Master Barang', v:1}, {l:'Saldo Awal CoA', v:2}, {l:'Saldo Awal Barang', v:3}, {l:'Saldo Awal Hutang', v:4}, {l:'Saldo Awal Piutang', v:5}, {l:'Master Kategori Barang', v:6}, {l:'Import Penjualan', v:7}, {l:'Import Retur', v:8}]);
+				cmbsumberAP.dataProvider = new ArrayCollection([{l:'Invoice Pembelian', v:"RI"}, {l:'Retur Pembelian', v:"PRT"}]);
+				cmbsumberAR.dataProvider = new ArrayCollection([{l:'Invoice Penjualan', v:"SI"}, {l:'Retur Penjualan', v:"SR"}]);
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbBatal);
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 20, [dgMapping], 'transaksi');
+				
+				f_kondisiAwal();
+				
+				function f_mbSimpan():void
+				{
+					f_simpan();
+				}
+				
+				function f_mbBatal():void
+				{
+					f_kondisiAwal()
+				}
+			}
+			
+			public function f_kondisiAwal():void
+			{
+				o.kontak = 0;
+				cmbimport.selectedIndex = 1;
+				cmbsumberAR.selectedIndex = 0;
+				cmbsumberAP.selectedIndex = 0;
+				cmbsheet.dataProvider.removeAll();
+				grppopup.visible = false;
+				berhasil = 0;
+				gagal = 0;
+				index = 0;
+				jmlProgress = 0;
+				num = 0;
+				j = 0;
+				bytearrayexcel = null;
+				txtfile.text = "";
+				acKolomSumber.removeAll();
+				lblProses.text = "";
+				lblPersen.text = "0 %";
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 20, [dgImport], 'transaksi');
+				FlexGlobals.topLevelApplication.F_KosongkanText([txtgudang,lblgudang, txtkontak, lblkontak])
+				dgMapping.dataProvider.removeAll();
+				txturaian.text = parentApplication.getNomor("IB");
+				txturaianCoA.text = parentApplication.getNomor("CB");
+				txtmatauang.text = FlexGlobals.topLevelApplication.getSetting(0, 'accounting', 'MataUangFungsional');
+				o.txtkurs = FlexGlobals.topLevelApplication.getSetting(0, 'accounting', 'Kurs')
+				txtkurs.text = FlexGlobals.topLevelApplication.m.nfNominal.format(o.txtkurs);
+				FlexGlobals.topLevelApplication.F_SetNilaiText([dttgl, dttglCoA],FlexGlobals.topLevelApplication.DefaultTanggal);
+				acImportGagal.removeAll();
+				f_cmbimport();
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target)
+				{
+					case "txtgudang":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode ="'+txtgudang.text.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						sort = 'wkode asc';
+						break;
+					case "txtkontak":
+						paket = 'CdM1_Contact';
+						wsfilter = 'kaktif = 1 AND kkode ="'+txtkontak.text.split('"').join('\\"')+'"';
+						csfilter = 'kaktif = 1';
+						sort = 'kkode asc';
+						break;
+					case "txtmatauang":
+						paket = "CdM1_Currency";
+						wsfilter = 'caktif=1 AND ckode ="'+txtmatauang.text+'"';
+						csfilter = 'caktif=1';
+						csfield = 2;
+						sort = 'ckode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_keydown(e:KeyboardEvent):void
+			{
+				switch(e.keyCode)
+				{
+					case Keyboard.F12:
+						FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dgImport);
+						FlexGlobals.topLevelApplication.F_acAdd(dgImport);
+						f_browseFile();
+						break;
+					case Keyboard.N:
+						if(e.ctrlKey)
+						{
+							FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dgImport);
+							FlexGlobals.topLevelApplication.F_acAdd(dgImport);
+							f_browseFile();
+						}
+						break;
+					case Keyboard.DELETE:
+						o.arr = new ArrayCollection([dgImport.dataProvider[dgImport.selectedCell.rowIndex]]);
+						break;
+					case Keyboard.S:
+						if(e.ctrlKey)
+							f_simpan();
+						break;
+				}
+			}
+			
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components)
+				{
+					case "checkBoxHeader":
+						for (i=0; i<dgImport.dataProviderLength; i++)
+						{
+							dgImport.dataProvider.getItemAt(i).chk = data;
+						}
+						break;
+					case "checkBox":
+						dgImport.dataProvider.getItemAt(dgImport.selectedCell.rowIndex).chk = data;
+						break;
+					
+				}
+				FlexGlobals.topLevelApplication.F_dgRefresh(dgImport);
+			}
+			
+			private function f_browseFile():void
+			{
+				var arr:Array = [];
+				arr.push(new FileFilter("Excel File","*.xls"));
+				fileReference.browse(arr);
+			}
+			
+			private function fileReference_select(evt:Event):void {
+				fileReference.load();
+			}
+			
+			private function fileReference_complete(evt:Event):void {
+				
+				txtfile.text = fileReference.name;
+				bytearrayexcel = fileReference.data
+				var excelFile:ExcelFile = new ExcelFile();
+				excelFile.loadFromByteArray(bytearrayexcel);
+				var sheet : Sheet = excelFile.sheets[0];
+				cmbsheet.dataProvider.removeAll();
+				for(var i:int = 0; i<excelFile.sheets.length; i++)
+				{
+					sheet = excelFile.sheets[i];
+					cmbsheet.dataProvider.addItem({l:sheet.name})
+				}
+				
+				cmbsheet.selectedIndex = 0;
+				for(i=0;i<cmbsheet.dataProvider.length;i++)
+				{
+					if(cmbimport.textInput.text == cmbsheet.dataProvider.getItemAt(i).l)
+					{
+						cmbsheet.selectedIndex = i;
+						break;
+					}
+				}
+			}
+			
+			public function F_SetMapping():void
+			{
+				switch (cmbimport.selectedIndex)
+				{					
+					case 0: //KONTAK
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode Kontak *", namafield :"kkode", kolomexcel:"Kode Kontak", kolomsumber : ""},
+							{namakolom : "Nama Kontak *", namafield :"knama", kolomexcel:"Nama Kontak", kolomsumber : ""},
+							{namakolom : "Kategori Kontak *", namafield :"kkategori", kolomexcel:"Kategori Kontak", kolomsumber : ""},
+							{namakolom : "Cabang", namafield :"kcabang", kolomexcel:"Cabang", kolomsumber : ""},
+							{namakolom : "Lokasi", namafield :"klokasi", kolomexcel:"Lokasi", kolomsumber : ""},
+							{namakolom : "Gudang", namafield :"kgudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom : "Divisi", namafield :"kdivisi", kolomexcel:"Divisi", kolomsumber : ""},
+							{namakolom : "Sub Divisi", namafield :"ksubdivisi", kolomexcel:"Sub Divisi", kolomsumber : ""},
+							{namakolom : "Area", namafield :"karea", kolomexcel:"Area", kolomsumber : ""},
+							{namakolom : "Kontak Person", namafield :"kkontakperson", kolomexcel:"Kontak Person", kolomsumber : ""},
+							{namakolom : "Alamat", namafield :"k1alamat1", kolomexcel:"Alamat", kolomsumber : ""},
+							{namakolom : "Kota", namafield :"k1kota", kolomexcel:"Kota", kolomsumber : ""},
+							{namakolom : "Propinsi", namafield :"k1propinsi", kolomexcel:"Propinsi", kolomsumber : ""},
+							{namakolom : "Kode Pos", namafield :"k1kodepos", kolomexcel:"Kode Pos", kolomsumber : ""},
+							{namakolom : "Negara", namafield :"k1negara", kolomexcel:"Negara", kolomsumber : ""},
+							{namakolom : "No HP", namafield :"k1kontaknohp", kolomexcel:"No HP", kolomsumber : ""},
+							{namakolom : "Email K.P", namafield :"k1kontakemail", kolomexcel:"Email K.P", kolomsumber : ""},
+							{namakolom : "Telepon1", namafield :"k1notelp1", kolomexcel:"Telepon1", kolomsumber : ""},
+							{namakolom : "Telepon2", namafield :"k1notelp2", kolomexcel:"Telepon2", kolomsumber : ""},
+							{namakolom : "Faximile", namafield :"k1nofax", kolomexcel:"Faximile", kolomsumber : ""},
+							{namakolom : "Email", namafield :"k1email", kolomexcel:"Email", kolomsumber : ""},
+							{namakolom : "Website", namafield :"k1website", kolomexcel:"Website", kolomsumber : ""},
+							{namakolom : "Termin Beli", namafield :"kterminbeli", kolomexcel:"Termin Beli", kolomsumber : ""},
+							{namakolom : "Rek Hutang", namafield :"krekhutang", kolomexcel:"Rek Hutang", kolomsumber : ""},
+							{namakolom : "Termin Jual", namafield :"kterminjual", kolomexcel:"Termin Jual", kolomsumber : ""},
+							{namakolom : "Rek Piutang", namafield :"krekpiutang", kolomexcel:"Rek Piutang", kolomsumber : ""},
+							{namakolom : "Kategori Customer", namafield :"kkategoricustomer", kolomexcel:"Kategori Customer", kolomsumber : ""},
+							{namakolom : "Kode Perusahaan", namafield :"kcustomtext1", kolomexcel:"Kode Perusahaan", kolomsumber : ""},
+							{namakolom : "Nama Perusahaan", namafield :"kcustomtext2", kolomexcel:"Nama Perusahaan", kolomsumber : ""},
+							{namakolom : "No Anggota", namafield :"kcustomtext3", kolomexcel:"No Anggota", kolomsumber : ""}
+						]);
+						break;
+					case 1: //BARANG
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom :'Kode Barang *', namafield : "bkode", kolomexcel:"Kode Barang", kolomsumber : ""},
+							{namakolom :'Nama Barang *', namafield : "bnama", kolomexcel:"Nama Barang", kolomsumber : ""},
+							{namakolom :'Satuan *', namafield : "bsatuan", kolomexcel:"Satuan", kolomsumber : ""},
+							{namakolom :'Kategori Barang *', namafield : "bkategori", kolomexcel:"Kategori Barang", kolomsumber : ""},
+							{namakolom :'Jenis *', namafield : "bjenis", kolomexcel:"Jenis", kolomsumber : ""},
+							{namakolom :'Tipe Barang', namafield : "btipe", kolomexcel:"Tipe Barang", kolomsumber : ""},
+							{namakolom :'Cabang', namafield : "bcabang", kolomexcel:"Cabang", kolomsumber : ""},
+							{namakolom :'Lokasi', namafield : "blokasi", kolomexcel:"Lokasi", kolomsumber : ""},
+							{namakolom :'Gudang', namafield : "bgudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom :'Divisi', namafield : "bdivisi", kolomexcel:"Divisi", kolomsumber : ""},
+							{namakolom :'Sub Divisi', namafield : "bsubdivisi", kolomexcel:"Sub Divisi", kolomsumber : ""},
+							{namakolom :'Proyek', namafield : "bproyek", kolomexcel:"Proyek", kolomsumber : ""},
+							{namakolom :'Barcode', namafield : "bbarcode", kolomexcel:"Barcode", kolomsumber : ""},
+							{namakolom :'Stok Min', namafield : "bstokminimal", kolomexcel:"Stok Min", kolomsumber : ""},
+							{namakolom :'Stok Max', namafield : "bstokmaksimal", kolomexcel:"Stok Max", kolomsumber : ""},
+							{namakolom :'Re Order', namafield : "breorder", kolomexcel:"Re Order", kolomsumber : ""},
+							{namakolom :'Min Order', namafield : "bminorder", kolomexcel:"Min Order", kolomsumber : ""},
+							{namakolom :'Pajak Beli', namafield : "bpajakbeli", kolomexcel:"Pajak Beli", kolomsumber : ""},
+							{namakolom :'Pajak Jual', namafield : "bpajakjual", kolomexcel:"Pajak Jual", kolomsumber : ""},
+							{namakolom :'Harga Beli', namafield : "bhargabeli", kolomexcel:"Harga Beli", kolomsumber : ""}, 
+							{namakolom :"Harga Jual 1", namafield : "bhargajual1", kolomexcel:"Harga Jual 1", kolomsumber : ""},
+							{namakolom :"Harga Jual 2", namafield : "bhargajual2", kolomexcel:"Harga Jual 2", kolomsumber : ""},
+							{namakolom :"Harga Jual 3", namafield : "bhargajual3", kolomexcel:"Harga Jual 3", kolomsumber : ""},
+							{namakolom :"Harga Jual 4", namafield : "bhargajual4", kolomexcel:"Harga Jual 4", kolomsumber : ""},
+							{namakolom :"Harga Jual 5", namafield : "bhargajual5", kolomexcel:"Harga Jual 5", kolomsumber : ""},
+							{namakolom :"Diskon Jual 1", namafield : "bdiskonjual1", kolomexcel:"Diskon Jual 1", kolomsumber : ""},
+							{namakolom :"Diskon Jual 2", namafield : "bdiskonjual2", kolomexcel:"Diskon Jual 2", kolomsumber : ""},
+							{namakolom :"Diskon Jual 3", namafield : "bdiskonjual3", kolomexcel:"Diskon Jual 3", kolomsumber : ""},
+							{namakolom :"Diskon Jual 4", namafield : "bdiskonjual4", kolomexcel:"Diskon Jual 4", kolomsumber : ""},
+							{namakolom :"Diskon Jual 5", namafield : "bdiskonjual5", kolomexcel:"Diskon Jual 5", kolomsumber : ""},
+							{namakolom :'Panjang', namafield : "bapanjang", kolomexcel:"Panjang", kolomsumber : ""},
+							{namakolom :'Lebar', namafield : "balebar", kolomexcel:"Lebar", kolomsumber : ""},
+							{namakolom :'Tinggi', namafield : "batinggi", kolomexcel:"Tinggi", kolomsumber : ""},
+							{namakolom :'Volume', namafield : "bavolume", kolomexcel:"Volume", kolomsumber : ""},
+							{namakolom :'Warna', namafield : "bawarna", kolomexcel:"Warna", kolomsumber : ""},
+							{namakolom :'Oem', namafield : "baoem", kolomexcel:"Oem", kolomsumber : ""},
+							{namakolom :'Merk', namafield : "bamerk", kolomexcel:"Merk", kolomsumber : ""},
+							{namakolom :'Ukuran', namafield : "baukuran", kolomexcel:"Ukuran", kolomsumber : ""},
+							{namakolom :'Model', namafield : "bamodel", kolomexcel:"Model", kolomsumber : ""},
+							{namakolom :'Kelas', namafield : "bakelas", kolomexcel:"Kelas", kolomsumber : ""},
+							{namakolom :'Sub Kelas', namafield : "bsubkelas", kolomexcel:"Sub Kelas", kolomsumber : ""},
+							{namakolom :'Designer', namafield : "bdesigner", kolomexcel:"Designer", kolomsumber : ""},
+							{namakolom :'Material', namafield : "bmaterial", kolomexcel:"Material", kolomsumber : ""},
+							{namakolom :'Section', namafield : "bsection", kolomexcel:"Section", kolomsumber : ""},
+							{namakolom :'Vendor', namafield : "bvendor", kolomexcel:"Vendor", kolomsumber : ""}
+						]);
+						break;
+					case 2: //SALDO AWAL COA
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "No Akun", namafield :"noakun", kolomexcel:"No Akun", kolomsumber : ""},
+							{namakolom : "Debit", namafield :"debit", kolomexcel:"Debit", kolomsumber : ""},
+							{namakolom : "Kredit", namafield :"kredit", kolomexcel:"Kredit", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "Cost Center", namafield :"costcenter", kolomexcel:"Cost Center", kolomsumber : ""},
+							{namakolom : "Divisi", namafield :"divisi", kolomexcel:"Divisi", kolomsumber : ""},
+							{namakolom : "Sub Divisi", namafield :"subdivisi", kolomexcel:"Sub Divisi", kolomsumber : ""},
+							{namakolom : "Proyek", namafield :"proyek", kolomexcel:"Proyek", kolomsumber : ""}
+						]);
+						break;
+					case 3: //SALDO AWAL BARANG
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode Barang *", namafield :"kodebarang", kolomexcel:"Kode Barang", kolomsumber : ""},
+							{namakolom : "Jumlah *", namafield :"jml", kolomexcel:"Jumlah", kolomsumber : ""},
+							{namakolom : "HPP *", namafield :"hpp", kolomexcel:"HPP", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "Cost Center", namafield :"costcenter", kolomexcel:"Cost Center", kolomsumber : ""},
+							{namakolom : "Divisi", namafield :"divisi", kolomexcel:"Divisi", kolomsumber : ""},
+							{namakolom : "Sub Divisi", namafield :"subdivisi", kolomexcel:"Sub Divisi", kolomsumber : ""},
+							{namakolom : "Proyek", namafield :"proyek", kolomexcel:"Proyek", kolomsumber : ""}
+						]);
+						break;
+					case 4: //SALDO AWAL HUTANG
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode Supplier *", namafield :"kodesupplier", kolomexcel:"Kode Supplier", kolomsumber : ""},
+							{namakolom : "Tanggal *", namafield :"tgl", kolomexcel:"Tanggal", kolomsumber : ""},
+							{namakolom : "Mata Uang *", namafield :"matauang", kolomexcel:"Mata Uang", kolomsumber : ""},
+							{namakolom : "Kurs *", namafield :"kurs", kolomexcel:"Kurs", kolomsumber : ""},
+							{namakolom : "Termin", namafield :"termin", kolomexcel:"Termin", kolomsumber : ""},
+							{namakolom : "Uraian", namafield :"uraian", kolomexcel:"Uraian", kolomsumber : ""},
+							{namakolom : "Gudang", namafield :"gudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom : "Total *", namafield :"total", kolomexcel:"Total", kolomsumber : ""},
+							{namakolom : "Diskon [%]", namafield :"diskonpersen", kolomexcel:"Diskon [%]", kolomsumber : ""},
+							{namakolom : "Jml Diskon", namafield :"jmldiskon", kolomexcel:"Jml Diskon", kolomsumber : ""},
+							{namakolom : "Total Pajak 1", namafield :"totalpajak1detail", kolomexcel:"Total Pajak 1", kolomsumber : ""},
+							{namakolom : "Total Pajak 2", namafield :"totalpajak2detail", kolomexcel:"Total Pajak 2", kolomsumber : ""},
+							{namakolom : "Biaya Lain [%]", namafield :"biayalainpersen", kolomexcel:"Biaya Lain [%]", kolomsumber : ""},
+							{namakolom : "Jml Biaya Lain", namafield :"biayalain", kolomexcel:"Jml Biaya Lain", kolomsumber : ""},
+							{namakolom : "Total Transaksi *", namafield :"totaltransaksi", kolomexcel:"Total Transaksi", kolomsumber : ""},
+							{namakolom : "Kontak Person", namafield :"kontakperson", kolomexcel:"Kontak Person", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "No Ref", namafield :"noref", kolomexcel:"No Ref", kolomsumber : ""},
+							{namakolom : "Tgl No Ref", namafield :"tglnoref", kolomexcel:"Tgl No Ref", kolomsumber : ""},
+							{namakolom : "No Faktur Pajak", namafield :"nofakturpajak", kolomexcel:"No Faktur Pajak", kolomsumber : ""}
+						]);
+						break;
+					case 5: //SALDO AWAL PIUTANG
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode Customer *", namafield :"kodecustomer", kolomexcel:"Kode Customer", kolomsumber : ""},
+							{namakolom : "Kode Salesman *", namafield :"kodesalesman", kolomexcel:"Kode Salesman", kolomsumber : ""},
+							{namakolom : "Tanggal *", namafield :"tgl", kolomexcel:"Tanggal", kolomsumber : ""},
+							{namakolom : "Mata Uang *", namafield :"matauang", kolomexcel:"Mata Uang", kolomsumber : ""},
+							{namakolom : "Kurs *", namafield :"kurs", kolomexcel:"Kurs", kolomsumber : ""},
+							{namakolom : "Termin", namafield :"termin", kolomexcel:"Termin", kolomsumber : ""},
+							{namakolom : "No UM Penjualan", namafield :"noas", kolomexcel:"No UM Penjualan", kolomsumber : ""},
+							{namakolom : "Uraian", namafield :"uraian", kolomexcel:"Uraian", kolomsumber : ""},
+							{namakolom : "Gudang", namafield :"gudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom : "Total *", namafield :"total", kolomexcel:"Total", kolomsumber : ""},
+							{namakolom : "Diskon [%]", namafield :"diskonpersen", kolomexcel:"Diskon [%]", kolomsumber : ""},
+							{namakolom : "Jml Diskon", namafield :"jmldiskon", kolomexcel:"Jml Diskon", kolomsumber : ""},
+							{namakolom : "Total Pajak 1", namafield :"totalpajak1detail", kolomexcel:"Total Pajak 1", kolomsumber : ""},
+							{namakolom : "Total Pajak 2", namafield :"totalpajak2detail", kolomexcel:"Total Pajak 2", kolomsumber : ""},
+							{namakolom : "Biaya Lain [%]", namafield :"biayalainpersen", kolomexcel:"Biaya Lain [%]", kolomsumber : ""},
+							{namakolom : "Jml Biaya Lain", namafield :"biayalain", kolomexcel:"Jml Biaya Lain", kolomsumber : ""},
+							{namakolom : "Jml Uang Muka", namafield :"uangmuka", kolomexcel:"Jml Uang Muka", kolomsumber : ""},
+							{namakolom : "Total Transaksi *", namafield :"totaltransaksi", kolomexcel:"Total Transaksi", kolomsumber : ""},
+							{namakolom : "Kontak Person", namafield :"kontakperson", kolomexcel:"Kontak Person", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "No Ref", namafield :"noref", kolomexcel:"No Ref", kolomsumber : ""},
+							{namakolom : "Tgl No Ref", namafield :"tglnoref", kolomexcel:"Tgl No Ref", kolomsumber : ""},
+							{namakolom : "No Faktur Pajak", namafield :"nofakturpajak", kolomexcel:"No Faktur Pajak", kolomsumber : ""},
+							{namakolom : "Kurs Pajak", namafield :"kurspajak", kolomexcel:"Kurs Pajak", kolomsumber : ""}
+						]);
+						break;
+					case 6: //MASTER KATEGORI BARANG
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode", namafield :"ickode", kolomexcel:"Kode", kolomsumber : ""},
+							{namakolom : "Nama", namafield :"icnama", kolomexcel:"Nama", kolomsumber : ""},
+							{namakolom : "Sub Departemen", namafield :"icsubdepartemen", kolomexcel:"Sub Departemen", kolomsumber : ""},
+							{namakolom : "Akun Persediaan", namafield :"icrekpersediaan", kolomexcel:"Akun Persediaan", kolomsumber : ""},
+							{namakolom : "Akun HPP", namafield :"icrekhargapokok", kolomexcel:"Akun HPP", kolomsumber : ""},
+							{namakolom : "Akun Penjualan", namafield :"icrekpenjualan", kolomexcel:"Akun Penjualan", kolomsumber : ""},
+							{namakolom : "Barcode", namafield :"icindexbarcode", kolomexcel:"Barcode", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"iccatatan", kolomexcel:"Catatan ", kolomsumber : ""}
+						]);
+						break;
+					case 7: //Import Penjualan
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "No Ref *", namafield :"noref", kolomexcel:"No Ref", kolomsumber : ""},
+							{namakolom : "Tgl No Ref", namafield :"tglnoref", kolomexcel:"Tgl No Ref", kolomsumber : ""},
+							{namakolom : "Kode Customer *", namafield :"kodecustomer", kolomexcel:"Kode Customer", kolomsumber : ""},
+							{namakolom : "Kode Salesman *", namafield :"kodesalesman", kolomexcel:"Kode Salesman", kolomsumber : ""},
+							{namakolom : "Tanggal *", namafield :"tgl", kolomexcel:"Tanggal", kolomsumber : ""},
+							{namakolom : "Mata Uang *", namafield :"matauang", kolomexcel:"Mata Uang", kolomsumber : ""},
+							{namakolom : "Kurs *", namafield :"kurs", kolomexcel:"Kurs", kolomsumber : ""},
+							{namakolom : "Termin", namafield :"termin", kolomexcel:"Termin", kolomsumber : ""},
+							{namakolom : "Uraian", namafield :"uraian", kolomexcel:"Uraian", kolomsumber : ""},
+							{namakolom : "Gudang", namafield :"gudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom : "Kode Barang *", namafield :"kodebarang", kolomexcel:"Kode Barang", kolomsumber : ""},
+							{namakolom : "Nama Barang", namafield :"namabarang", kolomexcel:"Nama Barang", kolomsumber : ""},
+							{namakolom : "Jumlah", namafield :"jumlah", kolomexcel:"Jumlah", kolomsumber : ""},
+							{namakolom : "Satuan", namafield :"satuan", kolomexcel:"Satuan", kolomsumber : ""},
+							{namakolom : "Harga", namafield :"harga", kolomexcel:"Harga", kolomsumber : ""},
+							{namakolom : "Diskon", namafield :"diskon", kolomexcel:"Diskon", kolomsumber : ""},
+							{namakolom : "Pajak", namafield :"pajak", kolomexcel:"Pajak", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "Urutan", namafield :"urutan", kolomexcel:"Urutan", kolomsumber : ""}
+						]);
+						break;
+					case 8: //Import Retur
+						dgMapping.dataProvider = new ArrayCollection([
+							{namakolom : "Kode Customer *", namafield :"kodecustomer", kolomexcel:"Kode Customer", kolomsumber : ""},
+							{namakolom : "Kode Salesman *", namafield :"kodesalesman", kolomexcel:"Kode Salesman", kolomsumber : ""},
+							{namakolom : "Tanggal *", namafield :"tgl", kolomexcel:"Tanggal", kolomsumber : ""},
+							{namakolom : "Mata Uang *", namafield :"matauang", kolomexcel:"Mata Uang", kolomsumber : ""},
+							{namakolom : "Kurs *", namafield :"kurs", kolomexcel:"Kurs", kolomsumber : ""},
+							{namakolom : "Termin", namafield :"termin", kolomexcel:"Termin", kolomsumber : ""},
+							{namakolom : "No UM Penjualan", namafield :"noas", kolomexcel:"No UM Penjualan", kolomsumber : ""},
+							{namakolom : "Uraian", namafield :"uraian", kolomexcel:"Uraian", kolomsumber : ""},
+							{namakolom : "Gudang", namafield :"gudang", kolomexcel:"Gudang", kolomsumber : ""},
+							{namakolom : "Total *", namafield :"total", kolomexcel:"Total", kolomsumber : ""},
+							{namakolom : "Diskon [%]", namafield :"diskonpersen", kolomexcel:"Diskon [%]", kolomsumber : ""},
+							{namakolom : "Jml Diskon", namafield :"jmldiskon", kolomexcel:"Jml Diskon", kolomsumber : ""},
+							{namakolom : "Total Pajak 1", namafield :"totalpajak1detail", kolomexcel:"Total Pajak 1", kolomsumber : ""},
+							{namakolom : "Total Pajak 2", namafield :"totalpajak2detail", kolomexcel:"Total Pajak 2", kolomsumber : ""},
+							{namakolom : "Biaya Lain [%]", namafield :"biayalainpersen", kolomexcel:"Biaya Lain [%]", kolomsumber : ""},
+							{namakolom : "Jml Biaya Lain", namafield :"biayalain", kolomexcel:"Jml Biaya Lain", kolomsumber : ""},
+							{namakolom : "Jml Uang Muka", namafield :"uangmuka", kolomexcel:"Jml Uang Muka", kolomsumber : ""},
+							{namakolom : "Total Transaksi *", namafield :"totaltransaksi", kolomexcel:"Total Transaksi", kolomsumber : ""},
+							{namakolom : "Kontak Person", namafield :"kontakperson", kolomexcel:"Kontak Person", kolomsumber : ""},
+							{namakolom : "Catatan", namafield :"catatan", kolomexcel:"Catatan", kolomsumber : ""},
+							{namakolom : "No Ref", namafield :"noref", kolomexcel:"No Ref", kolomsumber : ""},
+							{namakolom : "Tgl No Ref", namafield :"tglnoref", kolomexcel:"Tgl No Ref", kolomsumber : ""},
+							{namakolom : "No Faktur Pajak", namafield :"nofakturpajak", kolomexcel:"No Faktur Pajak", kolomsumber : ""},
+							{namakolom : "Kurs Pajak", namafield :"kurspajak", kolomexcel:"Kurs Pajak", kolomsumber : ""}
+						]);
+						break;
+				}
+				FlexGlobals.topLevelApplication.F_dgRefresh(dgMapping);
+			}
+			
+			public function f_setKolomExcel(index:int, kolomexcel:String):void
+			{
+				dgMapping.dataProvider[index].kolomsumber = kolomexcel;
+			}
+			
+			//Set Data dari excel ke dg Import=========================================================================================================================================
+			public var rowindex:int = 1, columnindex : int = 0;
+			public function F_SetDataExcel():void
+			{
+				//Ambil Byte Array file excel yang terpilih
+				var excelFile:ExcelFile = new ExcelFile();
+				excelFile.loadFromByteArray(bytearrayexcel);
+				
+				//ambil sheet pertama
+				var sheet : Sheet = excelFile.sheets[cmbsheet.selectedIndex];
+				
+				//variabel jumlah baris dan jumlah kolom
+				var noOfRows:int = 0, noOfColumns:int = 0;
+				noOfRows = sheet.rows; //jumlah data
+				noOfColumns = sheet.cols; //jumlah kolom
+				
+				//var nama kolom, datafield, untuk penamaan dan datafield kolom
+				var namakolom:String = "";
+				var datafield:String = "";
+				
+				//Set nama kolom dan jumlah kolom dgImport==============================================================
+				//hapus kolom terlebih dahulu sebelum direplace
+				for(var jmlcolumn : int = dgImport.columnsLength -1; jmlcolumn > 0; jmlcolumn --)
+				{
+					dgImport.columns.removeItemAt(jmlcolumn);
+				}
+				
+				//Set nama kolom dan datafield dalam string
+				for(var column : int = 0; column < noOfColumns; column++)
+				{
+					if(namakolom.length == 0) 
+					{
+						namakolom = sheet.getCell(0,column).value;
+					}
+					else
+					{
+						namakolom += ","+sheet.getCell(0,column).value;
+					}
+					
+					if(datafield.length == 0) 
+					{
+						datafield = sheet.getCell(0,column).value.split(" ").join("").toLowerCase();
+					}
+					else
+					{
+						datafield += ","+sheet.getCell(0,column).value.split(" ").join("").toLowerCase();
+					}
+				}
+				
+				datafield = datafield.split("[%]").join("persen");
+				datafield = datafield.split("(%)").join("persen");
+				datafield = datafield.split("%").join("persen");
+				ArrayNamaKolom = namakolom.split(","); //split penamaan kolom ke dalam bentuk array
+				ArrayDataField = datafield.split(","); //split datafield kolom ke dalam bentuk array
+				
+				//set kolom di dgimport ==============================================================================
+				var myColumn:GridColumn; 
+				for each (var field:String in ArrayNamaKolom)  
+				{  
+					myColumn = new GridColumn(); 
+					myColumn.width = 150;
+					myColumn.editable = false;
+					myColumn.headerText = field;
+					field = field.split(" ").join("");
+					field = field.split("[%]").join("persen");
+					field = field.split("(%)").join("persen");
+					field = field.split("%").join("persen");
+					myColumn.dataField = field.toLowerCase();
+					dgImport.columns.addItem(myColumn);
+				} 
+				
+				gridColumns.refresh();  
+				//END Set nama kolom dan jumlah kolom dgImport==============================================================
+				
+				
+				//SET data provider dari excel ke dgImport==================================================================
+				var LabelField:Object = new Object;
+				dgImport.dataProvider.removeAll();
+				
+				f_setDatatoGrid(rowindex, columnindex);
+				
+				function f_setDatatoGrid(row:int, column:int):void
+				{
+					LabelField  = new Object;
+					if(sheet.getCell(row,0).value != "")
+					{
+						for(var clm : int = 0; clm < noOfColumns; clm++)
+						{
+							LabelField[ArrayDataField[clm]] = sheet.getCell(row,clm).value; //set data provider dgImport
+						}
+						
+						dgImport.dataProvider.addItem(LabelField); //tambah data provider dgImport
+						
+						if(row < noOfRows - 1)
+						{ //jika jumlah data di array kurang dari jumlah data di excel
+							row ++;
+							f_setDatatoGrid(row, column);
+						}
+					}
+				}
+				
+				// Centang semua data import
+				for(i=0;i<dgImport.dataProviderLength;i++)
+				{
+					dgImport.dataProvider.getItemAt(i).chk = true;
+				}
+				
+				FlexGlobals.topLevelApplication.F_dgRefresh(dgImport);
+				
+				//END of SET data provider dari excel ke dgImport==================================================================
+				
+				//Set Data Provider Combo Box Sumber dgMapping
+				F_SetMapping(); 
+				acKolomSumber.removeAll();
+				var kolomexcelsama : Boolean;
+				if(ArrayNamaKolom.length > 0)
+				{
+					for(var a:int = 0; a<ArrayNamaKolom.length; a++)
+					{
+						acKolomSumber.addItem({l:ArrayNamaKolom[a], v:ArrayDataField[a]});
+					}
+					
+					acKolomSumber.addItem({l:"", v:""});
+					
+					for(var i:int; i<dgMapping.dataProviderLength; i++)
+					{
+						kolomexcelsama = false;
+						
+						for(var arrdflengtth:int = 0; arrdflengtth < ArrayDataField.length; arrdflengtth ++)
+						{
+							if(dgMapping.dataProvider[i].kolomexcel == ArrayNamaKolom[arrdflengtth])
+							{
+								f_setKolomExcel(i, ArrayDataField[arrdflengtth])
+								kolomexcelsama = true;
+								break;
+							}
+						}
+						
+						if(!kolomexcelsama) 
+						{
+							f_setKolomExcel(i, "")
+						}
+						
+					}
+					
+				}
+				
+				// Khusus untuk saldo awal coa, karena tidak ada mapping nama akun, ditambahkan sendiri
+				if(cmbimport.selectedIndex == 2)
+				{ 
+					ArrayNamaKolom = ["Nama Akun"]; //split penamaan kolom ke dalam bentuk array
+					for each (var fieldAddCoA:String in ArrayNamaKolom)  
+					{  
+						var myColumnAddCoA:GridColumn = new GridColumn(); 
+						myColumnAddCoA.width = 150;
+						myColumnAddCoA.editable = false;
+						myColumnAddCoA.dataField = fieldAddCoA.split(" ").join("").toLowerCase();
+						myColumnAddCoA.headerText = fieldAddCoA;
+						dgImport.columns.addItemAt(myColumnAddCoA,2);
+						
+					}
+					gridColumns.refresh();  
+					
+					for(var rowCoA:int = 0; rowCoA<dgImport.dataProviderLength ; rowCoA++)
+					{
+						
+						if(rowCoA == 0)
+						{
+							filtercoa = "cnomor = '"+dgImport.dataProvider[rowCoA].noakun+"'"
+						}
+						else
+						{
+							filtercoa += " OR cnomor = '"+dgImport.dataProvider[rowCoA].noakun+"'"
+						}
+					}
+					
+					FlexGlobals.topLevelApplication.F_wsSearch("AmbilNamaAkun", "CdM1_Coa", 0, 0, filtercoa, "")
+				} // Khusus untuk saldo awal barang, karena tidak ada mapping satuan, ditambahkan sendiri
+				else if(cmbimport.selectedIndex == 3)
+				{
+					ArrayNamaKolom = ["Satuan","Nama Barang"]; //split penamaan kolom ke dalam bentuk array
+					for each (var fieldAdd:String in ArrayNamaKolom)  
+					{  
+						
+						var myColumnAdd:GridColumn = new GridColumn(); 
+						myColumnAdd.width = 150;
+						myColumnAdd.editable = false;
+						myColumnAdd.dataField = fieldAdd.split(" ").join("").toLowerCase();
+						myColumnAdd.headerText = fieldAdd;
+						dgImport.columns.addItemAt(myColumnAdd,2);
+					}
+					gridColumns.refresh();  
+					//set filter kode barang di excel untuk menarik kode barang dan satuannya
+					for(var row:int = 0; row<dgImport.dataProviderLength; row++){
+						
+						if(row == 0){
+							filterbarang = "bkode = '"+dgImport.dataProvider[row].kodebarang+"'"
+						}else{
+							filterbarang += " OR bkode = '"+dgImport.dataProvider[row].kodebarang+"'"
+						}
+					}
+					//Panggil WS pencarian barang
+					FlexGlobals.topLevelApplication.F_wsSearch("AmbilIDBarang", "CdM1_Item", 0, 0, filterbarang, "")
+				}
+				else if(cmbimport.selectedIndex == 7)
+				{
+					ArrayNamaKolom = ["Satuan","Nama Barang"]; //split penamaan kolom ke dalam bentuk array
+					for each (var fieldAdd:String in ArrayNamaKolom)  
+					{  
+						
+						var myColumnAdd:GridColumn = new GridColumn(); 
+						myColumnAdd.width = 150;
+						myColumnAdd.editable = false;
+						myColumnAdd.dataField = fieldAdd.split(" ").join("").toLowerCase();
+						myColumnAdd.headerText = fieldAdd;
+						dgImport.columns.addItemAt(myColumnAdd,2);
+					}
+					gridColumns.refresh();  
+					//set filter kode barang di excel untuk menarik kode barang dan satuannya
+					for(var row:int = 0; row<dgImport.dataProviderLength; row++){
+						
+						if(row == 0){
+							filterbarang = "bkode = '"+dgImport.dataProvider[row].kodebarang+"'"
+						}else{
+							filterbarang += " OR bkode = '"+dgImport.dataProvider[row].kodebarang+"'"
+						}
+					}
+					//Panggil WS pencarian barang
+					FlexGlobals.topLevelApplication.F_wsSearch("AmbilIDBarang", "CdM1_Item", 0, 0, filterbarang, "")
+				}
+			}
+			//END of Set Data dari excel ke dg Import & Mapping=========================================================================================================================================
+			
+			protected function f_simpan():void
+			{
+				validasi = true;
+				pesanAlert = "";
+				
+				if(txtfile.text == "")
+				{
+					FlexGlobals.topLevelApplication.msgAlert(txtfile,'File');
+				}
+				
+				if(cmbimport.selectedIndex == 3)
+				{
+					if(txtgudang.text == "")
+					{
+						FlexGlobals.topLevelApplication.msgAlert(txtgudang,'Gudang');
+					}
+				}
+				
+				if(pesanAlert != '')
+				{
+					FlexGlobals.topLevelApplication.msgAlert('pesanAlert', '');	
+				}
+				
+				if(validasi)
+				{
+					switch (cmbimport.selectedIndex)
+					{
+						case 0: //Import Master Kontak
+							f_SetArraySimpanKontak();
+							break;
+						case 1://Import Master Barang
+							f_SetArraySimpanBarang();
+							break;
+						case 2:
+							f_SetArraySimpanCB();
+							break;
+						case 3: //Saldo Awal Barang
+							f_SetArraySimpanIB();
+							break;
+						case 4: //Saldo Awal Hutang
+							f_SetArraySimpanAP();
+							break;
+						case 5:
+							f_SetArraySimpanAR();
+							break;
+						case 6:
+							f_SetArraySimpanKatBarang();
+							break;
+						case 7:
+							f_SetArraySimpanPenjualan();
+							break;
+						case 8:
+							f_SetArraySimpanAR();
+							break;
+					}
+				}
+			}
+			
+			//PROSES IMPORT MASTER BARANG ======================================================================================================================================
+			protected function f_SetArraySimpanBarang():void
+			{				
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++)
+				{
+					dgimp = dgImport.dataProvider[iimp];
+					if(dgimp.chk == 1)
+					{ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++)
+						{
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							if(dgimp[dgmap.namafield] == undefined)
+							{ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+//								validasifield = false;
+//								namakolom = dgmap.namakolom
+//								break;
+								if(dgimp.bkode == undefined)
+								{ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode Barang";
+									break;
+								}
+								else if(dgimp.bnama == undefined)
+								{ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Nama Barang";
+									break;
+								}
+								else if(dgimp.bkategori == undefined)
+								{ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kategori Barang";
+									break;
+								}
+								else if(dgimp.bjenis == undefined)
+								{ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Jenis Barang";
+									break;
+								}
+								else if(dgimp.bsatuan == undefined)
+								{ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Satuan";
+									break;
+								}
+							}
+							
+							if(validasifield)
+							{ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA
+								if(dgimp.btipe == undefined){dgimp.btipe = ""}
+								if(dgimp.bcabang == undefined){dgimp.bcabang = ""}
+								if(dgimp.blokasi == undefined){dgimp.blokasi = ""}
+								if(dgimp.bgudang == undefined){dgimp.bgudang = ""}
+								if(dgimp.bdivisi == undefined){dgimp.bdivisi = ""}
+								if(dgimp.bsubdivisi == undefined){dgimp.bsubdivisi = ""}
+								if(dgimp.bproyek == undefined){dgimp.bproyek = ""}
+								if(dgimp.bbarcode == undefined){dgimp.bbarcode = ""}
+								if(dgimp.bstokminimal == undefined || dgimp.bstokminimal == ""){dgimp.bstokminimal = 0}
+								if(dgimp.bstokmaksimal == undefined || dgimp.bstokmaksimal == ""){dgimp.bstokmaksimal = 0}
+								if(dgimp.breorder == undefined || dgimp.breorder == ""){dgimp.breorder = 0}
+								if(dgimp.bminorder == undefined || dgimp.bminorder == ""){dgimp.bminorder = 0}
+								if(dgimp.bpajakbeli == undefined || dgimp.bpajakbeli == ""){dgimp.bpajakbeli = ""}
+								if(dgimp.bpajakjual == undefined || dgimp.bpajakjual == ""){dgimp.bpajakjual = ""}
+								if(dgimp.bhargabeli == undefined || dgimp.bhargabeli == ""){dgimp.bhargabeli = 0}
+								if(dgimp.bhargajual1 == undefined || dgimp.bhargajual1 == ""){dgimp.bhargajual1 = 0}
+								if(dgimp.bhargajual2 == undefined || dgimp.bhargajual2 == ""){dgimp.bhargajual2 = 0}
+								if(dgimp.bhargajual3 == undefined || dgimp.bhargajual3 == ""){dgimp.bhargajual3 = 0}
+								if(dgimp.bhargajual4 == undefined || dgimp.bhargajual4 == ""){dgimp.bhargajual4 = 0}
+								if(dgimp.bhargajual5 == undefined || dgimp.bhargajual5 == ""){dgimp.bhargajual5 = 0}
+								if(dgimp.bdiskonjual1 == undefined || dgimp.bdiskonjual1 == ""){dgimp.bdiskonjual1 = 0}
+								if(dgimp.bdiskonjual2 == undefined || dgimp.bdiskonjual2 == ""){dgimp.bdiskonjual2 = 0}
+								if(dgimp.bdiskonjual3 == undefined || dgimp.bdiskonjual3 == ""){dgimp.bdiskonjual3 = 0}
+								if(dgimp.bdiskonjual4 == undefined || dgimp.bdiskonjual4 == ""){dgimp.bdiskonjual4 = 0}
+								if(dgimp.bdiskonjual5 == undefined || dgimp.bdiskonjual5 == ""){dgimp.bdiskonjual5 = 0}
+								if(dgimp.bapanjang == undefined || dgimp.bapanjang == ""){dgimp.bapanjang = 0}
+								if(dgimp.balebar == undefined || dgimp.balebar == ""){dgimp.balebar = 0}
+								if(dgimp.batinggi == undefined || dgimp.batinggi == ""){dgimp.batinggi = 0}
+								if(dgimp.bavolume == undefined || dgimp.bavolume == ""){dgimp.bavolume = 0}
+								if(dgimp.bawarna == undefined){dgimp.bawarna = ""}
+								if(dgimp.baoem == undefined){dgimp.baoem = ""}
+								if(dgimp.bamerk == undefined){dgimp.bamerk = ""}
+								if(dgimp.baukuran == undefined){dgimp.baukuran = ""}
+								if(dgimp.bamodel == undefined){dgimp.bamodel = ""}
+								if(dgimp.bakelas == undefined){dgimp.bakelas = ""}
+								if(dgimp.bsubkelas == undefined){dgimp.bsubkelas = ""}
+								if(dgimp.bdesigner == undefined){dgimp.bdesigner = ""}
+								if(dgimp.bsection == undefined){dgimp.bsection = ""}
+								if(dgimp.bmaterial == undefined){dgimp.bmaterial = ""}
+								if(dgimp.bvendor == undefined){dgimp.bvendor = ""}
+							}
+							
+						}
+						acSimpan.addItem({bid:0, bkode:dgimp.bkode, bnama:dgimp.bnama,
+						bnamaalias1:"", bnamaalias2:"", bnamaalias3:"", bnamaalias4:"", 
+						bnamaalias5:"", btipe:"", bjenis:dgimp.bjenis, 
+						bjenisdetail:1, bkategori:dgimp.bkategori, bketerangan:"", bsatuan:dgimp.bsatuan, 
+						bnilaisatuan:1, bsatuandefault:FlexGlobals.topLevelApplication.getSetting(0, "options", "SatuanDefaultBarang"), 
+						bnilaisatuandefault:FlexGlobals.topLevelApplication.getSetting(0, "options", "SatuanDefaultBarangNilai"), 
+						bhpp:FlexGlobals.topLevelApplication.getSetting(0, 'company', 'HppGlobal'), 
+						bcabang:dgimp.bcabang, 
+						blokasi:dgimp.blokasi, bdivisi:dgimp.bdivisi, 
+						bsubdivisi:dgimp.bsubdivisi, bgudang:dgimp.bgudang, 
+						bproyek:dgimp.bproyek, bsubitem:0, bsubitemdari:0, 
+						bbarcode:dgimp.bbarcode, bsupplier : 0,
+						baktif:1, baktiftgl:FlexGlobals.topLevelApplication.DefaultTanggal, bstokminimal:dgimp.bstokminimal, 
+						bstokmaksimal:dgimp.bstokmaksimal, breorder:dgimp.breorder,
+						bjmlorderbeli : 0, bjmlorderjual : 0, 
+						bkategoriumur : "", bstatusmoving : "", bsifatharga : "", bpromo : 0, 
+						bpromoberlaku : FlexGlobals.topLevelApplication.DefaultTanggal, bpajakbeli:0, bpajakjual:0,
+						bhargabeli:dgimp.bhargabeli, bhppaverage : 0, bhargajual1:dgimp.bhargajual1, bhargajual2:dgimp.bhargajual2, 
+						bhargajual3:dgimp.bhargajual3, bhargajual4:dgimp.bhargajual4, bhargajual5:dgimp.bhargajual5, 
+						bdiskonjual1:dgimp.bdiskonjual1, bdiskonjual2:dgimp.bdiskonjual2, bdiskonjual3:dgimp.bdiskonjual3, 
+						bdiskonjual4:dgimp.bdiskonjual4, bdiskonjual5:dgimp.bdiskonjual5, bstok : 0, bkomisi : 0, bmarginminimal : 0,
+						brekpersediaan: FlexGlobals.topLevelApplication.getSetting(0, "akun", "Persediaan"), 
+						brekpenjualan: FlexGlobals.topLevelApplication.getSetting(0, "akun", "PendapatanPenjualan"), 
+						brekreturpenjualan:FlexGlobals.topLevelApplication.getSetting(0, "akun", "ReturPenjualan"), 
+						brekdiskonpenjualan:FlexGlobals.topLevelApplication.getSetting(0, "akun", "DiskonPenjualan"), 
+						brekhargapokok:FlexGlobals.topLevelApplication.getSetting(0, "akun", "HargaPokokPenjualan"), 
+						brekreturpembelian:FlexGlobals.topLevelApplication.getSetting(0, "akun", "ReturPembelian"), 
+						brekdiskonpembelian:FlexGlobals.topLevelApplication.getSetting(0, "akun", "DiskonPembelian"),
+						brekkonsinyasi:FlexGlobals.topLevelApplication.getSetting(0, "akun", "HutangKonsinyasi"),
+						bapanjang:dgimp.bapanjang, 
+						balebar:dgimp.balebar, 
+						batinggi:dgimp.batinggi, 
+						bavolume:dgimp.bavolume, baberat:dgimp.bavolume, 
+						bawarna:dgimp.bavolume, baoem:dgimp.baoem, bamerk:dgimp.bamerk, baukuran:dgimp.baukuran, bamodel:dgimp.bamodel, bakelas:dgimp.bakelas,
+						bserial:0, 
+						bbatch:0, 
+						bpengganti:0, bgambar:"", burutan:0, bcustom1:"", bcustom2:"", bcustom3:"", 
+						bcustom4:"", bcustom5:"", bcustom6:"", bcustom7:"", bcustom8:"", bcustom9:"", bcustom10:"", 
+						bcustom11:0, bcustom12:0, bcustom13:0, bcustom14:0, bcustom15:0, bcatatan:"", binputuser:FlexGlobals.topLevelApplication.userid, 
+						binputtgl:FlexGlobals.topLevelApplication.DefaultTanggal, bmodifikasiuser:0, bmodifikasitgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+						bedithpp:0, bmobile:0, bassembly:0,
+						bkelasproduk:FlexGlobals.topLevelApplication.getSetting(0, "options", "KelasProduk"), 
+						bretur:1, 
+						btag:FlexGlobals.topLevelApplication.getSetting(0, "options", "Tag"), 
+						bminorder:dgimp.bminorder, 
+						bdepartemen:"", bsubdepartemen:"", bkp:0, bkl:0,
+						bjmllapangan:1, bsatuanlapangan:dgimp.bsatuan,
+						bsubkelas:dgimp.bsubkelas,
+						bdesigner:dgimp.bdesigner,
+						bsection:dgimp.bsection,
+						bmaterial:dgimp.bmaterial,
+						bvendor:dgimp.bvendor});
+					}
+					
+					
+				}
+				
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_importBarang1();
+					}else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+			} 
+			
+			public function f_importBarang1():void{
+				grppopup.visible = true;
+				jmlProgress = acSimpan.length;
+				f_sendProgress('Kode Barang : '+acSimpan[index].bkode, true);
+				
+				if(acSimpan[index].bsatuan.length > 0 && acSimpan[index].bsatuandefault.length > 0){
+					FlexGlobals.topLevelApplication.F_wsSearch("CariSatuan", "CdM1_Unit",0,0,"ukode = '"+acSimpan[index].bsatuan+"'")
+				}else{
+					f_importBarang2();
+				}
+			}
+			
+			protected function f_importBarang2():void{
+				var dataUtama:String="", a:Array;
+				with (acSimpan[index]){
+					a = [bid, bkode, bnama, bnamaalias1, bnamaalias2, bnamaalias3, bnamaalias4, 
+						bnamaalias5, btipe, bjenis, bjenisdetail, bkategori, bketerangan, bsatuan, 
+						bnilaisatuan, bsatuandefault, bnilaisatuandefault, bhpp, bcabang, blokasi, bdivisi, 
+						bsubdivisi, bgudang, bproyek, bsubitem, bsubitemdari, bbarcode, bsupplier, 
+						baktif, FlexGlobals.topLevelApplication.F_tglFormatDB(baktiftgl), bstokminimal, bstokmaksimal, breorder, bjmlorderbeli, bjmlorderjual, 
+						bkategoriumur, bstatusmoving, bsifatharga, bpromo, FlexGlobals.topLevelApplication.F_tglFormatDB(bpromoberlaku), bpajakbeli, bpajakjual, 
+						bhargabeli, bhppaverage, bhargajual1, bhargajual2, bhargajual3, bhargajual4, bhargajual5, 
+						bdiskonjual1, bdiskonjual2, bdiskonjual3, bdiskonjual4, bdiskonjual5, bstok, bkomisi, 
+						bmarginminimal, brekpersediaan, brekpenjualan, brekreturpenjualan, brekdiskonpenjualan, brekhargapokok, brekreturpembelian, 
+						brekdiskonpembelian, brekkonsinyasi, bapanjang, balebar, batinggi, bavolume, baberat, 
+						bawarna, baoem, bamerk, baukuran, bamodel, bakelas, bserial, 
+						bbatch, bpengganti, bgambar, burutan, bcustom1, bcustom2, bcustom3, 
+						bcustom4, bcustom5, bcustom6, bcustom7, bcustom8, bcustom9, bcustom10, 
+						bcustom11, bcustom12, bcustom13, bcustom14, bcustom15, bcatatan, binputuser, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(binputtgl), bmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(bmodifikasitgl), 
+						bedithpp, bmobile, bassembly,
+						bkelasproduk, bretur, btag, bminorder, bdepartemen, bsubdepartemen, bkp, bkl, bjmllapangan,
+						bsatuanlapangan, bsubkelas, bmaterial, bsection, bvendor, bdesigner];
+				}
+				dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+				
+				FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M1_ItemSimpan2", FlexGlobals.topLevelApplication.userid, false,dataUtama,FlexGlobals.topLevelApplication.sptSubParam+FlexGlobals.topLevelApplication.sptSubParam,1,1)
+			}
+			//END OF IMPORT MASTER BARANG =============================================================================================================================
+			
+			
+			//PROSES IMPORT MASTER KONTAK =============================================================================================================================
+			//SIMPAN DATA YANG DICENTANG KE ARRAY
+			protected function f_SetArraySimpanKontak():void{
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++){
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++){
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined){ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+//								validasifield = false;
+//								namakolom = dgmap.namafield;
+								
+								if(dgimp.kkode == undefined){ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode Kontak";
+									break;
+								}else if(dgimp.knama == undefined){ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Nama Kontak";
+									break;
+								}else if(dgimp.kkategori == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kategori Kontak";
+									break;
+								}
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield ){
+									dgimp[dgmap.namafield] = ""
+									
+								}
+								//==============================================================================================================
+							}
+							
+						}
+						
+						acSimpan.addItem({kid:0, kkode:dgimp.kkode, knama:dgimp.knama, 
+							kkategori:dgimp.kkategori, kkategorinama:"", 
+							kcabang:dgimp.kcabang, kcabangnama:"", 
+							klokasi:dgimp.klokasi, klokasinama:"", kgudang:dgimp.kgudang, 
+							kgudangnama:"", kkategorisalesman:"", 
+							kkategorisalesmannama:"", karea:dgimp.karea, 
+							kareanama:"", kkategoricustomer:dgimp.kkategoricustomer, 
+							kkategoricustomernama:"", kdivisi:dgimp.kdivisi, 
+							kdivisinama:"", ksubdivisi:dgimp.ksubdivisi, ksubdivisinama:"", 
+							ksalesman:0, ksalesmankode:"", ksalesmannama:"", kkontakperson:dgimp.kkontakperson, 
+							kterminglobal:1, kaktif:1, kaktiftgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							k1alamat1:dgimp.k1alamat1, k1alamat2:"", k1alamat3:"", 
+							k1alamat4:"", k1alamat5:"", k1kota:dgimp.kcustomtext3, k1propinsi:dgimp.k1propinsi, 
+							k1kodepos:dgimp.k1kodepos,  k1negara:dgimp.k1negara, k1kontakperson:dgimp.kkontakperson, 
+							k1kontaknohp:dgimp.k1kontaknohp, k1kontakemail:dgimp.k1kontakemail, k1notelp1:dgimp.k1notelp1, 
+							k1notelp2:dgimp.k1notelp2, k1nofax:dgimp.k1nofax, 
+							k1email:dgimp.k1email, k1website:dgimp.k1website, k2alamat1:"", k2alamat2:"", k2alamat3:"", 
+							k2alamat4:"", k2alamat5:"", k2propinsi:"", k2kota:"", k2kodepos:"", k2negara:"", k2kontakperson:"", 
+							k2kontaknohp:"", k2kontakemail:"", 
+							k2notelp1:"", k2notelp2:"", k2nofax:"", k2email:"", k2website:"", k3alamat1:"", k3alamat2:"", 
+							k3alamat3:"", k3alamat4:"", k3alamat5:"", k3kota:"", k3propinsi:"", 
+							k3kodepos:"", k3negara:"", 
+							k3kontakperson:"", k3kontaknohp:"", k3kontakemail:"", 
+							k3notelp1:"", k3notelp2:"", k3nofax:"", k3email:"", 
+							k3website:"", k4alamat1:"", k4alamat2:"", k4alamat3:"", k4alamat4:"", k4alamat5:"", k4kota:"", 
+							k4propinsi:"", k4kodepos:"", k4negara:"", k4kontakperson:"", k4kontaknohp:"", k4kontakemail:"", k4notelp1:"", 
+							k4notelp2:"", k4nofax:"", k4email:"", k4website:"", knpwp:"", kpkp:0, 
+							kbatashutang:0, kterminbeli:dgimp.kterminbeli, krekhutang:dgimp.krekhutang, 
+							kbagpembelian :0, kfobbeli:0, kviabeli:0, kbataspiutang:0, kterminjual:dgimp.kterminjual, 
+							krekpiutang:dgimp.krekpiutang, kbagpenjualan:0, ktingkatjual:0, kfobjual:0, 
+							kviajual:0, ktglkontrak:FlexGlobals.topLevelApplication.DefaultTanggal, kbank:"", 
+							knorekening:"", kjeniskelamin:1, kmatauang:"", ktgllahir:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							ktglnikah:FlexGlobals.topLevelApplication.DefaultTanggal, kkomisipenjualan:0, kcatatan:0, 
+							kinputuser:FlexGlobals.topLevelApplication.userid, kinputtgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							kcustomtext1:dgimp.kcustomtext1, kcustomtext2:dgimp.kcustomtext2, kcustomtext3:dgimp.kcustomtext3, kcustomtext4:"", kcustomtext5:"", 
+							kcustomtext6:"", kcustomtext7:"", kcustomtext8:"", kcustomtext9:"", kmodifikasiuser:0, kmodifikasitgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							kcustomtext10:"", kcustomint1:0, kcustomint2:0, kcustomint3:0, kcustomdbl1:0, kcustomdbl2:0, kcustomdbl3:0, 
+							kcustomdate1:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							kcustomdate2:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							kcustomdate3:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							kkategorisupplier:"", 
+							kkategorisuppliernama:"", kkomisikode:"", khargacustom : 0});
+					}
+				}
+				
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportKontak1();
+					}
+					else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+				
+			} 
+			
+			public function f_ImportKontak1():void{
+				grppopup.visible = true;
+				jmlProgress = acSimpan.length;
+				f_sendProgress('Kode Kontak : '+acSimpan[index].kkode, true);
+				
+//				if(acSimpan[index].ksalesmankode.length > 0){
+//					FlexGlobals.topLevelApplication.F_wsSearch("CariSalesman", "CdM1_Contact",0,0,"kkategori = 'M' AND kkode = '"+acSimpan[index].ksalesmankode+"'")
+//				}else{
+					f_importKontak2();
+					
+//				}
+			}
+			
+			protected function f_importKontak2():void{
+				var dataUtama:String="", a:Array;
+				with (acSimpan[index]){
+					//Cek Kategori Kontak, kemudian ambil setting
+					if(kkategori == "C"){
+//						kkategoricustomer = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriCustomer"); 
+//						kkategoricustomernama = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriCustomerNama");
+						ksalesman = FlexGlobals.topLevelApplication.getSetting(1,"contact","Salesman");
+						ksalesmannama = FlexGlobals.topLevelApplication.getSetting(1,"contact","SalesmanNama");
+						ktingkatjual = FlexGlobals.topLevelApplication.getSetting(1,"contact","TingkatJual");
+					}
+					if(kkategori == "S"){
+						kkategorisupplier = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriSupplier") 
+						kkategorisuppliernama = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriSupplierNama")
+					}
+					if(kkategori == "M"){
+						kkategorisalesman = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriSalesman") 
+						kkategorisalesmannama = FlexGlobals.topLevelApplication.getSetting(1,"contact","KategoriSalesmanNama")
+					}
+					//Cek Kategori Kontak, kemudian ambil setting
+					
+					a = [kid, kkode, knama, kkategori, kkategorinama, kcabang, kcabangnama, 
+						klokasi, klokasinama, kgudang, kgudangnama, kkategorisalesman, kkategorisalesmannama, karea, 
+						kareanama, kkategoricustomer, kkategoricustomernama, kdivisi, kdivisinama, ksubdivisi, ksubdivisinama, 
+						ksalesman, ksalesmannama, kkontakperson, kterminglobal, kaktif, FlexGlobals.topLevelApplication.F_tglFormatDB(kaktiftgl), k1alamat1, 
+						k1alamat2, k1alamat3, k1alamat4, k1alamat5, k1kota, k1propinsi, k1kodepos, 
+						k1negara, k1kontakperson, k1kontaknohp, k1kontakemail, k1notelp1, k1notelp2, k1nofax, 
+						k1email, k1website, k2alamat1, k2alamat2, k2alamat3, k2alamat4, k2alamat5, 
+						k2propinsi, k2kota, k2kodepos, k2negara, k2kontakperson, k2kontaknohp, k2kontakemail, 
+						k2notelp1, k2notelp2, k2nofax, k2email, k2website, k3alamat1, k3alamat2, 
+						k3alamat3, k3alamat4, k3alamat5, k3kota, k3propinsi, k3kodepos, k3negara, 
+						k3kontakperson, k3kontaknohp, k3kontakemail, k3notelp1, k3notelp2, k3nofax, k3email, 
+						k3website, k4alamat1, k4alamat2, k4alamat3, k4alamat4, k4alamat5, k4kota, 
+						k4propinsi, k4kodepos, k4negara, k4kontakperson, k4kontaknohp, k4kontakemail, k4notelp1, 
+						k4notelp2, k4nofax, k4email, k4website, knpwp, kpkp, kbatashutang, 
+						kterminbeli, krekhutang, kbagpembelian, kfobbeli, kviabeli, kbataspiutang, kterminjual, 
+						krekpiutang, kbagpenjualan, ktingkatjual, kfobjual, kviajual, FlexGlobals.topLevelApplication.F_tglFormatDB(ktglkontrak), kbank, 
+						knorekening, kjeniskelamin, kmatauang, FlexGlobals.topLevelApplication.F_tglFormatDB(ktgllahir), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(ktglnikah), kkomisipenjualan, kcatatan, 
+						kinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(kinputtgl), kcustomtext1, kcustomtext2, kcustomtext3, kcustomtext4, kcustomtext5, 
+						kcustomtext6, kcustomtext7, kcustomtext8, kcustomtext9, kmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(kmodifikasitgl), kcustomtext10, 
+						kcustomint1, kcustomint2, kcustomint3, kcustomdbl1, kcustomdbl2, kcustomdbl3, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(kcustomdate1), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(kcustomdate2), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(kcustomdate3), 
+						kkategorisupplier, kkategorisuppliernama, kkomisikode, khargacustom];
+				}
+				dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+				
+				FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M1_ContactSimpan", FlexGlobals.topLevelApplication.userid, false,dataUtama+FlexGlobals.topLevelApplication.sptSubParam,""+FlexGlobals.topLevelApplication.sptSubParam+""+FlexGlobals.topLevelApplication.sptSubParam+"",1,1)
+			}
+			//END OF IMPORT MASTER KONTAK =============================================================================================================================
+			
+			//PROSES IMPORT SALDO AWAL COA ====================================================================================================================================
+			public var u:ArrayCollection;
+			public var filterbarang:String = "";
+			public var filtercoa:String = "";
+			public function f_SetArraySimpanCB():void{
+				u = new ArrayCollection([{cbid:0, cbcabang:parentApplication.ucabang, cblokasi:parentApplication.ulokasi, cbsumber:'CB', cbautonotransaksi:1, cbnotransaksi:"", cbtgl:dttgl.text, 
+					cbkodepa:0, cbkontak:o.kontak, cbkontakperson:"", cburaian:txturaian.text, cbcatatan:"", cbmatauang:txtmatauang.text, cbkurs:txtkurs, 
+					cbdebit:0, cbdebitvalas:0, cbkredit:0, cbkreditvalas:0, cbjumlahbayar:0, cbjumlahbayarvalas:0, cbstatusbayar:0, 
+					cbtgllunas:FlexGlobals.topLevelApplication.m.DateFirst, cbstatus:2, cbstatussebelumnya:0, cbjmlrevisi:0, cbcetakanke:0, cbisclose:0, cbinputuser:parentApplication.userid, 
+					cbinputtgl:FlexGlobals.topLevelApplication.m.DateFirst, cbmodifikasiuser:0, cbmodifikasitgl:FlexGlobals.topLevelApplication.m.DateFirst, cbposting:0, cbcustomtext1:'', cbcustomtext2:'', cbcustomtext3:'', 
+					cbcustomtext4:'', cbcustomtext5:'', cbcustomint1:0, cbcustomint2:0, cbcustomint3:0, cbcustomdbl1:0, cbcustomdbl2:0, 
+					cbcustomdbl3:0, cbcustomdate1:FlexGlobals.topLevelApplication.m.DateFirst, cbcustomdate2:FlexGlobals.topLevelApplication.m.DateFirst, cbcustomdate3:FlexGlobals.topLevelApplication.m.DateFirst}]);
+				
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++){
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++){
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined){ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+								
+								if(dgimp.noakun == undefined){ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "No Akun";
+									break;
+								}else if(dgimp.debit == undefined){ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Debit";
+									break;
+								}else if(dgimp.kredit == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kredit";
+									break;
+								}
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield ){
+									dgimp[dgmap.namafield] = ""
+									
+								}
+								//==============================================================================================================
+							}
+						}
+						
+						acSimpan.addItem({
+							idcbdetail : dgimp.idcbdetail, idcb : dgimp.idcb, 
+							norek : dgimp.noakun, matauang : dgimp.matauang, kurs : dgimp.kurs, 
+							debit : dgimp.debit, debitvalas : dgimp.debitvalas, 
+							kredit : dgimp.kredit, kreditvalas : dgimp.kreditvalas, catatan : dgimp.catatan, 
+							costcenter : dgimp.costcenter, divisi : dgimp.divisi, 
+							subdivisi : dgimp.subdivisi, proyek : dgimp.proyek, 
+							urutan : 0, isclose : 0,
+							customtext1 : "", 
+							customtext2 : "", 
+							customtext3 : "", 
+							customdbl1 : 0, 
+							customdbl2 : 0, 
+							customdbl3 : 0, 
+							customdate1 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							customdate2 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							customdate3 : FlexGlobals.topLevelApplication.DefaultTanggal});
+						
+					};
+				}
+				
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportCB();
+					}else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+				
+				
+			}
+			
+			public function f_ImportCB():void{
+				var utama:String = "", detail:String = "", a:Array;
+				u.refresh();
+				// Set Utama
+				with(u.getItemAt(0)){
+					a = [cbid, cbcabang, cblokasi, cbsumber, 1, "Auto", FlexGlobals.topLevelApplication.F_tglFormatDB(dttglCoA.text), 
+						cbkodepa, cbkontak, "", txturaian.text, "", txtmatauang.text, o.txtkurs, 
+						cbdebit, cbdebitvalas, cbkredit, cbkreditvalas, cbjumlahbayar, cbjumlahbayarvalas, cbstatusbayar, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(cbtgllunas), 2, cbstatussebelumnya, cbjmlrevisi, cbcetakanke, cbisclose, cbinputuser, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(cbinputtgl), cbmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(cbmodifikasitgl), 0, cbcustomtext1, cbcustomtext2, cbcustomtext3, 
+						cbcustomtext4, cbcustomtext5, cbcustomint1, cbcustomint2, cbcustomint3, cbcustomdbl1, cbcustomdbl2, 
+						cbcustomdbl3, FlexGlobals.topLevelApplication.F_tglFormatDB(cbcustomdate1), FlexGlobals.topLevelApplication.F_tglFormatDB(cbcustomdate2), FlexGlobals.topLevelApplication.F_tglFormatDB(cbcustomdate3)];
+					utama = parentApplication.F_splitArrayToString(a);
+				}
+					
+				
+				for(i=0;i<acSimpan.length;i++){
+					with(acSimpan.getItemAt(i)){
+						a = [idcbdetail, idcb, norek, matauang, o.txtkurs, debit, debitvalas, 
+							kredit, kreditvalas, catatan, costcenter, divisi, subdivisi, proyek, 
+							i+1, isclose, customtext1, customtext2, customtext3, customdbl1, customdbl2, 
+							customdbl3, FlexGlobals.topLevelApplication.F_tglFormatDB(customdate1), FlexGlobals.topLevelApplication.F_tglFormatDB(customdate2), FlexGlobals.topLevelApplication.F_tglFormatDB(customdate3)];
+						
+						if(i == 0)detail = parentApplication.F_splitArrayToString(a);
+						else detail += "▲"+parentApplication.F_splitArrayToString(a);
+					}
+				}
+				
+				FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M2_CbSimpan", parentApplication.userid, false, utama, detail+"△");
+			}
+			//END OFPROSES IMPORT SALDO AWAL COA ====================================================================================================================================
+			
+			//PROSES IMPORT SALDO AWAL BARANG ====================================================================================================================================
+			public function f_SetArraySimpanIB():void{
+				u = new ArrayCollection([{ibid:0, ibcabang:parentApplication.ucabang, iblokasi:parentApplication.ulokasi, 
+					ibgudang:parentApplication.ugudang, ibsumber:'IB', ibjenis:'', ibautonotransaksi:1, 
+					ibnotransaksi:"Auto", ibtgl:dttgl.text, ibkodepa:0, ibbagianib:parentApplication.ukontak, 
+					ibbagianibkontak:"", ibmatauang:parentApplication.getSetting(0, 'accounting', 'MataUangFungsional'), 
+					ibkurs:parentApplication.getSetting(0, 'accounting', 'Kurs'), 
+					iburaian:txturaian.text, ibcatatan:"", ibnoref:"",
+					ibtglnoref:FlexGlobals.topLevelApplication.DefaultTanggal, 
+					ibstatus:2, ibstatussebelumnya:0, ibjmlrevisi:0, 
+					ibcetakanke:0, ibinputuser:parentApplication.userid, 
+					ibinputtgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+					ibmodifikasiuser:0, ibmodifikasitgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+					ibposting:0, 
+					ibpostingtgl:parentApplication.m.DateFirst, 
+					ibtutupperiode:0, ibisclose:0, ibcustomtext1:'', ibcustomtext2:'', 
+					ibcustomtext3:'', ibcustomtext4:'', ibcustomtext5:'', 
+					ibcustomint1:0, ibcustomint2:0, ibcustomint3:0, 
+					ibcustomdbl1:0, ibcustomdbl2:0, ibcustomdbl3:0, 
+					ibcustomdate1:parentApplication.m.DateFirst, 
+					ibcustomdate2:parentApplication.m.DateFirst, 
+					ibcustomdate3:parentApplication.m.DateFirst}]);
+				
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++){
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++){
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined){ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+								
+								if(dgimp.kodebarang == undefined){ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode Barang";
+									break;
+								}else if(dgimp.jml == undefined){ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Jumlah";
+									break;
+								}else if(dgimp.hpp == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "HPP";
+									break;
+								}
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield ){
+									dgimp[dgmap.namafield] = ""
+									
+								}
+							}
+								//==============================================================================================================
+						}
+						
+						acSimpan.addItem({
+							idibdetail:0, idib:0, idbarang:dgimp.idbarang, kodebarang:dgimp.kodebarang, namabarang:dgimp.namabarang, tipebarang:"", jml:dgimp.jml, satuan:dgimp.satuan, 
+							nilaisatuan:dgimp.nilaisatuan, jmlbarang:dgimp.jml * dgimp.nilaisatuan, satuanbarang:dgimp.satuanbarang, matauang:parentApplication.getSetting(0, 'accounting', 'MataUangFungsional'), 
+							kurs:parentApplication.getSetting(0, 'accounting', 'Kurs'), 
+							hpplama:dgimp.hpplama, hpp:dgimp.hpp, 
+							rekpersediaan:dgimp.rekpersediaan, cabang:FlexGlobals.topLevelApplication.ucabang, 
+							lokasi:FlexGlobals.topLevelApplication.ulokasi, 
+							gudang:txtgudang.text, 
+							costcenter:"", divisi:"", subdivisi:"", 
+							proyek:"", catatan:"", isclose:0, 
+							customtext1:"", customtext2:"", customtext3:"", 
+							customdbl1:0, customdbl2:0, customdbl3:0, 
+							customdate1:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							customdate2:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							customdate3:FlexGlobals.topLevelApplication.DefaultTanggal});
+						
+					};
+				}
+				
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportIB();
+					}else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+				
+				
+			}
+			
+			public function f_ImportIB():void{
+				var utama:String = "", detail:String = "", a:Array;
+					u.refresh();
+					// Set Utama
+					with(u.getItemAt(0))
+						a = [ibid, ibcabang, iblokasi, txtgudang.text, ibsumber, ibjenis, ibautonotransaksi, 
+							ibnotransaksi, FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl.text), ibkodepa, ibbagianib, ibbagianibkontak, ibmatauang, ibkurs, 
+							txturaian.text, ibcatatan, ibnoref, FlexGlobals.topLevelApplication.F_tglFormatDB(ibtglnoref), 
+							ibstatus, ibstatussebelumnya, ibjmlrevisi, 
+							ibcetakanke, ibinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(ibinputtgl), 
+							ibmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(ibmodifikasitgl), ibposting, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ibpostingtgl), 
+							ibtutupperiode, ibisclose, ibcustomtext1, ibcustomtext2, ibcustomtext3, ibcustomtext4, ibcustomtext5, 
+							ibcustomint1, ibcustomint2, ibcustomint3, ibcustomdbl1, ibcustomdbl2, ibcustomdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ibcustomdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ibcustomdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ibcustomdate3)];
+					utama = parentApplication.F_splitArrayToString(a);
+					
+					for(i=0;i<acSimpan.length;i++){
+						with(acSimpan.getItemAt(i)){
+							a = [idibdetail, idib, idbarang, namabarang, tipebarang, jml, satuan, 
+								nilaisatuan, jmlbarang, satuanbarang, matauang, kurs, hpplama, hpp, 
+								rekpersediaan, cabang, lokasi, gudang, costcenter, divisi, subdivisi, 
+								proyek, catatan, (i+1), isclose, customtext1, customtext2, customtext3, 
+								customdbl1, customdbl2, customdbl3, parentApplication.F_tglFormatDB(customdate1), parentApplication.F_tglFormatDB(customdate2), parentApplication.F_tglFormatDB(customdate3)];
+							
+							if(i == 0)detail = parentApplication.F_splitArrayToString(a);
+							else detail += "▲"+parentApplication.F_splitArrayToString(a);
+						}
+					}
+					
+					parentApplication.F_wsSimpan("simpanIB", "M3_IbSimpan", parentApplication.userid, 0, utama, detail+"△△");
+			}
+			//END OFPROSES IMPORT SALDO AWAL BARANG ====================================================================================================================================
+			
+			//PROSES IMPORT SALDO AWAL HUTANG =============================================================================================================================
+			//SIMPAN DATA YANG DICENTANG KE ARRAY
+			protected function f_SetArraySimpanAP():void{
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++){
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++){
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined){ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+								
+								if(dgimp.kodesupplier == undefined){ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode Supplier";
+									break;
+								}else if(dgimp.tgl == undefined){ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Tanggal";
+									break;
+								}else if(dgimp.matauang == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Mata Uang";
+									break;
+								}else if(dgimp.kurs == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kurs";
+									break;
+								}else if(dgimp.total == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Total";
+									break;
+								}else if(dgimp.totaltransaksi == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Total Transaksi";
+									break;
+								}
+								
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield ){
+									if(dgimp.termin == undefined){dgimp.termin = ""}
+									if(dgimp.uraian == undefined){dgimp.uraian = ""}
+									if(dgimp.gudang == undefined){dgimp.gudang = FlexGlobals.topLevelApplication.ugudang}
+									if(dgimp.diskonpersen == undefined){dgimp.diskonpersen = 0}
+									if(dgimp.jmldiskon == undefined){dgimp.jmldiskon = 0}
+									if(dgimp.totalpajak1detail == undefined){dgimp.totalpajak1detail = 0}
+									if(dgimp.totalpajak2detail == undefined){dgimp.totalpajak2detail = 0}
+									if(dgimp.biayalainpersen == undefined){dgimp.biayalainpersen = 0}
+									if(dgimp.biayalain == undefined){dgimp.biayalain = 0}
+									if(dgimp.kontakperson == undefined){dgimp.kontakperson = ""}
+									if(dgimp.catatan == undefined){dgimp.catatan = ""}
+									if(dgimp.noref == undefined){dgimp.noref = ""}
+									if(dgimp.tglnoref == undefined){dgimp.tglnoref = FlexGlobals.topLevelApplication.DefaultTanggal}
+									if(dgimp.nofakturpajak == undefined){dgimp.nofakturpajak = ""}
+									
+									
+								}
+							}
+						}
+						
+							if(cmbsumberAP.selectedIndex == 0){ //Invoice Pembelian
+								acSimpan.addItem({
+									riid : 0, 
+									ricabang : FlexGlobals.topLevelApplication.ucabang, 
+									rilokasi : FlexGlobals.topLevelApplication.ulokasi, 
+									rigudang : dgimp.gudang, 
+									riasalbarang : 0, 
+									riasalbarangkategori : 0, 
+									rijenispembelian : 0, 
+									rijenispembeliankategori : 0, 
+									ricarabayar : 0, 
+									risumber : "RI", 
+									riautonotransaksi : 1, 
+									rinotransaksi : "Auto",
+									ritgl : dgimp.tgl, 
+									rikodepa : 0, 
+									risupplier : 0, 
+									kodesupplier : dgimp.kodesupplier,
+									risupplierkontak : dgimp.kontakperson, 
+									ri1alamat1 : "", 
+									ri1alamat2 : "", 
+									ri1alamat3 : "", 
+									ri2alamat1 : "", 
+									ri2alamat2 : "", 
+									ri2alamat3 : "", 
+									ribagianpembelian : FlexGlobals.topLevelApplication.ukontak, 
+									ritermin : dgimp.termin, 
+									termin : dgimp.termin, 
+									ritgljatuhtempo : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									riuraian : dgimp.uraian, 
+									ricatatan : dgimp.catatan, 
+									rinoref : dgimp.noref, 
+									ritglnoref : dgimp.tglnoref, 
+									ritglpenutupan : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									rimatauang : dgimp.matauang, 
+									rikurs : dgimp.kurs, 
+									rihargatermasukpajak : 0, 
+									ritotal : dgimp.total, 
+									ridiskonpersen : dgimp.diskonpersen, 
+									rijmldiskon : dgimp.jmldiskon, 
+									ritotalpajak1detail : dgimp.totalpajak1detail, 
+									ritotalpajak2detail : dgimp.totalpajak1detail, 
+									ribiayalainpersen : dgimp.biayalainpersen, 
+									ribiayalain : dgimp.biayalain, 
+									ritotaltransaksi : dgimp.totaltransaksi, 
+									rijmlbayar : 0, 
+									ristatuslunas : 0, 
+									ritgllunas : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									rinofakturpajak : dgimp.nofakturpajak, 
+									risdhbayarpajak : 0, 
+									ritglbayarpajak : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									rirekdiskon : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'DiskonPembelian'), 
+									rirekpajak1 : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'PajakPembelian'), 
+									rirekpajak2 : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'PajakPembelian'), 
+									rirekbiayalain : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'BiayaLain'), 
+									rirekbayar : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'Kas'), 
+									riidpr : 0, 
+									riidcs : 0, 
+									riidrq : 0, 
+									riidbs : 0, 
+									riidpo : 0, 
+									riidipc : 0, 
+									riidgrn : 0, 
+									ristatusdnr : 0, 
+									ristatusprt : 0, 
+									ristatus : 2, 
+									ristatussebelumnya : 0, 
+									rijmlrevisi : 0, 
+									ricetakanke : 0, 
+									riinputuser : FlexGlobals.topLevelApplication.userid, 
+									riinputtgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									rimodifikasiuser : 0, 
+									rimodifikasitgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									riposting : 0, 
+									ritutupperiode : 0, 
+									riisclose : 0, 
+									ricustomtext1 : "", 
+									ricustomtext2 : "", 
+									ricustomtext3 : "", 
+									ricustomtext4 : "", 
+									ricustomtext5 : "", 
+									ricustomint1 : 0, 
+									ricustomint2 : 0, 
+									ricustomint3 : 0, 
+									ricustomdbl1 : 0, 
+									ricustomdbl2 : 0, 
+									ricustomdbl3 : 0, 
+									ricustomdate1 : FlexGlobals.topLevelApplication.m.DateFirst, 
+									ricustomdate2 : FlexGlobals.topLevelApplication.m.DateFirst, 
+									ricustomdate3 : FlexGlobals.topLevelApplication.m.DateFirst});
+							}else if(cmbsumberAP.selectedIndex == 1){ // Retur Pembelian
+								acSimpan.addItem({
+									prtid : 0, 
+									prtcabang : FlexGlobals.topLevelApplication.ucabang, 
+									prtlokasi : FlexGlobals.topLevelApplication.ulokasi, 
+									prtgudang : dgimp.gudang,  
+									prtasalbarang : 0, 
+									prtasalbarangkategori : 0, 
+									prtjenispembelian : 0, 
+									prtjenispembeliankategori : 0, 
+									prtcarabayar : 0, 
+									prtsumber : "PRT", 
+									prtautonotransaksi : 1, 
+									prtnotransaksi : "Auto", 
+									prttgl : dgimp.tgl, 
+									prtkodepa : 0, 
+									prtsupplier : 0,
+									kodesupplier : dgimp.kodesupplier,
+									prtsupplierkontak : dgimp.kontakperson, 
+									prt1alamat1 : "", 
+									prt1alamat2 : "", 
+									prt1alamat3 : "", 
+									prt2alamat1 : "", 
+									prt2alamat2 : "", 
+									prt2alamat3 : "", 
+									prtbagianpembelian : FlexGlobals.topLevelApplication.ukontak, 
+									prttermin : dgimp.termin,
+									termin : dgimp.termin,
+									prttgljatuhtempo : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prturaian : dgimp.uraian, 
+									prtcatatan : dgimp.catatan, 
+									prtnoref : dgimp.noref, 
+									prttglnoref : dgimp.tglnoref, 
+									prttglpenutupan : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prtmatauang : dgimp.matauang, 
+									prtkurs : dgimp.kurs, 
+									prthargatermasukpajak : 0, 
+									prttotal : dgimp.total, 
+									prtdiskonpersen : dgimp.diskonpersen, 
+									prtjmldiskon : dgimp.jmldiskon, 
+									prttotalpajak1detail : dgimp.totalpajak1detail, 
+									prttotalpajak2detail : dgimp.totalpajak2detail, 
+									prtbiayalainpersen : dgimp.biayalainpersen, 
+									prtbiayalain : dgimp.biayalain, 
+									prttotaltransaksi : dgimp.totaltransaksi, 
+									prtsisatransaksi : 0, 
+									prtjmlbayar : 0, 
+									prtstatuslunas : 0, 
+									prttgllunas : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prtnofakturpajak : dgimp.nofakturpajak, 
+									prtsdhbayarpajak : 0, 
+									prttglbayarpajak : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prtrekdiskon : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'DiskonPembelian'), 
+									prtrekpajak1 : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'PajakPembelian'), 
+									prtrekpajak2 : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'PajakPembelian'), 
+									prtrekbiayalain : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'BiayaLain'), 
+									prtrekbayar : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'Kas'), 
+									prtreksisa : FlexGlobals.topLevelApplication.getSetting(0, 'akun', 'Kas'), 
+									prtidpr : 0, 
+									prtidcs : 0, 
+									prtidrq : 0, 
+									prtidbs : 0, 
+									prtidpo : 0, 
+									prtidipc : 0, 
+									prtidgrn : 0, 
+									prtidri : 0, 
+									prtiddnr : 0, 
+									prtstatus : 2, 
+									prtstatussebelumnya : 0, 
+									prtjmlrevisi : 0, 
+									prtcetakanke : 0, 
+									prtinputuser : FlexGlobals.topLevelApplication.userid, 
+									prtinputtgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prtmodifikasiuser : 0, 
+									prtmodifikasitgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+									prtposting : 0, 
+									prttutupperiode : 0, 
+									prtisclose : 0, 
+									prtcustomtext1 : "", 
+									prtcustomtext2 : "", 
+									prtcustomtext3 : "", 
+									prtcustomtext4 : "", 
+									prtcustomtext5 : "", 
+									prtcustomint1 : 0, 
+									prtcustomint2 : 0, 
+									prtcustomint3 : 0, 
+									prtcustomdbl1 : 0, 
+									prtcustomdbl2 : 0, 
+									prtcustomdbl3 : 0, 
+									prtcustomdate1 : FlexGlobals.topLevelApplication.m.DateFirst, 
+									prtcustomdate2 : FlexGlobals.topLevelApplication.m.DateFirst, 
+									prtcustomdate3 : FlexGlobals.topLevelApplication.m.DateFirst});
+						}
+					}
+				}
+				
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportAP1()
+					}else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+				
+				
+				
+			} 
+			public function f_ImportAP1():void{
+				grppopup.visible = true;
+				jmlProgress = acSimpan.length;
+				f_sendProgress('Kode Supplier : '+acSimpan[index].kodesupplier, true);
+				
+				FlexGlobals.topLevelApplication.F_wsSearch("CariSupplier", "CdM1_Contact",0,0,"kkategori = 'S' AND kkode = '"+acSimpan[index].kodesupplier+"'")
+
+			}
+			public function f_CariTermin():void{
+				if(acSimpan[index].termin.length > 0){
+					if(cmbsumberAP.selectedIndex == 0){
+						FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAP", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].ritermin+"'")
+					}else{
+						FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAP", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].prttermin+"'")
+					}
+					
+				}else{
+					f_importAP2();
+				}
+				
+			}
+			protected function f_importAP2():void{
+				var dataUtama:String="", a:Array;
+				if(cmbsumberAP.selectedIndex == 0){ //Invoice Pembelian
+					with (acSimpan[index]){
+						a = [riid, ricabang, rilokasi, rigudang, riasalbarang, riasalbarangkategori, rijenispembelian, 
+							rijenispembeliankategori, ricarabayar, risumber, riautonotransaksi, rinotransaksi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ritgl), rikodepa, 
+							risupplier, risupplierkontak, ri1alamat1, ri1alamat2, ri1alamat3, ri2alamat1, ri2alamat2, 
+							ri2alamat3, ribagianpembelian, ritermin, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ritgljatuhtempo), riuraian, ricatatan, rinoref, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ritglnoref), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ritglpenutupan), rimatauang, rikurs, rihargatermasukpajak, ritotal, ridiskonpersen, 
+							rijmldiskon, ritotalpajak1detail, ritotalpajak2detail, ribiayalainpersen, ribiayalain, ritotaltransaksi, rijmlbayar, 
+							ristatuslunas, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ritgllunas), 
+							rinofakturpajak, risdhbayarpajak, FlexGlobals.topLevelApplication.F_tglFormatDB(ritglbayarpajak), rirekdiskon, rirekpajak1, 
+							rirekpajak2, rirekbiayalain, rirekbayar, riidpr, riidcs, riidrq, riidbs, 
+							riidpo, riidipc, riidgrn, ristatusdnr, ristatusprt, ristatus, ristatussebelumnya, 
+							rijmlrevisi, ricetakanke, riinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(riinputtgl), rimodifikasiuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(rimodifikasitgl), riposting, 
+							ritutupperiode, riisclose, ricustomtext1, ricustomtext2, ricustomtext3, ricustomtext4, ricustomtext5, 
+							ricustomint1, ricustomint2, ricustomint3, ricustomdbl1, ricustomdbl2, ricustomdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ricustomdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ricustomdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(ricustomdate3)];
+					}
+					dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+					
+					FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M4_RiBalance", FlexGlobals.topLevelApplication.userid, false,dataUtama)
+				}
+				
+				else if(cmbsumberAP.selectedIndex == 1){ //Retur Pembelian
+					with (acSimpan[index]){
+						a = [prtid, prtcabang, prtlokasi, prtgudang, prtasalbarang, prtasalbarangkategori, prtjenispembelian, 
+							prtjenispembeliankategori, prtcarabayar, prtsumber, prtautonotransaksi, prtnotransaksi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prttgl), prtkodepa, 
+							prtsupplier, prtsupplierkontak, prt1alamat1, prt1alamat2, prt1alamat3, prt2alamat1, prt2alamat2, 
+							prt2alamat3, prtbagianpembelian, prttermin, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prttgljatuhtempo), prturaian, prtcatatan, prtnoref, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prttglnoref), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prttglpenutupan), prtmatauang, prtkurs, prthargatermasukpajak, prttotal, prtdiskonpersen, 
+							prtjmldiskon, prttotalpajak1detail, prttotalpajak2detail, prtbiayalainpersen, prtbiayalain, prttotaltransaksi, prtsisatransaksi, 
+							prtjmlbayar, prtstatuslunas, FlexGlobals.topLevelApplication.F_tglFormatDB(prttgllunas), 
+							prtnofakturpajak, prtsdhbayarpajak, FlexGlobals.topLevelApplication.F_tglFormatDB(prttglbayarpajak), prtrekdiskon, 
+							prtrekpajak1, prtrekpajak2, prtrekbiayalain, prtrekbayar, prtreksisa, prtidpr, prtidcs, 
+							prtidrq, prtidbs, prtidpo, prtidipc, prtidgrn, prtidri, prtiddnr, 
+							prtstatus, prtstatussebelumnya, prtjmlrevisi, prtcetakanke, prtinputuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prtinputtgl), prtmodifikasiuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prtmodifikasitgl), prtposting, prttutupperiode, prtisclose,
+							prtcustomtext1, prtcustomtext2, prtcustomtext3, 
+							prtcustomtext4, prtcustomtext5, prtcustomint1, prtcustomint2, prtcustomint3, prtcustomdbl1, prtcustomdbl2, prtcustomdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prtcustomdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prtcustomdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(prtcustomdate3)];
+					}
+					dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+					
+					FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M4_PrtBalance", FlexGlobals.topLevelApplication.userid, false,dataUtama)
+				}
+			}
+			//END OF IMPORT SALDO AWAL HUTANG =============================================================================================================================
+			
+			//PROSES IMPORT SALDO AWAL PIUTANG =============================================================================================================================
+			//SIMPAN DATA YANG DICENTANG KE ARRAY
+			protected function f_SetArraySimpanAR():void
+			{
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++)
+				{
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++)
+						{
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined){ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+								
+								if(dgimp.kodecustomer == undefined){ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode Customer";
+									break;
+								}else if(dgimp.tgl == undefined){ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Tanggal";
+									break;
+								}else if(dgimp.matauang == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Mata Uang";
+									break;
+								}else if(dgimp.kurs == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kurs";
+									break;
+								}else if(dgimp.total == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Total";
+									break;
+								}else if(dgimp.totaltransaksi == undefined){ //JIKA SUMBER KATEGORI KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Total Transaksi";
+									break;
+								}
+								
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield ){
+									if(dgimp.termin == undefined){dgimp.termin = ""}
+									if(dgimp.noas == undefined){dgimp.noas = ""}
+									if(dgimp.uraian == undefined){dgimp.uraian = ""}
+									if(dgimp.gudang == undefined){dgimp.gudang = FlexGlobals.topLevelApplication.ugudang}
+									if(dgimp.diskonpersen == undefined){dgimp.diskonpersen = 0}
+									if(dgimp.jmldiskon == undefined){dgimp.jmldiskon = 0}
+									if(dgimp.totalpajak1detail == undefined){dgimp.totalpajak1detail = 0}
+									if(dgimp.totalpajak2detail == undefined){dgimp.totalpajak2detail = 0}
+									if(dgimp.biayalainpersen == undefined){dgimp.biayalainpersen = 0}
+									if(dgimp.biayalain == undefined){dgimp.biayalain = 0}
+									if(dgimp.uangmuka == undefined){dgimp.uangmuka = 0}
+									if(dgimp.kontakperson == undefined){dgimp.kontakperson = ""}
+									if(dgimp.catatan == undefined){dgimp.catatan = ""}
+									if(dgimp.noref == undefined){dgimp.noref = ""}
+									if(dgimp.tglnoref == undefined){dgimp.tglnoref = FlexGlobals.topLevelApplication.DefaultTanggal}
+									if(dgimp.nofakturpajak == undefined){dgimp.nofakturpajak = ""}
+									if(dgimp.kurspajak == undefined){dgimp.kurspajak = 1}
+									
+								}
+							}
+						}
+						
+						if(cmbsumberAR.selectedIndex == 0){ //Invoice Pembelian
+							acSimpan.addItem({
+								siid : 0, 
+								sicabang : FlexGlobals.topLevelApplication.ucabang, 
+								silokasi : FlexGlobals.topLevelApplication.ulokasi, 
+								sigudang : dgimp.gudang, 
+								siasalbarang : 0, 
+								siasalbarangkategori : 0, 
+								sijenispenjualan : 0, 
+								sijenispenjualankategori : 0, 
+								sicarabayar : 0, 
+								sisumber : "SI", 
+								siautonotransaksi : 1, 
+								sinotransaksi : "Auto", 
+								sitgl : dgimp.tgl, 
+								sikodepa : 0, 
+								kodecustomer : dgimp.kodecustomer,
+								sicustomer : 0,
+								sicustomerkontak : "", 
+								si1alamat1 : "", 
+								si1alamat2 : "", 
+								si1alamat3 : "", 
+								si2alamat1 : "", 
+								si2alamat2 : "", 
+								si2alamat3 : "", 
+								kodesalesman : dgimp.kodesalesman,
+								sibagianpenjualan : 0, 
+								siekspedisi : "", 
+								sitglkirim : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sitermin : dgimp.termin,
+								termin : dgimp.termin,
+								sitgljatuhtempo : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								siuraian  : dgimp.uraian, 
+								sicatatan : dgimp.catatan, 
+								sinoref : dgimp.noref, 
+								sitglnoref : dgimp.tglnoref, 
+								sitglpenutupan : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								simatauang : dgimp.matauang, 
+								sikurs : dgimp.kurs, 
+								sihargatermasukpajak : 0, 
+								sitotal : dgimp.total, 
+								sidiskonpersen : dgimp.diskonpersen, 
+								sijmldiskon : dgimp.jmldiskon, 
+								sitotalpajak1detail : dgimp.totalpajak1detail, 
+								sitotalpajak2detail : dgimp.totalpajak1detail, 
+								sibiayalainpersen : dgimp.biayalainpersen, 
+								sibiayalain : dgimp.biayalain, 
+								sitotaltransaksi : dgimp.totaltransaksi, 
+								sijmlbayar : 0, 
+								sistatuslunas : 0, 
+								sitgllunas : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sinofakturpajak : "", 
+								sisdhbayarpajak : 0, 
+								sitglbayarpajak : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sirekdiskon : parentApplication.getSetting(0, 'akun', 'DiskonPenjualan'), 
+								sirekpajak1 : parentApplication.getSetting(0, 'akun', 'PajakPenjualan'), 
+								sirekpajak2 : parentApplication.getSetting(0, 'akun', 'PajakPenjualan'), 
+								sirekbiayalain : parentApplication.getSetting(0, 'akun', 'BiayaLain'), 
+								sirekbayar : parentApplication.getSetting(0, 'akun', 'Kas'), 
+								siidsq : 0, 
+								siidso : 0, 
+								siidpl : 0, 
+								siiddo : 0, 
+								siiddr : 0, 
+								siidpi : 0, 
+								sistatusrnr : 0, 
+								sistatussr : 0, 
+								sistatus : 2, 
+								sistatussebelumnya : 0, 
+								sijmlrevisi : 0, 
+								sicetakanke : 0, 
+								siinputuser : FlexGlobals.topLevelApplication.userid, 
+								siinputtgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								simodifikasiuser : 0, 
+								simodifikasitgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								siposting : 0, 
+								situtupperiode : 0, 
+								siisclose : 0, 
+								sicustomtext1 : "", 
+								sicustomtext2 : "", 
+								sicustomtext3 : "", 
+								sicustomtext4 : "", 
+								sicustomtext5 : "", 
+								sicustomint1 : 0, 
+								sicustomint2 : 0, 
+								sicustomint3 : 0, 
+								sicustomdbl1 : 0, 
+								sicustomdbl2 : 0, 
+								sicustomdbl3 : 0, 
+								sicustomdate1 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sicustomdate2 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sicustomdate3 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sijmluangmuka : dgimp.uangmuka, 
+								sirekuangmuka : "", 
+								siidas : 0,
+								noas : dgimp.noas});
+						}else if(cmbsumberAR.selectedIndex == 1){ // Retur Penjualan
+							acSimpan.addItem({
+								srid : 0, 
+								srcabang : FlexGlobals.topLevelApplication.ucabang, 
+								srlokasi : FlexGlobals.topLevelApplication.ulokasi, 
+								srgudang : dgimp.gudang, 
+								srasalbarang : 0, 
+								srasalbarangkategori : 0, 
+								srjenispenjulan : 0, 
+								srjenispenjualankategori : 0, 
+								srcarabayar : 0, 
+								srsumber : "SR", 
+								srautonotransaksi : 1, 
+								srnotransaksi : "Auto", 
+								srtgl : dgimp.tgl, 
+								srkodepa : 0, 
+								kodecustomer : dgimp.kodecustomer, 
+								srcustomer : 0, 
+								srcustomerkontak : "", 
+								sr1alamat1 : "", 
+								sr1alamat2 : "", 
+								sr1alamat3 : "", 
+								sr2alamat1 : "", 
+								sr2alamat2 : "", 
+								sr2alamat3 : "", 
+								kodesalesman : dgimp.kodesalesman,
+								srbagianpenjualan : 0, 
+								srekspedisi : "", 
+								srtglkirim : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srtermin : dgimp.termin, 
+								termin : dgimp.termin,
+								srtgljatuhtempo : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								sruraian : dgimp.uraian, 
+								srcatatan : dgimp.catatan, 
+								srnoref : dgimp.noref, 
+								srtglnoref : dgimp.tglnoref, 
+								srtglpenutupan : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srmatauang : dgimp.matauang, 
+								srkurs : dgimp.kurs, 
+								srhargatermasukpajak : 0, 
+								srtotal : dgimp.total, 
+								srdiskonpersen : dgimp.diskonpersen, 
+								srjmldiskon : dgimp.jmldiskon, 
+								srtotalpajak1detail : dgimp.totalpajak1detail, 
+								srtotalpajak2detail : dgimp.totalpajak2detail, 
+								srbiayalainpersen : dgimp.biayalainpersen, 
+								srbiayalain : dgimp.biayalain, 
+								srtotaltransaksi : dgimp.totaltransaksi, 
+								srsisatransaksi : 0, 
+								srjmlbayar : 0, 
+								srstatuslunas : 0, 
+								srtgllunas : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srnofakturpajak : dgimp.nofakturpajak, 
+								srsdhbayarpajak : 0, 
+								srtglbayarpajak : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srrekdiskon : parentApplication.getSetting(0, 'akun', 'DiskonPenjualan'),
+								srrekpajak1 : parentApplication.getSetting(0,'akun', 'PajakPenjualan'), 
+								srrekpajak2 : parentApplication.getSetting(0, 'akun', 'PajakPenjualan'), 
+								srrekbiayalain : parentApplication.getSetting(0, 'akun', 'BiayaLain'), 
+								srreksisa : parentApplication.getSetting(0, 'akun', 'PiutangUsaha'), 
+								srrekbayar : parentApplication.getSetting(0, 'akun', 'Kas'), 
+								sridsq : 0, 
+								sridso : 0, 
+								sridpl : 0, 
+								sriddo : 0, 
+								sriddr : 0, 
+								sridpi : 0, 
+								sridsi : 0, 
+								sridrnr : 0, 
+								srstatus : 2, 
+								srstatussebelumnya : 0, 
+								srjmlrevisi : 0, 
+								srcetakanke : 0, 
+								srinputuser : FlexGlobals.topLevelApplication.userid, 
+								srinputtgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srmodifikasiuser : 0, 
+								srmodifikasitgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srposting : 0, 
+								srtutupperiode : 0, 
+								srisclose : 0, 
+								srcustomtext1 : "", 
+								srcustomtext2 : "", 
+								srcustomtext3 : "", 
+								srcustomtext4 : "", 
+								srcustomtext5 : "", 
+								srcustomint1 : 0, 
+								srcustomint2 : 0, 
+								srcustomint3 : 0, 
+								srcustomdbl1 : 0, 
+								srcustomdbl2 : 0, 
+								srcustomdbl3 : 0, 
+								srcustomdate1 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srcustomdate2 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+								srcustomdate3 : FlexGlobals.topLevelApplication.DefaultTanggal});
+						}
+						
+					}
+				}
+				if(acSimpan.length > 0){
+					if(validasifield ){ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportAR1();
+					}else if(validasifield == false){ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}else{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+				
+			}
+			
+			
+			protected function f_SetArraySimpanPenjualan():void
+			{
+				var dgmap:Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+
+				// Perulangan untuk validasi data yang dari excel
+				for(i=0; i<dgImport.dataProviderLength; i++)
+				{
+					dgimp = dgImport.dataProvider[i];
+					
+					// JIKA DATA DICENTANG
+					if(dgimp.chk)
+					{
+						validasifield = true;
+						for(x=0; x<dgMapping.dataProviderLength; x ++)
+						{
+							dgmap = dgMapping.dataProvider[x];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined) // JIKA KOLOM SUMBER KOSONG / UNDEFINED
+							{
+								if(dgimp.noref == undefined || dgimp.noref.length == 0)
+								{
+									Alert.show("No. ref ada yang kosong"); return;
+								}
+								
+								if(dgimp.kodecustomer == undefined || dgimp.kodecustomer.length == 0)
+								{
+									Alert.show("Kode Customer ada yang kosong"); return;
+								}
+								
+								if(dgimp.kodesalesman == undefined || dgimp.kodesalesman.length == 0)
+								{
+									Alert.show("Kode Salesman ada yang kosong"); return;
+								}
+								
+								if(dgimp.tanggal == undefined || dgimp.tanggal.length == 0)
+								{
+									Alert.show("Tanggal ada yang kosong"); return;
+								}
+								
+								if(dgimp.kodebarang == undefined || dgimp.kodebarang.length == 0)
+								{
+									Alert.show("Kode Barang ada yang kosong"); return;
+								}
+								
+								if(dgimp.jumlah == undefined || dgimp.jumlah.length == 0)
+								{
+									Alert.show("Kode Customer ada yang kosong"); return;
+								}
+								
+								if(dgimp.jumlah == 0)
+								{
+									Alert.show("Jumlah harus lebih dari 0"); return;
+								}
+								
+								if(dgimp.satuan == undefined || dgimp.satuan.length == 0)
+								{
+									Alert.show("Satuan ada yang kosong"); return;
+								}
+								
+								if(dgimp.harga == undefined || dgimp.harga.length == 0)
+								{
+									Alert.show("Harga ada yang kosong"); return;
+								}
+								
+								if(dgimp.tglnoref == undefined){dgimp.tglnoref = FlexGlobals.topLevelApplication.DefaultTanggal}
+								if(dgimp.termin == undefined){dgimp.termin = ""}
+								if(dgimp.uraian == undefined){dgimp.uraian = "Sales Invoice (SI)"}
+								if(dgimp.gudang == undefined){dgimp.gudang = FlexGlobals.topLevelApplication.ugudang}
+								if(dgimp.diskon == undefined){dgimp.diskon = 0}
+								if(dgimp.pajak == undefined){dgimp.pajak = ""}
+								if(dgimp.catatan == undefined){dgimp.catatan = ""}
+								if(dgimp.urutan == undefined){dgimp.urutan = 0}
+							}
+						}
+					}
+				}
+				
+				acSimpan.removeAll();
+				
+				for(i = 0; i < dgImport.dataProviderLength; i++)
+				{
+					dgimp = dgImport.dataProvider[i];
+					
+					// JIKA DATA DICENTANG
+					if(dgimp.chk)
+					{
+						validasifield = true;
+						acSimpan.addItem({
+							siid : 0, 
+							sicabang : FlexGlobals.topLevelApplication.ucabang, 
+							silokasi : FlexGlobals.topLevelApplication.ulokasi, 
+							sigudang : dgimp.gudang, 
+							siasalbarang : 0, 
+							siasalbarangkategori : 0, 
+							sijenispenjualan : 0, 
+							sijenispenjualankategori : 0, 
+							sicarabayar : 0, 
+							sisumber : "SI", 
+							siautonotransaksi : 1, 
+							sinotransaksi : "Auto", 
+							sitgl : dgimp.tgl, 
+							sikodepa : 0, 
+							kodecustomer : dgimp.kodecustomer,
+							sicustomer : 0,
+							sicustomerkontak : "", 
+							si1alamat1 : "", 
+							si1alamat2 : "", 
+							si1alamat3 : "", 
+							si2alamat1 : "", 
+							si2alamat2 : "", 
+							si2alamat3 : "", 
+							kodesalesman : dgimp.kodesalesman,
+							sibagianpenjualan : 0, 
+							siekspedisi : "", 
+							sitglkirim : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sitermin : dgimp.termin,
+							termin : dgimp.termin,
+							sitgljatuhtempo : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							siuraian  : dgimp.uraian, 
+							sicatatan : dgimp.catatan, 
+							sinoref : dgimp.noref, 
+							sitglnoref : dgimp.tglnoref, 
+							sitglpenutupan : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							simatauang : dgimp.matauang, 
+							sikurs : dgimp.kurs, 
+							sihargatermasukpajak : 0, 
+							sitotal : dgimp.total, 
+							sidiskonpersen : dgimp.diskonpersen, 
+							sijmldiskon : dgimp.jmldiskon, 
+							sitotalpajak1detail : dgimp.totalpajak1detail, 
+							sitotalpajak2detail : dgimp.totalpajak1detail, 
+							sibiayalainpersen : dgimp.biayalainpersen, 
+							sibiayalain : dgimp.biayalain, 
+							sitotaltransaksi : dgimp.totaltransaksi, 
+							sijmlbayar : 0, 
+							sistatuslunas : 0, 
+							sitgllunas : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sinofakturpajak : "", 
+							sisdhbayarpajak : 0, 
+							sitglbayarpajak : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sirekdiskon : parentApplication.getSetting(0, 'akun', 'DiskonPenjualan'), 
+							sirekpajak1 : parentApplication.getSetting(0, 'akun', 'PajakPenjualan'), 
+							sirekpajak2 : parentApplication.getSetting(0, 'akun', 'PajakPenjualan'), 
+							sirekbiayalain : parentApplication.getSetting(0, 'akun', 'BiayaLain'), 
+							sirekbayar : parentApplication.getSetting(0, 'akun', 'Kas'), 
+							siidsq : 0, 
+							siidso : 0, 
+							siidpl : 0, 
+							siiddo : 0, 
+							siiddr : 0, 
+							siidpi : 0, 
+							sistatusrnr : 0, 
+							sistatussr : 0, 
+							sistatus : 2, 
+							sistatussebelumnya : 0, 
+							sijmlrevisi : 0, 
+							sicetakanke : 0, 
+							siinputuser : FlexGlobals.topLevelApplication.userid, 
+							siinputtgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							simodifikasiuser : 0, 
+							simodifikasitgl : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							siposting : 0, 
+							situtupperiode : 0, 
+							siisclose : 0, 
+							sicustomtext1 : "", 
+							sicustomtext2 : "", 
+							sicustomtext3 : "", 
+							sicustomtext4 : "", 
+							sicustomtext5 : "", 
+							sicustomint1 : 0, 
+							sicustomint2 : 0, 
+							sicustomint3 : 0, 
+							sicustomdbl1 : 0, 
+							sicustomdbl2 : 0, 
+							sicustomdbl3 : 0, 
+							sicustomdate1 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sicustomdate2 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sicustomdate3 : FlexGlobals.topLevelApplication.DefaultTanggal, 
+							sijmluangmuka : dgimp.uangmuka, 
+							sirekuangmuka : "", 
+							siidas : 0,
+							noas : dgimp.noas});						
+					}
+				}
+				
+				if(acSimpan.length > 0)
+				{
+					if(validasifield) // JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+					{ 
+						f_ImportAR1();
+					}
+					else if(!validasifield) // JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+					{
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}
+				else
+				{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+			}
+			
+			public function f_ImportAR1():void
+			{
+				grppopup.visible = true;
+				jmlProgress = acSimpan.length;
+				f_sendProgress('Kode Customer : '+acSimpan[index].kodecustomer, true);
+				
+				FlexGlobals.topLevelApplication.F_wsSearch("CariCustomer", "CdM1_Contact",0,0,"kkategori = 'C' AND kkode = '"+acSimpan[index].kodecustomer+"'")
+			}
+			
+			public function f_CariTerminAR():void
+			{
+				if(acSimpan[index].termin.length > 0){
+					if(cmbsumberAR.selectedIndex == 0){
+						FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAR", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].sitermin+"'")
+					}else{
+						FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAR", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].srtermin+"'")
+					}
+					
+					if(cmbimport.selectedIndex == 7){
+						FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAR", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].sitermin+"'")
+					}
+//					FlexGlobals.topLevelApplication.F_wsSearch("CariTerminAR", "CdM1_Terms",0,0,"trkode = '"+acSimpan[index].ritermin+"'")
+				}else{
+					f_importAR2();
+				}
+				
+			}
+			protected function f_importAR2():void
+			{
+				var dataUtama:String="", a:Array;
+				if(cmbsumberAR.selectedIndex == 0)
+				{ //Invoice Pembelian
+					with (acSimpan[index])
+					{
+						a = [siid, sicabang, silokasi, sigudang, siasalbarang, siasalbarangkategori, sijenispenjualan, 
+							sijenispenjualankategori, sicarabayar, sisumber, siautonotransaksi, sinotransaksi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sitgl), sikodepa, 
+							sicustomer, sicustomerkontak, si1alamat1, si1alamat2, si1alamat3, si2alamat1, si2alamat2, 
+							si2alamat3, sibagianpenjualan, siekspedisi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sitglkirim), sitermin, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sitgljatuhtempo), siuraian, 
+							sicatatan, sinoref, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglnoref), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sitglpenutupan), simatauang, sikurs, sihargatermasukpajak, 
+							sitotal, sidiskonpersen, sijmldiskon, sitotalpajak1detail, sitotalpajak2detail, sibiayalainpersen, sibiayalain, 
+							sitotaltransaksi, sijmlbayar, sistatuslunas, FlexGlobals.topLevelApplication.F_tglFormatDB(sitgllunas), 
+							sinofakturpajak, sisdhbayarpajak, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglbayarpajak), 
+							sirekdiskon, sirekpajak1, sirekpajak2, sirekbiayalain, sirekbayar, siidsq, siidso, 
+							siidpl, siiddo, siiddr, siidpi, sistatusrnr, sistatussr, sistatus, 
+							sistatussebelumnya, sijmlrevisi, sicetakanke, siinputuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(siinputtgl), simodifikasiuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(simodifikasitgl), 
+							siposting, situtupperiode, siisclose, sicustomtext1, sicustomtext2, sicustomtext3, sicustomtext4, 
+							sicustomtext5, sicustomint1, sicustomint2, sicustomint3, sicustomdbl1, sicustomdbl2, sicustomdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate3), sijmluangmuka, sirekuangmuka, 
+							siidas];
+					}
+					dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+					
+					FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M5_SiBalance", FlexGlobals.topLevelApplication.userid, false,dataUtama)
+				}
+					
+				else if(cmbsumberAR.selectedIndex == 1)
+				{ //Retur Pembelian
+					with (acSimpan[index])
+					{
+						a = [srid, srcabang, srlokasi, srgudang, srasalbarang, srasalbarangkategori, srjenispenjulan, 
+							srjenispenjualankategori, srcarabayar, srsumber, srautonotransaksi, srnotransaksi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtgl), srkodepa, 
+							srcustomer, srcustomerkontak, sr1alamat1, sr1alamat2, sr1alamat3, sr2alamat1, sr2alamat2, 
+							sr2alamat3, srbagianpenjualan, srekspedisi, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtglkirim), srtermin, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtgljatuhtempo), sruraian, 
+							srcatatan, srnoref, FlexGlobals.topLevelApplication.F_tglFormatDB(srtglnoref), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtglpenutupan), srmatauang, srkurs, srhargatermasukpajak, 
+							srtotal, srdiskonpersen, srjmldiskon, srtotalpajak1detail, srtotalpajak2detail, srbiayalainpersen, srbiayalain, 
+							srtotaltransaksi, srsisatransaksi, srjmlbayar, srstatuslunas, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtgllunas), srnofakturpajak, srsdhbayarpajak, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srtglbayarpajak), 
+							srrekdiskon, srrekpajak1, srrekpajak2, srrekbiayalain, srreksisa, srrekbayar, 
+							sridsq, sridso, sridpl, sriddo, sriddr, sridpi, sridsi, 
+							sridrnr, srstatus, srstatussebelumnya, srjmlrevisi, srcetakanke, srinputuser, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srinputtgl), 
+							srmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(srmodifikasitgl), 
+							srposting, srtutupperiode, srisclose, srcustomtext1, srcustomtext2, 
+							srcustomtext3, srcustomtext4, srcustomtext5, srcustomint1, srcustomint2, srcustomint3, srcustomdbl1, 
+							srcustomdbl2, srcustomdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srcustomdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srcustomdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(srcustomdate3)];
+					}
+					dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+					
+					FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M5_SrBalance", FlexGlobals.topLevelApplication.userid, false,dataUtama)
+				}
+				
+			}
+			//END OF IMPORT SALDO AWAL PIUTANG =============================================================================================================================
+			//IMPORT KATEGORI BARANG
+			//SIMPAN DATA YANG DICENTANG KE ARRAY
+			protected function f_SetArraySimpanKatBarang():void
+			{
+				var dgmap : Object, dgimp:Object;
+				var validasifield : Boolean;
+				var namakolom : String = "";
+				acSimpan.removeAll();
+				for(var iimp:int = 0; iimp < dgImport.dataProviderLength; iimp++)
+				{
+					dgimp = dgImport.dataProvider[iimp]
+					if(dgimp.chk == 1){ //JIKA DATA DICENTANG
+						validasifield = true;
+						for(var imap : int = 0; imap<dgMapping.dataProviderLength; imap ++)
+						{
+							dgmap = dgMapping.dataProvider[imap];
+							dgimp[dgmap.namafield] = dgimp[dgmap.kolomsumber];
+							
+							if(dgimp[dgmap.namafield] == undefined)
+							{ //JIKA KOLOM SUMBER KOSONG / UNDEFINED
+								//								validasifield = false;
+								//								namakolom = dgmap.namafield;
+								
+								if(dgimp.ickode == undefined)
+								{ //JIKA SUMBER KODE KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Kode";
+									break;
+								}
+								else if(dgimp.icnama == undefined)
+								{ //JIKA SUMBER NAMA KONTAK KOSONG / UNDEFINED
+									validasifield = false;
+									namakolom = "Nama";
+									break;
+								}
+								//JIKA ADA FIELD YANG TIDAK WAJIB DAN KOLOM SUMBERNYA UNDEFINED, DISET KOSONG==================================
+								if(validasifield)
+								{
+									dgimp[dgmap.namafield] = "";
+								}
+								//==============================================================================================================
+							}
+						}
+						
+						acSimpan.addItem({ickode:dgimp.ickode, icnama:dgimp.icnama, icrekpersediaan:dgimp.icrekpersediaan, 
+							icrekhargapokok:dgimp.icrekpersediaan, icrekpenjualan:dgimp.icrekpersediaan, iccatatan:dgimp.icrekpersediaan, icaktif : 1, 
+							icinputuser : FlexGlobals.topLevelApplication.userid, icinputtgl:FlexGlobals.topLevelApplication.DefaultTanggal, 
+							icmodifikasiuser:0, icmodifikasitgl:FlexGlobals.topLevelApplication.DefaultTanggal,
+							icdivisi:"", icsubdivisi:"", icdepartemen:"", icsubdepartemen:dgimp.icsubdepartemen,
+							icindexbarcode:dgimp.icindexbarcode});
+					}
+				}
+				
+				if(acSimpan.length > 0)
+				{
+					if(validasifield)
+					{ //JIKA DI MAPPING FIELD SUDAH DIISI KOLOM SUMBERNYA, DAN DI ARRAY SIMPAN SUDAH OK
+						f_ImportKatBarang1();
+					}
+					else if(validasifield == false)
+					{ //JIKA DI MAPPING FIELD ADA YANG BELUM DIISI KOLOM SUMBERNYA
+						Alert.show("Mapping Field '"+namakolom +"' harus diisi dengan benar", "Informasi");
+					}
+				}
+				else
+				{
+					Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+				}
+			} 
+			
+			public function f_ImportKatBarang1():void
+			{
+				grppopup.visible = true;
+				jmlProgress = acSimpan.length;
+				f_sendProgress('Kode : '+acSimpan[index].ickode, true);
+				f_ImportKatBarang2();
+			}
+			
+			protected function f_ImportKatBarang2():void
+			{
+				var dataUtama:String="", a:Array;
+				with (acSimpan[index])
+				{
+					a = [ickode, icnama, icrekpersediaan, icrekhargapokok, icrekpenjualan, iccatatan, icaktif, 
+						icinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(icinputtgl), icmodifikasiuser, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(icmodifikasitgl), icdivisi, icsubdivisi, icdepartemen, icsubdepartemen,
+						icindexbarcode];
+				}
+				dataUtama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+				
+				FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M1_Item_CategorySimpan", FlexGlobals.topLevelApplication.userid, false,dataUtama+FlexGlobals.topLevelApplication.sptSubParam,""+FlexGlobals.topLevelApplication.sptSubParam+""+FlexGlobals.topLevelApplication.sptSubParam+"",1,1)
+			}
+			//END OF IMPORT KATEGORI BARANG
+			
+			public function f_wsHasil():void
+			{
+				var ws:Object;
+				if(FlexGlobals.topLevelApplication.wsSuccess )
+				{
+					switch (FlexGlobals.topLevelApplication.subject)
+					{
+						case "txtkontak":
+							ws = FlexGlobals.topLevelApplication.wsArrUtama[0];
+							txtkontak.text = ws.kkode;
+							lblkontak.text = ws.knama;
+							o.kontak = ws.kid;
+							break;
+						case "txtmatauang":
+							ws = FlexGlobals.topLevelApplication.wsArrUtama[0];
+							txtkurs.text = "          ";
+							txtmatauang.text = ws.ckode;
+							o.txtkurs = ws.ckurs;
+							txtkurs.text = FlexGlobals.topLevelApplication.m.nfNominal.format(o.txtkurs);
+							for(i=0;i<dgImport.dataProvider.length;i++)
+							{
+								with(dgImport.dataProvider.getItemAt(i))
+								{
+									matauang = txtmatauang.text;
+									kurs = o.txtkurs;
+								}
+							}
+							
+							if(txtmatauang.text != FlexGlobals.topLevelApplication.getSetting(0, 'accounting', 'MataUangFungsional'))
+							{
+								txtkurs.enabled = true;
+								for(i=0;i<dgImport.dataProvider.length;i++)
+								{
+									dgImport.dataProvider.getItemAt(i).debitvalas = dgImport.dataProvider.getItemAt(i).debit/o.txtkurs;
+									dgImport.dataProvider.getItemAt(i).kreditvalas = dgImport.dataProvider.getItemAt(i).kredit/o.txtkurs;
+								}								
+							}
+							else
+							{
+								txtkurs.enabled = false;
+								for(i=0;i<dgImport.dataProvider.length;i++)
+								{
+									dgImport.dataProvider.getItemAt(i).debitvalas = FlexGlobals.topLevelApplication.m.nfNominal.format(0);
+									dgImport.dataProvider.getItemAt(i).kreditvalas = FlexGlobals.topLevelApplication.m.nfNominal.format(0);
+								}
+							}
+							break;
+						
+						//Untuk import kontak
+						case "CariSalesman":
+							if(cmbimport.selectedIndex == 0){
+								acSimpan[index].ksalesman = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								acSimpan[index].ksalesmannama = FlexGlobals.topLevelApplication.wsArrUtama[0].knama;
+								f_importKontak2();
+							}else if(cmbimport.selectedIndex == 5){
+								if(cmbsumberAR.selectedIndex == 0){
+									acSimpan[index].sibagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								}else if(cmbimport.selectedIndex == 7){
+									acSimpan[index].sibagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								}
+								else{
+									acSimpan[index].srbagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								}
+								
+								
+								
+								f_CariTerminAR()
+							}
+							
+							break;
+						
+						//untuk import barang
+						case "CariSatuan":
+							acSimpan[index].bnilaisatuan = FlexGlobals.topLevelApplication.wsArrUtama[0].unilai;
+							acSimpan[index].bjmllapangan = FlexGlobals.topLevelApplication.wsArrUtama[0].unilai;
+							FlexGlobals.topLevelApplication.F_wsSearch("CariSatuanDefault", "CdM1_Unit",0,0,"ukode = '"+acSimpan[index].bsatuandefault+"'")
+							break;
+						case "CariSatuanDefault":
+							acSimpan[index].bnilaisatuan = FlexGlobals.topLevelApplication.wsArrUtama[0].unilai;
+							f_importBarang2();
+							break;
+						//untuk import saldo awal barang
+						case "AmbilIDBarang":
+							for(var a:int = 0; a<FlexGlobals.topLevelApplication.wsArrUtama.length; a++){
+								for(var acs:int = 0; acs < dgImport.dataProviderLength; acs++){
+									if(dgImport.dataProvider[acs].kodebarang == FlexGlobals.topLevelApplication.wsArrUtama[a].bkode){
+										dgImport.dataProvider[acs].idibdetail = 0;
+										dgImport.dataProvider[acs].idib = 0; 
+										dgImport.dataProvider[acs].idbarang = FlexGlobals.topLevelApplication.wsArrUtama[a].bid; 
+										dgImport.dataProvider[acs].namabarang = FlexGlobals.topLevelApplication.wsArrUtama[a].bnama; 
+										dgImport.dataProvider[acs].tipebarang = FlexGlobals.topLevelApplication.wsArrUtama[a].btipe;
+										dgImport.dataProvider[acs].satuan = FlexGlobals.topLevelApplication.wsArrUtama[a].bsatuandefault;
+										dgImport.dataProvider[acs].nilaisatuan = FlexGlobals.topLevelApplication.wsArrUtama[a].bnilaisatuandefault;
+										dgImport.dataProvider[acs].jmlbarang = Number(dgImport.dataProvider[acs].jml) * Number(dgImport.dataProvider[acs].nilaisatuan); 
+										dgImport.dataProvider[acs].satuanbarang = FlexGlobals.topLevelApplication.wsArrUtama[a].bsatuan;
+										dgImport.dataProvider[acs].hpplama = FlexGlobals.topLevelApplication.wsArrUtama[a].bhppaverage;
+										dgImport.dataProvider[acs].rekpersediaan = FlexGlobals.topLevelApplication.wsArrUtama[a].brekpersediaan;
+										dgImport.dataProvider[acs].bserial = FlexGlobals.topLevelApplication.wsArrUtama[a].bserial;
+										dgImport.dataProvider[acs].bbatch = FlexGlobals.topLevelApplication.wsArrUtama[a].bbatch;
+									}
+								}
+							}
+							FlexGlobals.topLevelApplication.F_dgRefresh(dgImport);
+							break;
+						
+						//untuk import saldo awal Coa
+						case "AmbilNamaAkun":
+							var dgrid : Object;
+							var wsr : Object;
+							for(var ab:int = 0; ab<FlexGlobals.topLevelApplication.wsArrUtama.length; ab++){
+								for(var coa:int = 0; coa < dgImport.dataProviderLength; coa++){
+									dgrid = dgImport.dataProvider[coa];
+									if(dgImport.dataProvider[coa].noakun == FlexGlobals.topLevelApplication.wsArrUtama[ab].cnomor){
+										wsr = FlexGlobals.topLevelApplication.wsArrUtama[ab]
+										dgrid.idcbdetail = 0; 
+										dgrid.idcb = 0; 
+										dgrid.noakun = wsr.cnomor;
+										dgrid.namaakun = wsr.cnama
+										dgrid.matauang = txtmatauang.text; 
+										dgrid.kurs = o.txtkurs; 
+										if(txtmatauang.text != FlexGlobals.topLevelApplication.getSetting(0, 'accounting', 'MataUangFungsional')){
+											dgrid.debitvalas = Number(dgrid.debit) /o.txtkurs; 
+											dgrid.kreditvalas = Number(dgrid.kredit) /o.txtkurs;
+										}else{
+											dgrid.debitvalas = 0; 
+											dgrid.kreditvalas = 0; 
+										}
+										
+										dgrid.urutan = 0; 
+										dgrid.isclose = 0; 
+										dgrid.customtext1 = ""; 
+										dgrid.customtext2 = ""; 
+										dgrid.customtext3 = ""; 
+										dgrid.customdbl1 = 0; 
+										dgrid.customdbl2 = 0; 
+										dgrid.customdbl3 = 0; 
+										dgrid.customdate1 = FlexGlobals.topLevelApplication.DefaultTanggal; 
+										dgrid.customdate2 = FlexGlobals.topLevelApplication.DefaultTanggal; 
+										dgrid.customdate3 = FlexGlobals.topLevelApplication.DefaultTanggal;
+									}
+								}
+							}
+							FlexGlobals.topLevelApplication.F_dgRefresh(dgImport);
+							break;
+						
+						
+						case "txtgudang":
+							txtgudang.text = FlexGlobals.topLevelApplication.wsArrUtama[0].wkode;
+							lblgudang.text = FlexGlobals.topLevelApplication.wsArrUtama[0].wnama;
+							break;
+						//untuk import saldo awal hutang
+						case "CariSupplier":
+							if(cmbsumberAP.selectedIndex == 0){
+								acSimpan[index].risupplier = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+							}else{
+								acSimpan[index].prtsupplier = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+							}
+							
+							f_CariTermin();
+							break;
+						case "CariTerminAP":
+							if(cmbsumberAP.selectedIndex == 0){
+								acSimpan[index].ritgljatuhtempo = FlexGlobals.topLevelApplication.F_tglJatuhTempo(acSimpan[index].ritgl, FlexGlobals.topLevelApplication.wsArrUtama[0].trharijatuhtempo);
+							}else{
+								acSimpan[index].prttgljatuhtempo = FlexGlobals.topLevelApplication.F_tglJatuhTempo(acSimpan[index].prttgl, FlexGlobals.topLevelApplication.wsArrUtama[0].trharijatuhtempo);
+							}
+							f_importAP2();
+							break;
+						case "CariCustomer":
+							if(cmbsumberAR.selectedIndex == 0){
+								acSimpan[index].sicustomer = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								acSimpan[index].sibagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].ksalesman;
+								acSimpan[index].sicustomerkontak = FlexGlobals.topLevelApplication.wsArrUtama[0].kkontakperson;
+							}else{
+								acSimpan[index].srcustomer = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								acSimpan[index].srbagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].ksalesman;
+								acSimpan[index].srcustomerkontak = FlexGlobals.topLevelApplication.wsArrUtama[0].kkontakperson;
+							}
+							if(cmbimport.selectedIndex == 7){
+								acSimpan[index].sicustomer = FlexGlobals.topLevelApplication.wsArrUtama[0].kid;
+								acSimpan[index].sibagianpenjualan = FlexGlobals.topLevelApplication.wsArrUtama[0].ksalesman;
+								acSimpan[index].sicustomerkontak = FlexGlobals.topLevelApplication.wsArrUtama[0].kkontakperson;
+							}
+							FlexGlobals.topLevelApplication.F_wsSearch("CariSalesman", "CdM1_Contact",0,0,"kkategori = 'M' AND kkode = '"+acSimpan[index].kodesalesman+"'")
+							break;;
+						case "CariTerminAR":
+							if(cmbsumberAR.selectedIndex == 0){
+								acSimpan[index].sitgljatuhtempo = FlexGlobals.topLevelApplication.F_tglJatuhTempo(acSimpan[index].sitgl, FlexGlobals.topLevelApplication.wsArrUtama[0].trharijatuhtempo);
+								if(acSimpan[index].noas != ""){
+									FlexGlobals.topLevelApplication.F_wsSearch("CariNoAS","CdM5_As",1,1,'(askontak = '+acSimpan[index].sicustomer+') and (asstatus = 2 or asstatus = 3) and asmatauang = "'+acSimpan[index].simatauang+'" and asnotransaksi = "'+acSimpan[index].noas+'"')
+								}
+								
+							}else{
+								acSimpan[index].srtgljatuhtempo = FlexGlobals.topLevelApplication.F_tglJatuhTempo(acSimpan[index].srtgl, FlexGlobals.topLevelApplication.wsArrUtama[0].trharijatuhtempo);
+							}
+							f_importAR2();
+							break;
+						
+						case "CariNoAS":
+							acSimpan[index].siidas = FlexGlobals.topLevelApplication.wsArrUtama[0].asid
+							break;
+						case "simpan":
+							berhasil ++;
+							f_UlangImport();
+							break;
+						case "simpanIB":
+							f_kondisiAwal();
+							Alert.show("Import Saldo Awal Barang Berhasil", "Informasi");
+							break;
+						case "Uploading":
+							f_kondisiAwal();
+							FlexGlobals.topLevelApplication.F_wsSearch('tampilFile', 'M2_FilesSearch', 1, 1, 'fsumber = "CR" AND fidtransaksi = "0"', 'finputtgl desc');
+							break;
+						case "tampilFile":
+							navigateToURL(new URLRequest(FlexGlobals.topLevelApplication.m.url+"/files/f2/CR/"+FlexGlobals.topLevelApplication.wsArrUtama[0].fnamafile));
+							break
+						
+					}
+				}
+				else{
+					if(parentApplication.F_validasiFalse(FlexGlobals.topLevelApplication.subject) ){
+						switch (FlexGlobals.topLevelApplication.subject){
+							case "simpan":
+								gagal ++;
+								acSimpan[index].gagal = 1;
+								acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;
+								f_UlangImport();
+								if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key.")
+								{
+									btnlanjut.enabled = true;
+								}
+								break;
+							case "simpanIB":
+								Alert.show(FlexGlobals.topLevelApplication.wsErrmessage, "Informasi");
+								break;
+							case "CariSalesman":
+								if(cmbimport.selectedIndex == 0){
+									acSimpan[index].ksalesman = 0;
+									f_importKontak2();
+								}else if(cmbimport.selectedIndex == 5){
+									if(cmbsumberAR.selectedIndex == 0){
+										acSimpan[index].sibagianpenjualan = 0;
+									}else{
+										acSimpan[index].srbagianpenjualan = 0;
+									}
+									f_CariTerminAR();
+								}else if(cmbimport.selectedIndex == 4){
+									if(cmbsumberAP.selectedIndex == 0){
+										acSimpan[index].ribagianpembelian = 0;
+									}else{
+										acSimpan[index].prtbagianpembelian = 0;
+									}
+									f_CariTermin();
+								}else if(cmbimport.selectedIndex == 7){
+									acSimpan[index].sibagianpenjualan = 0;
+								}
+								
+								if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key."){
+									btnlanjut.enabled = true;
+								}
+								break;
+							
+							case "CariSatuan":
+								gagal ++;
+								acSimpan[index].gagal = 1;
+								acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;
+								f_UlangImport();
+								break;
+							case "CariSatuanDefault":
+								gagal ++;
+								acSimpan[index].gagal = 1;
+								acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;
+								f_UlangImport();
+								break;
+							
+							case "CariTerminAP":
+								f_importAP2();
+								break;
+							case "CariTerminAP":
+								f_importAR2();
+								break;
+							case "CariSatuan":
+								acSimpan[index].bnilaisatuan = 1;
+								acSimpan[index].bjmllapangan = 1;
+								acSimpan[index].gagal = 1;
+								acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;								if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key."){
+									btnlanjut.enabled = true;
+								}
+								break;
+							case "CariSatuanDefault":
+								acSimpan[index].bnilaisatuan = 1;
+								acSimpan[index].gagal = 1;
+								acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;
+								f_importBarang2();
+								if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key."){
+									btnlanjut.enabled = true;
+								}
+								break;
+							case "AmbilIDBarang":
+								dgImport.dataProvider.removeAll();
+								FlexGlobals.topLevelApplication.F_defaultGridItem(dgImport);
+								Alert.show("Nama Barang, Satuan tidak ditemukan", "Informasi");
+								break;
+							
+							case "Uploading":
+								navigateToURL(new URLRequest(FlexGlobals.topLevelApplication.m.url+"/files/f2/CR/Data Gagal Import_"+jmlfile+".xls"));
+								break;
+							
+						}
+					}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case "CariSalesman":
+						acSimpan[index].ksalesman = 0;
+						f_importKontak2();
+						break;
+					//untuk import saldo awal hutang
+					case "CariSupplier":
+						if(cmbsumberAP.selectedIndex == 0){
+							acSimpan[index].risupplier = 0;
+						}else{
+							acSimpan[index].prtsupplier = 0;
+						}
+						
+						f_CariTermin();
+						break;
+					case "CariSalesman":
+						if(cmbimport.selectedIndex == 0){
+							acSimpan[index].ksalesman = 0;
+							f_importKontak2();
+						}else if(cmbimport.selectedIndex == 5){
+							if(cmbsumberAR.selectedIndex == 0){
+								acSimpan[index].sibagianpenjualan = 0;
+							}else{
+								acSimpan[index].srbagianpenjualan = 0;
+							}
+							f_CariTerminAR();
+						}else if(cmbimport.selectedIndex == 4){
+							if(cmbsumberAP.selectedIndex == 0){
+								acSimpan[index].ribagianpembelian = 0;
+							}else{
+								acSimpan[index].prtbagianpembelian = 0;
+							}
+							f_CariTermin();
+						}
+						
+						if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key."){
+							btnlanjut.enabled = true;
+						}
+						break;
+					case "CariTerminAP":
+						f_importAP2();
+						break;
+					case "CariTerminAP":
+						f_importAR2();
+						break;
+					case "simpan":
+						gagal ++;
+						acSimpan[index].gagal = 1;
+						acSimpan[index].deskripsi = FlexGlobals.topLevelApplication.wsErrmessage;
+						f_UlangImport();
+						if(FlexGlobals.topLevelApplication.wsErrmessage == "Invalid Website Access Key.")
+						{
+							btnlanjut.enabled = true;
+						}
+						break;
+					case "simpanIB":
+						Alert.show(FlexGlobals.topLevelApplication.wsErrmessage, "Informasi");
+						break;
+					
+				}
+			}
+			
+			public var jmlfile : int = 0;
+			public function f_writeExcel():void
+			{
+					var excelFile:ExcelFile = new ExcelFile();
+					//ambil sheet pertama
+					var sheet : Sheet = new Sheet;
+					var arrKode : Array = kodegagalimport.split("^|^"); 
+					var arrDesk : Array = deskripsi.split("^|^");
+					var fr:FileReference = new FileReference;
+					for(var a:int = 0; a<acSimpan.length; a++){
+						if(acSimpan[a].gagal == 1){
+							if(cmbimport.selectedIndex == 0){
+								acImportGagal.addItem({kode:acSimpan[a].kkode, deskripsi:acSimpan[a].deskripsi});
+							}
+							else if(cmbimport.selectedIndex == 1){
+								acImportGagal.addItem({kode:acSimpan[a].bkode, deskripsi:acSimpan[a].deskripsi})
+								
+							}
+							else if(cmbimport.selectedIndex == 4){
+								acImportGagal.addItem({kode:acSimpan[a].kodesupplier, deskripsi:acSimpan[a].deskripsi})
+							}
+							else if(cmbimport.selectedIndex == 5){
+								acImportGagal.addItem({kode:acSimpan[a].kodecustomer, deskripsi:acSimpan[a].deskripsi})
+							}
+						}
+					}
+					
+					for(var i:int = 0; i<acImportGagal.length; i++){
+						if(cmbimport.selectedIndex == 0){
+							sheet.setCell(0, 0, "Kode Kontak ");
+							sheet.setCell(0, 1, "Deskripsi ");
+							sheet.setCell(i+1,0,acImportGagal[i].kkode);
+							sheet.setCell(i+1,1,acImportGagal[i].deskripsi);
+						}
+						else if(cmbimport.selectedIndex == 1){
+							sheet.setCell(0, 0, "Kode Barang");
+							sheet.setCell(0, 1, "Deskripsi");
+							sheet.setCell(i+1,0,acImportGagal[i].kode);
+							sheet.setCell(i+1,1,acImportGagal[i].deskripsi);
+							
+						}
+						else if(cmbimport.selectedIndex == 4){
+							sheet.setCell(0, 0, "Kode Supplier");
+							sheet.setCell(0, 1, "Deskripsi");
+							sheet.setCell(i+1,0,acImportGagal[i].kode);
+							sheet.setCell(i+1,1,acImportGagal[i].deskripsi);
+						}
+						else if(cmbimport.selectedIndex == 5){
+							sheet.setCell(0, 0, "Kode Customer");
+							sheet.setCell(0, 1, "Deskripsi");
+							sheet.setCell(i+1,0,acImportGagal[i].kode);
+							sheet.setCell(i+1,1,acImportGagal[i].deskripsi);
+						}
+						excelFile.sheets.addItem(sheet);
+					}
+					FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, "CR", "xls", excelFile.saveToByteArray(), 0, "Data Gagal Import.xls", "", "0", FlexGlobals.topLevelApplication.DefaultTanggalforDB, 0, 0, '', '');
+			}
+			
+			public function f_UlangImport():void
+			{
+				if(index < jmlProgress - 1)
+				{
+					switch(cmbimport.selectedIndex)
+					{
+						case 0: //kontak
+							index ++;
+							f_ImportKontak1();
+							break;
+						case 1: //barang
+							index ++;
+							f_importBarang1();
+							break;
+						case 4: //saldo awal hutang
+							index ++;
+							f_ImportAP1();
+							break;
+						case 5: //saldo awal piutang
+							index ++;
+							f_ImportAR1();
+							break;
+						case 5: //master kategori barang
+							index ++;
+							f_ImportAR1();
+							break;
+						case 6: //master kategori barang
+							index ++;
+							f_ImportKatBarang1();
+							break;
+						case 7: //Import Penjualan
+							index ++;
+							f_ImportAR1();
+							break;
+						case 8: //Import Retur
+							index ++;
+							f_ImportAR1();
+							break;
+					}
+				}
+				else
+				{
+					index = 0;
+					jmlProgress = 0;
+					f_sendProgress('Import Data Done', true);
+					lblProses.text = "Import Data Done";
+					lblPersen.text = "100 %";
+//					f_writeExcel();
+					if(gagal>0)
+					{
+						Alert.show("Import Data Selesai: \n "+berhasil+" berhasil \n "+gagal+" gagal \n Apakah anda ingin download data yang gagal?", "Informasi", 3, null, function (e:Object):void
+						{
+							if(e.detail == Alert.YES)
+							{
+								f_writeExcel();
+							}
+							f_kondisiAwal();
+						});
+					}
+					else
+					{
+						Alert.show("Import Data Selesai: \n "+berhasil+" berhasil \n "+gagal+" gagal.", "Informasi", 4, null, function ():void
+						{
+							f_kondisiAwal();
+						});
+					}
+				}
+			}
+			
+			protected function btnambildata_clickHandler(event:MouseEvent):void
+			{
+				if(txtfile.text.length > 0)
+				{
+					F_SetDataExcel();
+				}
+				else
+				{
+					Alert.show("File harus dipilih terlebih dahulu", "Informasi")
+				}
+			}
+			
+			public function f_sendProgress(data:String, status:Boolean):void
+			{
+				j++;
+				if(status)
+				{
+					if(j > jmlProgress)
+					{
+						close = true;
+						return;
+					}
+					lblProses.text = data;
+				}
+				else
+				{
+					lblProses.text = parentApplication.l("Upload failed")+" "+data;
+					close = true;
+					return;
+				}
+				num += 100/jmlProgress;
+				pb.setProgress(num, 100);
+				lblPersen.text = String(uint(num))+" %";
+			}
+			
+			public function f_cmbimport():void
+			{
+				switch(cmbimport.selectedIndex)
+				{
+					case 0:
+						grpmappingfield.top = 156;
+						f_setVisibleGroup([grpmappingfield],[grpIB, grpAP, grpAR, grpCoA]);
+						break;
+					case 1:
+						grpmappingfield.top = 156;
+						f_setVisibleGroup([grpmappingfield],[grpIB, grpAP, grpAR, grpCoA]);
+						break;
+					case 2:
+						f_setVisibleGroup([grpCoA],[grpIB, grpAP, grpAR]);
+						grpmappingfield.top = 250;
+						break;
+					case 3:
+						f_setVisibleGroup([grpIB],[grpAP, grpAR, grpCoA]);
+						grpmappingfield.top = 225;
+						break;
+					case 4:
+						grpmappingfield.top = 165;
+						f_setVisibleGroup([grpAP],[grpIB, grpAR, grpCoA]);
+						break;
+					case 5:
+						grpmappingfield.top = 165;
+						f_setVisibleGroup([grpAR],[grpIB, grpAP, grpCoA]);
+						break;
+					case 6:
+						grpmappingfield.top = 156;
+						f_setVisibleGroup([grpmappingfield],[grpIB, grpAP, grpAR, grpCoA]);
+						break;
+					case 7:
+						grpmappingfield.top = 156;
+						f_setVisibleGroup([grpmappingfield],[grpIB, grpAP, grpAR, grpCoA]);
+						break;
+					case 8:
+						grpmappingfield.top = 156;
+						f_setVisibleGroup([grpmappingfield],[grpIB, grpAP, grpAR, grpCoA]);
+						break;
+				}
+			}
+			
+			public function f_setVisibleGroup(grpvisibletrue:Array, grpvisiblefalse:Array):void{
+				var i:int;
+				for(i = 0; i<grpvisibletrue.length; i++){
+					grpvisibletrue[i].visible = true
+				}
+				for(i = 0; i<grpvisiblefalse.length; i++){
+					grpvisiblefalse[i].visible = false;
+				}
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Import" icon="tbsave" enabled="true"/>
+					<topmenu label="Batal" icon="tbclose" enabled="true"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<net:FileReference id="fileReference" select="fileReference_select(event)" complete="fileReference_complete(event)" />
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:Button x="431" y="61" id="btnlanjut" label="Lanjutkan Import Data" visible="false" click="f_writeExcel(); btnlanjut.enabled = true;"/>
+	
+	<s:Group left="11" top="34" width="365" height="92">
+		<s:Label id="tfile" left="0" top="28" text="File" visible="true"/>
+		<s:Label id="tfile0" left="0" top="50" text="Sheet" visible="true"/>
+		<s:TextInput id="txtfile" visible="true" left="64" top="23" width="259" editable="false"/>
+		<s:Image id="imgfile" x="325" y="29" source="{tbexcel}" click="f_browseFile()"/>
+		<s:ComboBox x="64" y="1" width="259" id="cmbimport" change="f_cmbimport()"/>
+		<s:ComboBox x="64" y="44" width="259" id="cmbsheet"/>
+		<s:Label id="timport" left="1" top="7" text="Import" visible="true"/>
+		<s:Button x="64" y="66" label="Ambil Data" id="btnambildata" click="btnambildata_clickHandler(event)"/>
+	</s:Group>
+	<s:Group id="grpmappingfield" visible="true" left="10" top="156" bottom="71" width="366">
+		<s:Label id="tmappingfield" left="0" top="0" text="Mapping Field" visible="true" fontWeight="bold"/>
+		<s:DataGrid id="dgMapping" left="0" right="0" top="22" bottom="0"/>
+	</s:Group> 
+	<s:Group left="10" right="556" top="124" bottom="328" id="grpCoA" visible="false"> 
+		<s:Label id="tkontak" left="0" top="30" text="Kontak" visible="true"/>
+		<s:Label  visible="true" left="0" top="6" fontWeight="bold" text="Utama"/>
+		<s:Label id="ttglCoA" left="0" top="52" text="Tanggal" visible="true"/>
+		<s:TextInput id="txtkontak" left="70" top="25" width="107"/>
+		<s:Label id="turaianCA" left="0" top="94" text="Uraian" visible="true"/>
+		<s:TextInput id="txturaianCoA" left="70" top="89" width="218"/>
+		<mx:DateField x="70" y="46" width="132" id="dttglCoA"/>
+		<s:Label id="lblkontak" left="202" top="27"/>
+		<s:Label id="tmatauang" left="1" top="73" text="Mata Uang"/>
+		<s:Label id="tkurs" left="136" top="74" text="Kurs"/>
+		<s:TextInput id="txtmatauang" left="70" top="68" width="43" />
+		<s:TextInput id="txtkurs" left="166" top="68" width="64" textAlign="right"/>
+		
+	</s:Group>
+	
+	<s:Group left="10" right="556" top="124" bottom="356" id="grpIB" visible="false">
+		<s:Label id="tgudang" left="0" top="30" text="Gudang" visible="true"/>
+		<s:Label id="tgudang1" visible="true" left="0" top="6" fontWeight="bold" text="Utama"/>
+		<s:Label id="ttgl" left="0" top="52" text="Tanggal" visible="true"/>
+		<s:TextInput id="txtgudang" left="65" top="25" width="107"/>
+		<s:Label id="turaian" left="0" top="73" text="Uraian" visible="true"/>
+		<s:TextInput id="txturaian" left="65" top="68" width="218"/>
+		<mx:DateField x="65" y="46" width="132" id="dttgl"/>
+		<s:Label id="lblgudang" left="197" top="27"/>
+		
+	</s:Group>
+	
+	<s:Group left="10" right="565" top="125" bottom="407" id="grpAP" visible="false">
+		<s:ComboBox x="65" y="1" width="162" id="cmbsumberAP"/>
+		<s:Label id="tsumber" left="1" top="7" text="Sumber" visible="true"/>
+	</s:Group>
+	<s:Group left="10" right="500" top="125" bottom="407" id="grpAR" visible="false">
+		<s:ComboBox x="65" y="1" width="162" id="cmbsumberAR"/>
+		<s:Label id="tsumberAR" left="1" top="7" text="Sumber" visible="true"/>
+	</s:Group>
+	
+	<s:Group id="grpdgimport" right="0" top="38" bottom="0" left="384">
+		<s:Label id="tdataimport" left="0" top="0" text="Pilih Data yang akan diimport" visible="true"  fontWeight="bold"/>
+		<s:DataGrid id="dgImport" left="0" right="0" top="25" bottom="0"/>
+		<s:CheckBox x="481" y="43" label="CheckBox" visible="false"/>
+	</s:Group>
+	
+	<s:Group id="grppopup" left="0" right="0" top="0" bottom="0" visible="false">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="white" alpha="0.5" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:Group id="progress" left="100" right="100" top="245" height="126">
+			
+			<s:TitleWindow left="0" right="0" bottom="9" top="0" close="grppopup.visible = false">
+				<s:Label left="2" top="12" fontWeight="bold" text="Proccessing..." fontSize="14"/>
+				<mx:ProgressBar id="pb" left="0" right="0" top="32" label=" " direction="right" labelPlacement="center" mode="manual" barSkin="skins.progressBar"/>
+				<s:Label id="lblPersen" right="2" top="56" fontWeight="bold" text="0 %"/>
+				<s:Label id="lblProses" left="2" top="56" fontWeight="bold" text=" "/>
+				
+			</s:TitleWindow>
+		</s:Group>
+	</s:Group>
+	<s:Label id="tdownloadtemplate" visible="false" left="10" bottom="40" color="#49D2F4"
+			 fontWeight="bold" text="Klik disini untuk download template import data"/>
+	
+</s:Module>

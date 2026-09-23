@@ -1,0 +1,669 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan()"
+		  keyDown="f_keyDownModule(event)">
+	
+	<fx:Script> 
+		<![CDATA[
+			import comp.ComReLogin;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.Grid;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.CheckBox;
+			import spark.components.Image;
+			import spark.components.TitleWindow;
+			
+			protected var img:Image, i:int, isUpdate:Boolean, vUang:String, vTgl:String, vNotransaksi:String, vDefNotransaksi:String, getNotransaksi:String;
+			[Bindable] public var u:ArrayCollection;
+			public var dg_tambah_ac:ArrayCollection = new ArrayCollection;
+			[Bindable] public var arr:ArrayCollection = new ArrayCollection;
+			public var validasi:Boolean, pesanAlert:String, cb:CheckBox, t:TitleWindow, p:Object, tglDB:String  = FlexGlobals.topLevelApplication.DefaultTanggal;
+			public var vID:String = '', o:Object = {}, n:Object = {}, obj:Object = {};
+			protected var arrMenuBar:ArrayCollection;
+			
+			public var strFilter:String = "";
+			public var strSort:String = "bkode asc";
+			
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				return new ArrayCollection([]);
+			}
+			
+			// mengeset ketika change pada grid =========================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case 'calculator':
+						dg_tambah.dataProvider[dg_tambah.selectedCell.rowIndex][dataField] = data
+						FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg_tambah, dg_tambah.selectedCell.rowIndex);
+						break;
+					case 'checkBoxHeader':
+						for (i=0; i<dg_tambah.dataProviderLength; i++){
+							dg_tambah.dataProvider.getItemAt(i).chk = data;
+							dg_tambah.dataProvider.getItemAt(i).piaksi = 1;
+						}
+						break;
+					case 'checkBox':
+						dg_tambah.dataProvider.getItemAt(dg_tambah.selectedCell.rowIndex).chk = data;
+						dg_tambah.dataProvider.getItemAt(dg_tambah.selectedCell.rowIndex).piaksi = 1;
+						
+						break;
+				}
+				FlexGlobals.topLevelApplication.F_dgRefresh(dg_tambah);
+			}
+			
+			// set fokus ketika pertama kali form diload ===================================
+			public function f_focusOnMe():void
+			{
+				
+			}
+			
+			// set persiapan form ==========================================================
+			protected function f_persiapan():void
+			{
+				p = FlexGlobals.topLevelApplication.m[FlexGlobals.topLevelApplication.idmodcurr].child;
+				
+				vTgl = parentApplication.getSetting(0, 'accounting', 'EditableDate');
+				vNotransaksi = parentApplication.getSetting(0, 'accounting', 'AutoNoTransaction');
+				vDefNotransaksi = parentApplication.getSetting(0, 'accounting', 'DefaultAutoNoTransaction');
+				parentApplication.F_txtpencarian([txtkodebarang1, txtkodebarang2, txtkategoribarang]);
+				parentApplication.F_SetNavigasiKeyboard([txtnamabarang, txtfilter]);
+				// fungsi menubar
+				arrMenuBar = new ArrayCollection([
+					{label:"Simpan", icon:"tbsave", enabled:"true"},
+					{label:"Tampilkan", icon:"tbpreview", enabled:"true"},
+					{label:"Reset", icon:"tbreset", enabled:"true"}]);
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbTampilkan);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbReset);
+				function f_mbSimpan():void
+				{
+					var  jenissimpan:int = 1;
+					if(isUpdate == false){
+						jenissimpan = 1
+					}else{
+						jenissimpan = 2
+					}
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(12,13,jenissimpan)==true){
+						f_simpan();
+					}
+				}
+				
+				function f_mbReset():void
+				{
+					FlexGlobals.topLevelApplication.FormFilter = '';
+					f_kondisiAwal();
+				}
+				function f_mbTampilkan():void
+				{
+					f_tampilkan();
+				}
+				
+				// Config Paging
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign","center");
+				txtpaging.text = "0";
+				txtpaging.maxChars = 4;
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				
+				function f_firstCLICK():void{
+					f_tampilkan(1);
+				}
+				function f_previousCLICK():void{
+					f_tampilkan(int(txtpaging.text) - 1);
+					txtpaging.text = String(int(txtpaging.text) - 1)
+				}
+				function f_nextCLICK():void{
+					f_tampilkan(int(txtpaging.text) + 1)
+					txtpaging.text = String(int(txtpaging.text) + 1)
+				}
+				function f_lastCLICK():void{
+					f_tampilkan(int(- 1))
+					
+				}
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					
+					if(e.keyCode == Keyboard.ENTER)
+						if(int(txtpaging.text)>0)
+							f_tampilkan(int(txtpaging.text));
+				}
+				
+				// untuk ambil setting dari Json
+				FlexGlobals.topLevelApplication.F_RegGrid(12, 13, [dg_tambah], 'TransaksiBarang');
+				f_validasi();
+				f_kondisiAwal();
+			}
+			
+			public function f_validasi():void
+			{
+				var  filtersplit : Array = FlexGlobals.topLevelApplication.FormFilter.split("[]");
+				var  idtransaksi : String = filtersplit[0];
+				if(FlexGlobals.topLevelApplication.FormFilter == ''){
+					f_kondisiAwal();
+				}
+				else{
+					if(filtersplit.length > 1){
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampilHistory', 'M3_PaHistoryGetdataById', idtransaksi, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					}
+					else  {
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampil', 'M3_PaGetdataById', idtransaksi, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					}
+				}
+			}
+			
+			protected function f_kondisiAwal():void
+			{
+				o.txtfilterperubahannilai = 0;
+				o.txtfiltersetnilai = 0;
+				o.txtkurs = 0;
+				isUpdate = false;
+				
+				o.txtkurs = parentApplication.getSetting(0, 'accounting', 'Kurs');
+				mb.menuBarItems[0].enabled = true;
+				imgfirst.enabled = false;
+				imgprevious.enabled = false;
+				imgnext.enabled = false;
+				imglast.enabled = false;
+				FlexGlobals.topLevelApplication.F_KosongkanText([txtfilter, txtkategoribarang, txtkodebarang1, txtkodebarang2, txtnamabarang, lblbagianbagiansetharga]);
+				f_focusOnMe();
+				f_defaultGrid();
+				f_tampilkan(1);
+				
+				
+			}
+			
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey){
+							var  jenissimpan:int = 1;
+							if(isUpdate == false){
+								jenissimpan = 1
+							}else{
+								jenissimpan = 2
+							}
+							if(FlexGlobals.topLevelApplication.apaBisaAkses(12,13,jenissimpan)==true){
+								f_simpan();
+							}
+						}
+						break;
+					case Keyboard.F:
+						if(e.ctrlKey)f_tampilkan();
+						break;
+					case Keyboard.ESCAPE:
+						FlexGlobals.topLevelApplication.closeFormPopUp(1);
+						break;
+					case Keyboard.PAGE_DOWN:
+						f_tampilkan(int(txtpaging.text) + 1)
+						txtpaging.text = String(int(txtpaging.text) + 1)
+						break;
+					case Keyboard.PAGE_UP:
+						f_tampilkan(int(txtpaging.text) - 1);
+						txtpaging.text = String(int(txtpaging.text) - 1)
+						break;
+					case Keyboard.HOME:
+						f_tampilkan(1);
+						break;
+					case Keyboard.END:
+						f_tampilkan(int(- 1))
+						break;
+				}
+			}	
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{ 
+				var dgrid:Object;
+				
+				switch(column){
+					
+					case 'chk':
+						break;
+					
+				}
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				if(dg_tambah.selectedCell != null || dg_tambah.selectedCell != null && parentApplication.rowIndex < dg_tambah.dataProviderLength)obj = dg_tambah.dataProvider.getItemAt(parentApplication.rowIndex);
+				switch(target){
+					case 'txtkodebarang1':
+						paket = 'CdM1_Item';
+						wsfilter = 'baktif = 1 AND bkode ="'+txtkodebarang1.text.split('"').join('\\"')+'"';
+						csfilter = 'baktif = 1';
+						sort = 'bkode asc';
+						break;
+					case 'txtkodebarang2':
+						paket = 'CdM1_Item';
+						wsfilter = 'baktif = 1 AND bkode ="'+txtkodebarang2.text.split('"').join('\\"')+'"';
+						csfilter = 'baktif = 1';
+						sort = 'bkode asc';
+						break;
+					case 'txtkategoribarang':
+						paket = 'CdM1_Item_Category';
+						wsfilter = 'icaktif = 1 AND ickode ="'+txtkategoribarang.text+'"';
+						csfilter = 'icaktif=1';
+						sort = 'ickode asc';
+						break;
+					
+					case 'txtcatatan':
+						paket = 'CdM1_Transaction_Note';
+						csfilter = "tnaktif = 1 AND tnsumber = 'PA'";
+						sort = 'tnkode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				if (dg_tambah.dataProvider != null && parentApplication.rowIndex < dg_tambah.dataProviderLength)
+					var rowindex:int = dg_tambah.selectedCell.rowIndex;
+				var oblock : Object = dg_tambah.dataProvider[dg_tambah.selectedCell.rowIndex];
+				var ob : Object = dg_tambah.dataProvider[rowindex];
+				
+				var s:String = parentApplication.subject;
+				if(parentApplication.wsSuccess == true){
+					obj = parentApplication.wsArrUtama.getItemAt(0);
+					switch(s){	
+						case 'txtkodebarang1':
+							txtkodebarang1.text = obj.bkode;
+							txtkodebarang2.text = obj.bkode;
+							break;
+						case 'txtkodebarang2':
+							txtkodebarang2.text = obj.bkode;
+							break;
+						case 'txtkategoribarang':
+							txtkategoribarang.text = obj.ickode;
+							break;
+						case 'getdatabarang':
+							imgfirst.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgprevious.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgnext.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							imglast.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							txtpaging.text = FlexGlobals.topLevelApplication.wsCurPage;
+							dg_tambah.dataProvider.removeAll();
+							for(i = 0; i<FlexGlobals.topLevelApplication.wsArrUtama.length; i++){
+								with(FlexGlobals.topLevelApplication.wsArrUtama[i]){
+									dg_tambah.dataProvider.addItem({chk:1, pikategori:txtkategoripos.text, piidbarang:piidbarang, 
+										pistokminimal:pistokminimal, pistokmaksimal:pistokmaksimal, pistokreorder:pistokreorder, pihargajual1:pihargajual1, 
+										pihargajual2:pihargajual2, pihargajual3:pihargajual3, pihargajual4:pihargajual4, 
+										pihargajual5:pihargajual5, pidiskonjual1:pidiskonjual1, pidiskonjual2:pidiskonjual2, pidiskonjual3:pidiskonjual3, 
+										pidiskonjual4:pidiskonjual4, 
+										pidiskonjual5:pidiskonjual5, picustomtext1:"", picustomtext2:"", picustomtext3:"", picustomtext4:"", picustomtext5:"", 
+										picustomint1:0, 
+										picustomint2:0, picustomint3:0, picustomdbl1:0, picustomdbl2:0, picustomdbl3:0, 
+										picustomdate1:parentApplication.m.DateFirst, picustomdate2:parentApplication.m.DateFirst, 
+										picustomdate3:parentApplication.m.DateFirst, piaksi:1, kodebarang:bkode, namabarang:bnama, satuan:bsatuan,
+										pistokminimallama:pistokminimal, pistokmaksimallama:pistokmaksimal, pistokreorderlama:pistokreorder, pihargajual1lama:pihargajual1,
+										pihargajual2lama:pihargajual2, pihargajual3lama:pihargajual3, pihargajual4lama:pihargajual4, pihargajual5lama:pihargajual5,
+										pidiskon1juallama : pidiskonjual1, pidiskonjual2lama:pidiskonjual2, pidiskonjual3lama:pidiskonjual3, pidiskonjual4lama:pidiskonjual4,
+										pidiskonjual5lama:pidiskonjual5, pistatusubah :0, pistatusgetdata:1});
+								}
+							}
+							dg_tambah.setSelectedCell(0,1)
+							break;
+						
+						case 'tampilkan':
+							
+							var idg:int, b:Boolean
+							imgfirst.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgprevious.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							imgnext.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							imglast.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							txtpaging.text = FlexGlobals.topLevelApplication.wsCurPage;
+							for(i = dg_tambah.dataProviderLength - 1; i>=0; i--){
+								if(dg_tambah.dataProvider[i].chk == 0){
+									dg_tambah.dataProvider.removeItemAt(i);
+								}
+							}
+							obj = parentApplication.wsArrUtama;
+							for(i=0;i<obj.length;i++){
+								b = true;
+								for(idg = 0; idg<dg_tambah.dataProviderLength; idg++){
+									if(dg_tambah.dataProvider[idg].chk == 1){
+										if(obj.getItemAt(i).bid == dg_tambah.dataProvider[idg].piidbarang){
+											b = false;
+											break;
+										}
+									}
+									
+								}
+								if(b == true){
+									dg_tambah.dataProvider.addItem({
+										chk : 0,
+										pikategori: p.txtkategoripos.text,
+										piidbarang : obj.getItemAt(i).bid,
+										kodebarang : obj.getItemAt(i).bkode,
+										tipebarang : obj.getItemAt(i).btipe,
+										namabarang : obj.getItemAt(i).bnama,
+										satuan : obj.getItemAt(i).bsatuan,
+										pistokminimal: obj.getItemAt(i).bstokminimal, 
+										pistokmaksimal: obj.getItemAt(i).bstokmaksimal, 
+										pistokreorder: obj.getItemAt(i).breorder,
+										pistokminorder : obj.getItemAt(i).bminorder,
+										pihargajual1 : obj.getItemAt(i).bhargajual1,
+										pihargajual2 : obj.getItemAt(i).bhargajual2,
+										pihargajual3 : obj.getItemAt(i).bhargajual3,
+										pihargajual4 : obj.getItemAt(i).bhargajual4,
+										pihargajual5 : obj.getItemAt(i).bhargajual5,
+										pidiskonjual1 : obj.getItemAt(i).bdiskonjual1,
+										pidiskonjual2 : obj.getItemAt(i).bdiskonjual2,
+										pidiskonjual3 : obj.getItemAt(i).bdiskonjual3,
+										pidiskonjual4 : obj.getItemAt(i).bdiskonjual4,
+										pidiskonjual5 : obj.getItemAt(i).bdiskonjual5,
+										pihargajual1lama: obj.getItemAt(i).bhargajual1,
+										pihargajual2lama: obj.getItemAt(i).bhargajual2, 
+										pihargajual3lama: obj.getItemAt(i).bhargajual3, 
+										pihargajual4lama: obj.getItemAt(i).bhargajual4, 
+										pihargajual5lama: obj.getItemAt(i).bhargajual5,
+										pidiskon1juallama : obj.getItemAt(i).bdiskonjual1, 
+										pidiskonjual2lama: obj.getItemAt(i).bdiskonjual2, 
+										pidiskonjual3lama: obj.getItemAt(i).bdiskonjual3, 
+										pidiskonjual4lama: obj.getItemAt(i).bdiskonjual4,
+										pidiskonjual5lama: obj.getItemAt(i).bdiskonjual5, 
+										picustomtext1:"", 
+										picustomtext2:"",
+										picustomtext3:"", 
+										picustomtext4:"", 
+										picustomtext5:"", 
+										picustomint1:0, 
+										picustomint2:0, 
+										picustomint3:0, 
+										picustomdbl1:0, 
+										picustomdbl2:0, 
+										picustomdbl3:0, 
+										picustomdate1:parentApplication.m.DateFirst, 
+										picustomdate2:parentApplication.m.DateFirst, 
+										picustomdate3:parentApplication.m.DateFirst,
+										piaksi : 0,
+										pistatusubah : 0,
+										pistatusgetdata : 0});
+								}
+								
+								dg_tambah.setSelectedCell(0, 1);
+								dg_tambah.setSelectedCell(0, 0);
+							}
+							break;
+						
+						case 'simpan':
+							FlexGlobals.topLevelApplication.FormFilter = '';
+//							f_kondisiAwal();
+							f_defaultGrid();
+							p.dg1.setFocus();
+							p.imgfirst.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							p.imgprevious.enabled = FlexGlobals.topLevelApplication.wsIsPrev;
+							p.imgnext.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							p.imglast.enabled = FlexGlobals.topLevelApplication.wsIsNext;
+							p.txtpaging.text = FlexGlobals.topLevelApplication.wsCurPage;
+							p.dg1.dataProvider.removeAll()
+							for(i = 0; i<FlexGlobals.topLevelApplication.wsArrUtama.length; i++){
+								with(FlexGlobals.topLevelApplication.wsArrUtama[i]){
+									p.dg1.dataProvider.addItem({chk:1, pikategori: p.txtkategoripos.text, piidbarang:piidbarang, 
+										pistokminimal:pistokminimal, pistokmaksimal:pistokmaksimal, pistokreorder:pistokreorder, 
+										pistokminorder: pistokminorder, pihargajual1:pihargajual1, 
+										pihargajual2:pihargajual2, pihargajual3:pihargajual3, pihargajual4:pihargajual4, 
+										pihargajual5:pihargajual5, pidiskonjual1:pidiskonjual1, pidiskonjual2:pidiskonjual2, pidiskonjual3:pidiskonjual3, 
+										pidiskonjual4:pidiskonjual4, 
+										pidiskonjual5:pidiskonjual5, picustomtext1:"", picustomtext2:"", picustomtext3:"", picustomtext4:"", picustomtext5:"", 
+										picustomint1:0, 
+										picustomint2:0, picustomint3:0, picustomdbl1:0, picustomdbl2:0, picustomdbl3:0, 
+										picustomdate1:parentApplication.m.DateFirst, picustomdate2:parentApplication.m.DateFirst, 
+										picustomdate3:parentApplication.m.DateFirst, piaksi:1, kodebarang:bkode, namabarang:bnama, satuan:bsatuan,
+										pistokminimallama:pistokminimal, pistokmaksimallama:pistokmaksimal, pistokreorderlama:pistokreorder, pihargajual1lama:pihargajual1,
+										pihargajual2lama:pihargajual2, pihargajual3lama:pihargajual3, pihargajual4lama:pihargajual4, pihargajual5lama:pihargajual5,
+										pidiskon1juallama : pidiskonjual1, pidiskonjual2lama:pidiskonjual2, pidiskonjual3lama:pidiskonjual3, pidiskonjual4lama:pidiskonjual4,
+										pidiskonjual5lama:pidiskonjual5, pistatusubah :0, pistatusgetdata:1,
+										pistokminorderlama: pistokminorder});
+								}
+							}
+							FlexGlobals.topLevelApplication.closeFormPopUp(1);
+//							Alert.show("Data berhasil disimpan", "Informasi")
+							
+							Alert.show(FlexGlobals.topLevelApplication.l('Data berhasil disimpan, silahkan login ulang !'), FlexGlobals.topLevelApplication.l('Informasi'), 0, null, function(e:Object):void{		
+								if(e.detail == Alert.OK){
+									FlexGlobals.topLevelApplication.f_getReloginForm();
+								}
+							});
+							break;
+						case 'hapus':
+							FlexGlobals.topLevelApplication.FormFilter = '';
+							f_kondisiAwal();
+							f_defaultGrid();
+							Alert.show("Data berhasil dihapus", "Informasi")
+							break;
+						
+					}
+				}else{					
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'tampilkan':
+								txtpaging.text = "0";
+								for(var a:int = dg_tambah.dataProviderLength - 1; a>=0; a--){
+									if(dg_tambah.dataProvider[a].chk == 0){
+										dg_tambah.dataProvider.removeItemAt(a);
+									}
+								}
+								if(dg_tambah.dataProviderLength == 0){
+									FlexGlobals.topLevelApplication.F_defaultGridItem(dg_tambah);
+								}
+								break;
+							case 'getdatabarang':
+								dg_tambah.dataProvider.removeAll();
+								parentApplication.F_acAdd(dg_tambah);
+								dg_tambah.setSelectedCell(0, 1);
+								dg_tambah.dataProvider[0].pistatusgetdata = 0;
+								dg_tambah.dataProvider[0].pistatusubah = 0;
+								break;
+							case 'simpan':
+								Alert.show(parentApplication.wsErrmessage, parentApplication.l('Informasi'));
+								break;
+							case 'hapus':
+								Alert.show(parentApplication.wsErrmessage, parentApplication.l('Informasi'));
+								break;
+							case "txtkategoribarang":
+								txtkategoribarang.text = "";
+								break;
+							case "txtkodebarang1":
+								txtkodebarang1.text = "";
+								break;
+							case "txtkodebarang2":
+								txtkodebarang2.text = "";
+								break;
+						}
+				}
+				parentApplication.F_dgRefresh(dg_tambah);
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					
+					case 'tampilkan':
+						for(var a:int = dg_tambah.dataProviderLength - 1; a>=0; a--){
+							if(dg_tambah.dataProvider[a].chk == 0){
+								dg_tambah.dataProvider.removeItemAt(a);
+							}
+						}
+						if(dg_tambah.dataProviderLength == 0){
+							FlexGlobals.topLevelApplication.F_defaultGridItem(dg_tambah);
+						}
+						break;
+					case 'getdatabarang':
+						dg_tambah.dataProvider.removeAll();
+						parentApplication.F_acAdd(dg_tambah);
+						dg_tambah.setSelectedCell(0, 1);
+						dg_tambah.dataProvider[0].pistatusgetdata = 0;
+						dg_tambah.dataProvider[0].pistatusubah = 0;
+						break;
+					case "txtkategoribarang":
+						txtkategoribarang.text = "";
+						break;
+					case "txtkodebarang1":
+						txtkodebarang1.text = "";
+						break;
+					case "txtkodebarang2":
+						txtkodebarang2.text = "";
+						break;
+				}
+			}
+			
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String="", valsimpan:Boolean = false;
+				parentApplication.vpFocusEvent = true;
+				
+				if(mb.menuBarItems[0].enabled == true){
+					for(i = 0; i<dg_tambah.dataProviderLength; i++){
+						if(dg_tambah.dataProvider[i].kodebarang == ""){
+							Alert.show("Data harus dipilih terlebih dahulu", "Informasi");
+							validasi = false;
+						}else{
+							validasi = true;
+						}
+					}
+					if(validasi == true){
+						// Set Detail
+						for(i=0;i<dg_tambah.dataProviderLength;i++)
+							with(dg_tambah.dataProvider.getItemAt(i)){
+								if(chk == 1){
+									valsimpan = true;
+									a = [pikategori, piidbarang, pistokminimal, pistokmaksimal, pistokreorder, pihargajual1, pihargajual2, 
+										pihargajual3, pihargajual4, pihargajual5, pidiskonjual1, pidiskonjual2, pidiskonjual3, pidiskonjual4, 
+										pidiskonjual5, picustomtext1, picustomtext2, picustomtext3, picustomtext4, picustomtext5, picustomint1, 
+										picustomint2, picustomint3, picustomdbl1, picustomdbl2, picustomdbl3, 
+										FlexGlobals.topLevelApplication.F_tglFormatDB(picustomdate1), 
+										FlexGlobals.topLevelApplication.F_tglFormatDB(picustomdate2), 
+										FlexGlobals.topLevelApplication.F_tglFormatDB(picustomdate3), piaksi, pistokminorder, 0];
+									if(detail == "" )detail = parentApplication.F_splitArrayToString(a);
+									else detail += "▲"+parentApplication.F_splitArrayToString(a);
+								}
+								
+							}
+						FlexGlobals.topLevelApplication.F_wsSimpan('simpan', "M12_Pos_ItemSimpan", parentApplication.userid, isUpdate, detail, "", 1, 13, p.f_filterdata(), "bkode asc");
+					}
+				}
+				
+				function validasiForm():void
+				{
+					pesanAlert='';
+					validasi = true;
+					parentApplication.F_hapusBarisKosongGrid(dg_tambah);
+					
+					
+					if(pesanAlert != '')parentApplication.msgAlert('pesanAlert', '');
+				}
+			}
+			
+			public function f_hitungTotal():void
+			{
+			}
+			
+			public function f_defaultGrid():void
+			{
+				parentApplication.rowIndex = 0;
+				dg_tambah.dataProvider.removeAll();
+				parentApplication.F_acAdd(dg_tambah);
+				dg_tambah.setSelectedCell(0, 1);
+				dg_tambah.setSelectedCell(0, 0);
+				f_focusOnMe();
+			}
+			
+			
+			
+			public function f_tampilkan(halaman:int = 1):void
+			{
+				strFilter = "";
+				
+				if(txtkategoribarang.text.length > 0){
+					strFilter = FlexGlobals.topLevelApplication.TambahFilter(strFilter,'bkategori = "'+txtkategoribarang.text+'"');
+				}
+				if(txtkodebarang1.text != "" && txtkodebarang2.text != "")strFilter = FlexGlobals.topLevelApplication.TambahFilter(strFilter, 'bkode BETWEEN "'+txtkodebarang1.text+'" AND "'+txtkodebarang2.text+'"');
+				if(txtnamabarang.text != "")strFilter = FlexGlobals.topLevelApplication.TambahFilter(strFilter,'bnama like "%'+txtnamabarang.text.split('"').join('\\"')+'%"');
+//				for(i=0; i<dg_tambah.dataProviderLength; i++){
+//					if(dg_tambah.dataProvider[i].chk == 1){
+//						strFilter = FlexGlobals.topLevelApplication.TambahFilter(strFilter,'bid <>"'+dg_tambah.dataProvider.getItemAt(i).piidbarang.split('"').join('\\"')+'"'); 
+//					}
+//					
+//				}
+				FlexGlobals.topLevelApplication.F_wsSearch("tampilkan", "CdM12_ItemAddCategoryPOS",halaman,12,strFilter,"bkode asc", FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), p.txtkategoripos.text)
+				
+			}
+			
+			public function f_setPerubahan():void
+			{
+				
+			}
+			
+			public function f_setNilai():void
+			{
+				
+			}
+			
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/setting.png")] public var tbsetting:Class;
+			[Bindable] [Embed(source="assets/tb/link.png")]  public var tblink:Class;
+			[Bindable] [Embed(source="assets/tb/bukatransaksi.png")]  public var tbbuka:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			
+			[Bindable] [Embed(source="assets/nav/f.png")] public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")] public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")] public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")] public var navl:Class;
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42" text="0"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	
+	<s:Group left="10" top="40" height="77">
+		<s:Label id="tbagsetharga" left="0" top="6" text="Bagian Set Harga" visible="false"/>
+		<s:Label id="tkodebarang" left="0" top="26" text="Kode Barang"/>
+		<s:Label id="tfilter" left="0" top="28" text="Filter" visible="false"/>
+		<s:Label id="tnamabarang" left="0" top="47" text="Nama Barang"/>
+		<s:Label left="268" top="27" text="s/d"/>
+		<s:Label id="tkategoribarang" left="0" top="5" text="Kategori Barang"/>
+		<s:TextInput id="txtkategoribarang" left="95" top="0"/>
+		<s:TextInput id="txtkodebarang1" left="95" top="21"/>
+		<s:TextInput id="txtkodebarang2" left="288" top="21"/>
+		<s:ComboBox id="cmbfield" left="95" top="21" width="128" visible="false"/>
+		<s:ComboBox id="cmboperation" left="222" top="21" width="67" visible="false"/>
+		<s:TextInput id="txtfilter" left="288" top="21" visible="false"/>
+		<s:TextInput id="txtnamabarang" left="95" top="42" width="321"/>
+		<s:Label id="lblbagianbagiansetharga" left="244" top="3" visible="false"/>
+	</s:Group>
+	<s:Group left="10" right="10" top="125" bottom="10">
+		<s:DataGrid id="dg_tambah_lock" left="0" top="0" bottom="0" width="233" visible="false"/>
+		<s:DataGrid id="dg_tambah" left="0" right="0" top="0" bottom="0"/>
+	</s:Group>
+</s:Module>

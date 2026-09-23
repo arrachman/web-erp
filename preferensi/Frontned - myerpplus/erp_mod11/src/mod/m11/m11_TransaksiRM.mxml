@@ -1,0 +1,1284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan()">
+	
+	<fx:Script> 
+		<![CDATA[			
+			import flashx.textLayout.elements.BreakElement;
+			import flashx.textLayout.factory.TruncationOptions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.mxml.collection.Array;
+			
+			import spark.components.Image;
+			import spark.components.TitleWindow;
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			protected var img:Image, i:int, isUpdate:Boolean, vUang:String, vTgl:String, vNotransaksi:String, vDefNotransaksi:String, getNotransaksi:String;
+			[Bindable] public var u:ArrayCollection;
+			public var validasi:Boolean, pesanAlert:String, t:TitleWindow, tglDB:String  = FlexGlobals.topLevelApplication.DefaultTanggal;
+			public var o:Object = {}, n:Object = {}, obj:Object = {};
+			public var wsArrApotek:ArrayCollection;
+			public var wsArrKamar:ArrayCollection;
+			public var wsArrLab:ArrayCollection;
+			public var wsArrRK:ArrayCollection;
+			protected var arrMenuBar:ArrayCollection;
+			public var totalLU:Number=0, totalKM:Number=0, totalAK:Number=0, totalLB:Number=0, totalRK:Number=0, TotalSemua:Number=0, AwalanNoTran:String="";
+			
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				return new ArrayCollection([]);
+			}
+			
+			// mengeset ketika change pada grid =========================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case 'calculator':
+						break;
+				}
+			}
+			
+			// set fokus ketika pertama kali form diload ===================================
+			public function f_focusOnMe():void
+			{
+				txtKunjungan.setFocus();
+			}
+			
+			// set persiapan form ==========================================================
+			public function f_persiapan():void
+			{
+				chkauto.label = FlexGlobals.topLevelApplication.l(chkauto.label);
+				parentApplication.F_TranslateLabel([lblStatusLessPasien,lblCatatanDiagnosa,lblDiagnosa,lblAlasan,lblICD10,lblDokumen,lblStatusImunisasi,lblPerawatan,lblKategoriPasien,lblLayanan,lblKecelakaan,lblDokter,lblNoTransaksi,lblNoPasien,lblStatus,lblKunjungan,lblKasus,lblKeadaanKRS,lblICD,lblCaraKRS,lblTindakLanjut,lblTglTransaksi]);
+				parentApplication.F_RequiredLabel([lblLayanan, lblICD10, lblKeadaanKRS, lblTindakLanjut, lblPetugas, lblNoTransaksi,lblNoPasien,lblPerawatan,lblKunjungan,lblKategoriPasien]);
+				parentApplication.F_DateFieldStandard([dtTglTransaksi]);
+				parentApplication.F_ComboBoxStandard([cmbStatusLessPasien,cmbAlasan,cmbDokumen,cmbStatusImunisasi,cmbPerawatan, cmbStatus, cmbKasus,cmbTindakLanjut,cmbKeadaanKRS,cmbCaraKRS, cmbRujukan,cmbPersalinan,cmbJenisKelamin,cmbKeadaanBayi,cmbRujukanDetail]);
+				parentApplication.F_txtpencarian([txtDiagnosa,txtRujukan,txtPetugas,txtTindakanRM,txtKategoriPasien,txtLayanan,txtDokter,txtKecelakaan,txtNoPasien,txtKunjungan,txtICD,txtICD10]);
+				//FlexGlobals.topLevelApplication.F_TextInputNumberOnlyMode([txtHamilKe]);
+				FlexGlobals.topLevelApplication.F_TextInputNumberDesimalMode([txtPanjang,txtBerat]);
+				//FlexGlobals.topLevelApplication.F_txtPencarianKhusus([txtDiagnosa]);
+				parentApplication.F_SetNavigasiKeyboard([txtCatatanDiagnosa,txtNoTransaksi,txtTglLahir,txtBulanLahir,txtTahunLahir,txtUmur,txtHamilKe]);
+				parentApplication.F_AutoNoTransaksi(txtNoTransaksi, chkauto);
+				vTgl = parentApplication.getSetting(0, 'accounting', 'EditableDate');
+				vNotransaksi = parentApplication.getSetting(0, 'accounting', 'AutoNoTransaction');
+				vDefNotransaksi = parentApplication.getSetting(0, 'accounting', 'DefaultAutoNoTransaction');
+				
+				// fungsi menubar
+				arrMenuBar = new ArrayCollection([
+					{label:"Simpan", icon:"tbsave", enabled:"true"},
+					{label:"Buka Transaksi", icon:"tbbuka", enabled:"true"},
+					{label:"Reset", icon:"tbreset", enabled:"true"},
+					{label:"Catatan", icon:"tbnote", enabled:"true"},
+					{label:"Files", icon:"tbattachment", enabled:"true"},
+					{label:"Links", icon:"tblink", enabled:"true"},
+					/* {label:"Lihat Tagihan", icon:"tbbudget", enabled:"true"},
+					{label:"Bayar", icon:"tbbudget", enabled:"true"}, */
+					{label:"History", icon:"tbhistory", enabled:"true"},
+					{label:"Bantuan", icon:"tbhelp", enabled:"true"}]);
+				parentApplication.F_settingmb(mb, arrMenuBar);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbBuka);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbReset);
+				mb.menuBarItems[3].addEventListener(MouseEvent.CLICK, f_mbCatatan);
+				mb.menuBarItems[4].addEventListener(MouseEvent.CLICK, f_mbUpload);
+				mb.menuBarItems[5].addEventListener(MouseEvent.CLICK, f_mbLinks);
+				/* mb.menuBarItems[6].addEventListener(MouseEvent.CLICK, f_mbLihatTagihan);
+				mb.menuBarItems[7].addEventListener(MouseEvent.CLICK, f_mbbayar); */
+				mb.menuBarItems[6].addEventListener(MouseEvent.CLICK, f_mbHistory);
+				mb.menuBarItems[7].addEventListener(MouseEvent.CLICK, f_mbBantuan);
+				function f_mbSimpan():void
+				{
+					var  jenissimpan:int = 1;
+					if(isUpdate == false){
+						jenissimpan = 1
+					}else{
+						jenissimpan = 2
+					}
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(11,45,jenissimpan)==true){
+						f_simpan();
+					}
+				}
+				function f_mbBuka():void
+				{
+					FlexGlobals.topLevelApplication.f_bukaTransaksi('Rm');
+				}
+				function f_mbReset():void
+				{
+					FlexGlobals.topLevelApplication.FormFilter = '';
+					f_kondisiAwal();
+				}
+				function f_mbCatatan():void
+				{
+					if(mb.menuBarItems[3].enabled == true){
+						parentApplication.F_OpenNotes('Rm', u.getItemAt(0).rmid, txtNoTransaksi.text);
+					}
+				}
+				function f_mbUpload():void
+				{
+					if(mb.menuBarItems[4].enabled == true){
+						parentApplication.F_OpenUploadFile('RM', u.getItemAt(0).rmid, txtNoTransaksi.text);
+					}
+				}
+				function f_mbLinks():void
+				{
+					FlexGlobals.topLevelApplication.f_mbLinks(11, 'Rm'); 
+				}
+				/* function f_mbLihatTagihan():void
+				{
+					
+					if(mb.menuBarItems[6].enabled == true)FlexGlobals.topLevelApplication.openFormX("Rincian Tagihan",1,"mod/m11/m11_LihatTagihan.swf",326,630,'t4',txtNoKunjungan.text+"^|^"+parentApplication.F_tglFormatDB(dtTglKunjungan.text)+"^|^"+txtNoPasien.text+
+						"^|^"+txtNama.text+"^|^"+txtAlamat.text+"^|^"+totalLU+"^|^"+totalKM+"^|^"+totalAK+"^|^"+totalLB+"^|^"+totalRK+"^|^"+TotalSemua);
+				}
+				function f_mbbayar():void
+				{
+					if(mb.menuBarItems[7].enabled == true)FlexGlobals.topLevelApplication.openFormX("Pembayaran Tagihan",0,"mod/m11/m11_TransaksiPB.swf",400,600,'t2',txtNoKunjungan.text+"[]"+"Bayar");	
+				} */
+				function f_mbHistory():void
+				{
+				}
+				function f_mbBantuan():void
+				{
+				}
+				
+				this.addEventListener(KeyboardEvent.KEY_DOWN, f_KEY_DOWN);
+				function f_KEY_DOWN(e:KeyboardEvent):void
+				{		
+					switch(e.keyCode){
+						case Keyboard.S:if(e.ctrlKey){							
+							var  jenissimpan:int = 1;
+							if(isUpdate == false){
+								jenissimpan = 1
+							}else{
+								jenissimpan = 2
+							}
+							if(FlexGlobals.topLevelApplication.apaBisaAkses(11,45,jenissimpan)==true){
+								f_simpan();
+							}
+						}
+							break;
+					}
+				}
+				f_validasi();
+			}
+			
+			public function f_validasi():void
+			{
+				var filtersplit : Array = FlexGlobals.topLevelApplication.FormFilter.split("[]");
+				var idtransaksi : String = filtersplit[0];
+				if(FlexGlobals.topLevelApplication.FormFilter == ''){
+					f_kondisiAwal();
+				}else{
+					if(filtersplit.length > 1){
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampilHistory', 'M3_MrHistoryGetdataById', idtransaksi, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					}
+					else  {
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampil', 'M11_RmGetdataById', idtransaksi, 0, 0, '', '', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					} 
+				}
+			}
+			
+			protected function f_kondisiAwal():void
+			{
+				isUpdate = false;
+				o.txtPanjang = 0;
+				o.txtBerat = 0;
+				cmbPerawatan.dataProvider = new ArrayCollection([{l:'RI',v:'Rawat Inap'},{l:'RJ',v:'Rawat Jalan'}]);
+				cmbKasus.dataProvider = new ArrayCollection([{l:'Baru',v:1},{l:'Lama',v:2}]);
+				cmbStatus.dataProvider = new ArrayCollection([{l:'Draft', v:0}, {l:'Approved', v:2}, {l:'Inprogress', v:3}, {l:'Complete', v:4}]);
+				cmbCaraKRS.dataProvider = new ArrayCollection([{l:'Dipulangkan',v:1},{l:'Dirujuk',v:2},{l:'Pulang Paksa',v:3},{l:'Lain-lain',v:4}]);
+				cmbTindakLanjut.dataProvider = new ArrayCollection([{l:'Rujuk',v:1},{l:'Mati',v:2},{l:'Pulang APS',v:3},{l:'MRS',v:4},{l:'VK',v:5},{l:'OK',v:6},{l:'Sembuh',v:7}]);
+				cmbKeadaanKRS.dataProvider = new ArrayCollection([{l:'Sembuh',v:1},{l:'PAPS',v:2},{l:'Meninggal < 48 Jam',v:3},{l:'Meninggal >= 48 Jam',v:4}]);
+				cmbAlasan.dataProvider = new ArrayCollection([{l:'Merasa Sembuh',v:1},{l:'Rawat Jalan',v:2},{l:'Sudah Kritis',v:3},{l:'Permintaan Pasien',v:4},{l:'Permintaan Keluarga',v:5},{l:'Tidak Kerasan',v:6},{l:'Biaya',v:7},{l:'Lain-Lain',v:8}]);
+				cmbStatusImunisasi.dataProvider = new ArrayCollection([{l:'',v:''},{l:'0',v:'Belum pernah Imunisasi'},{l:'1',v:''},{l:'2',v:''},{l:'3',v:''},{l:'4',v:''},{l:'5',v:''},{l:'TK',v:'Tidak tahu'}]);
+				cmbRujukan.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Rujukan Dari Bawah',v:1},{l:'Dirujuk Ke Atas',v:2},{l:'Dikembalikan Ke RS Awal',v:3}]);
+				cmbPersalinan.dataProvider = new ArrayCollection([{l:'',v:0},{l:'SC',v:1},{l:'Normal',v:2}]);
+				cmbKeadaanBayi.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Hidup',v:1},{l:'Mati < 7 Hari',v:2},{l:'Mati >= 1 Bln',v:2}]);
+				cmbJenisKelamin.dataProvider = new ArrayCollection([{l:'',v:''},{l:'Laki-laki',v:'L'},{l:'Perempuan',v:'P'}]);
+				cmbDokumen.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Lengkap',v:1},{l:'Tidak Lengkap',v:2}]);
+				cmbStatusLessPasien.dataProvider = new ArrayCollection([{l:'',v:0},{l:'TPIP',v:1},{l:'IGD',v:2},{l:'VK',v:3},{l:'JAGA ATAS',v:4},{l:'JAGA VIP',v:5},{l:'JAGA CENTRAL',v:6},{l:'OK',v:7},{l:'GIZI',v:8},{l:'FARMASI',v:9},{l:'BPJS',v:10},{l:'ASURANSI',v:11}]);
+				FlexGlobals.topLevelApplication.F_SetNilaiText([txtPanjang,txtBerat],FlexGlobals.topLevelApplication.m.nfNominal.format(0));
+				parentApplication.F_SetNilaiText([dtTglTransaksi], parentApplication.DefaultTanggal);
+				parentApplication.F_KosongkanText([txtCatatanDiagnosa,txtRujukan, lblNamaRujukan, txtDiagnosa, lblNamaDiagnosa, txtPetugas, lblNamaPetugas, lblNamaICD10,txtICD10,txtKeterangan,lblNamaTRM,txtTindakanRM,txtTglLahir,txtBulanLahir,txtTahunLahir,lblNama,lblNamaPerawatan,lblNamaDokter,lblNamaKecelakaan,lblNamaKatPasien,lblNamaLayanan,lblNamaICD,txtKategoriPasien,txtLayanan,txtKecelakaan,txtDokter,txtNoPasien,txtKunjungan,txtICD]);
+				txtNoTransaksi.text = 'Auto';		
+				parentApplication.vpVarCurrent = txtKunjungan.text;
+				cmbStatus.enabled = true;
+				cmbStatus.selectedIndex = 1;
+				cmbPerawatan.selectedIndex = 0;
+				cmbRujukan.selectedIndex = 0;
+				lblNamaPerawatan.text = cmbPerawatan.selectedItem.v;
+				cmbStatusImunisasi.selectedIndex = 0;
+				lblNamaStatusImunisasi.text = cmbStatusImunisasi.selectedItem.v;
+				txtUmur.text = '0';
+				txtHamilKe.text = '0';
+				cmbPersalinan.selectedIndex = 0;
+				cmbKeadaanBayi.selectedIndex = 0;
+				cmbJenisKelamin.selectedIndex = 0;
+				cmbDokumen.selectedIndex = 0;
+				cmbRujukan.selectedIndex = 0;
+				cmbRujukanDetail.selectedIndex = 0;
+				cmbStatusLessPasien.selectedIndex = 0;
+				rbTahun.selected = true;
+				btnUpdate.visible = false;
+				/* lblTPIP.visible = false;
+				lblIGD.visible = false;
+				lblVK.visible = false;
+				lblRawat.visible = false;
+				lblFP.visible = false;
+				lblGizi.visible = false;
+				lblOK.visible = false;			
+				groupTPIP.visible = false;
+				groupIGD.visible = false;
+				groupVK.visible = false;
+				groupRawat.visible = false;
+				groupFP.visible = false;
+				groupGizi.visible = false;
+				groupOK.visible = false; */
+				chkDokumen.selected = false;
+				chkTPIP11.selected = false; chkVK10.selected = false;
+				chkTPIP12.selected = false; chkVK10b.selected = false;
+				chkTPIP13.selected = false; chkVK22bayi.selected = false;
+				chkTPIP4.selected = false; chkFP16oral.selected = false;
+				chkTPIP5.selected = false; chkGizi17.selected = false;
+				chkIGD21.selected = false; chkOK19.selected = false; chkOK18.selected = false;
+				chkIGD22.selected = false; chkOKLapanastesi.selected = false;
+				chkIGD18a.selected = false; chkRawat36.selected = false;
+				chkIGD31.selected = false; chkRawat37.selected = false;
+				chkIGD32.selected = false; chkRawat38.selected = false;
+				chkIGD33.selected = false; chkRawat9.selected = false;
+				chkIGD34.selected = false; chkRawat10.selected = false;
+				chkIGD35.selected = false; chkRawat14.selected = false;
+				chkIGD6.selected = false; chkRawat15.selected = false;
+				chkIGD7.selected = false; chkRawat16.selected = false;
+				chkRawat20.selected = false; chkRawat21a.selected = false; chkRawat18.selected = false;
+				chkRawat21b.selected = false; chkRawat22.selected = false;
+				mb.menuBarItems[0].enabled = true;
+				mb.menuBarItems[3].enabled = false;
+				mb.menuBarItems[4].enabled = false;
+				mb.menuBarItems[5].enabled = false;
+				mb.menuBarItems[6].enabled = false;
+				mb.menuBarItems[7].enabled = false;
+				/* mb.menuBarItems[8].visible = false;
+				mb.menuBarItems[9].visible = false; */
+				if (vTgl == '0'){
+					dtTglTransaksi.enabled = false;
+				}else{
+					dtTglTransaksi.enabled = true;
+				}
+				if (vNotransaksi == '1'){
+					chkauto.selected = true;
+					chkauto.enabled = false;
+				}else{
+					if (vDefNotransaksi == '0'){
+						chkauto.selected = false;
+					}else{
+						chkauto.selected = true;
+					}
+				}
+				f_chkAuto();
+				f_focusOnMe();
+				f_defaultGrid();
+				
+				u = new ArrayCollection([{
+					rmid:0, rmidkj:0, rmnorm:txtNoPasien.text, rmperawatan:cmbPerawatan.textInput.text, rmkategoripasien:txtKategoriPasien.text, rmlayanan:txtLayanan.text, rmdokter:txtDokter.text, 
+					rmkecelakaan:txtKecelakaan.text, rmtgl:dtTglTransaksi.text, rmnotransaksi:txtNoTransaksi.text, rmkasus:cmbKasus.textInput.text,
+					rmicd:txtICD.text, rmtindaklanjut:cmbTindakLanjut.textInput.text, rmkrs:cmbKeadaanKRS.textInput.text, rmcarakrs:cmbCaraKRS.textInput.text,
+					rmstatus:cmbStatus.selectedItem.v, rmstatussebelumnya:0, rmjmlrevisi:0, rmcetakanke:0, rminputuser:FlexGlobals.topLevelApplication.userid, 
+					rminputtgl:tglDB, rmmodifikasiuser:0, rmmodifikasitgl:tglDB, rmisclose:0, rmjmlrawat:0, rmsumber:'RM',rmawalankatpasien:'',rmstatusimunisasi:0, rmpetugas:0, rmalasan:cmbAlasan.textInput.text,
+					rmdiagnosa:txtDiagnosa.text, rmrujukan:0, rmrujukandetail:0
+				}]);
+				
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false, id:String = '', kondisi:String = '';
+				//if(dg1.selectedCell != null && parentApplication.rowIndex < dg1.dataProviderLength)obj = dg1.dataProvider.getItemAt(dg1.selectedCell.rowIndex);
+				switch(target){
+					case 'txtNoPasien':
+						paket = 'CdM1_Patient';
+						wsfilter = '(paktif = 1) AND pkode ="'+txtNoPasien.text.split('"').join('\\"')+'"';
+						csfilter = '(paktif = 1)'; 
+						csfield = 2;
+						sort = 'pkode desc';
+						kondisi = "tombol";
+						//Alert.show(kondisi)
+						break;
+					case 'txtRujukan':
+						paket = 'CdM1_Reference';
+						wsfilter = 'raktif = 1 AND rjenis = 1 AND rkode = "'+txtRujukan.text.split('"').join('\\"')+'"';
+						csfilter = 'raktif = 1 AND rjenis = 1';
+						csfield = 2;
+						sort = 'rkode asc';
+						break;
+					case 'txtPetugas':
+						paket = 'CdM1_Contact';
+						wsfilter = 'kaktif = 1 AND kkategori = "K" AND kkode = "'+txtPetugas.text.split('"').join('\\"')+'"';
+						csfilter = 'kaktif = 1 AND kkategori = "K"';
+						sort = 'kkode asc';
+						break;
+					case 'txtLayanan':
+						paket = 'CdM1_Layanan';
+						wsfilter = '(laktif = 1) AND lkode = "'+txtLayanan.text.split('"').join('\\"')+'"';
+						csfilter = '(laktif = 1)';
+						csfield = 2;
+						sort = 'lkode asc';
+						break;
+					case 'txtKecelakaan':
+						paket = 'CdM1_Accident';
+						wsfilter = '(aaktif = 1) AND akode = "'+txtKecelakaan.text.split('"').join('\\"')+'"';
+						csfilter = '(aaktif = 1)';
+						csfield = 2;
+						sort = 'akode asc';
+						break;
+					case 'txtICD':
+						paket = 'CdM1_Icd';
+						wsfilter = '(iaktif = 1) AND ikode = "'+txtICD.text.split('"').join('\\"')+'"';
+						csfilter = '(iaktif = 1)';
+						csfield = 2;
+						sort = 'ikode asc';
+						break;
+					case 'txtICD10':
+						paket = 'CdM1_Icd';
+						wsfilter = '(iaktif = 1) AND ikode = "'+txtICD10.text.split('"').join('\\"')+'"';
+						csfilter = '(iaktif = 1)';
+						csfield = 2;
+						sort = 'ikode asc';
+						break;
+					case 'txtTindakanRM':
+						paket = 'CdM1_Trm';
+						wsfilter = '(trmaktif = 1) AND trmkode = "'+txtTindakanRM.text.split('"').join('\\"')+'"';
+						csfilter = '(trmaktif = 1)';
+						csfield = 2;
+						sort = 'trmkode asc';
+						break;
+					case 'txtKategoriPasien':
+						paket = 'CdM1_Patient_Category';
+						wsfilter = '(pcaktif = 1) AND pckode ="'+txtKategoriPasien.text.split('"').join('\\"')+'"';
+						csfilter = '(pcaktif = 1)';
+						csfield = 2;
+						sort = 'pckode asc';
+						break;
+					case 'txtDokter':
+						paket = 'CdM1_Contact';
+						wsfilter = 'kaktif = 1 AND kkategori = "D" AND kkode = "'+txtDokter.text.split('"').join('\\"')+'"';
+						csfilter = 'kaktif = 1 AND kkategori = "D"';
+						sort = 'kkode asc';
+						break;
+					case 'txtKunjungan':
+						paket = 'CdM11_Kj';
+						wsfilter = '(kjstatus = 4 OR kjstatus = 3) AND kjnotransaksi ="'+txtKunjungan.text.split('"').join('\\"')+'"';
+						csfilter = '(kjstatus = 4 OR kjstatus = 3)';
+						csfield = 2;
+						sort = 'kjinputtgl desc';
+						
+						/* paket = 'CdM11_Kj';
+						wsfilter = '(kjstatus = 2 OR kjstatus = 3) AND kjnotransaksi ="'+txtkunjungan.text.split('"').join('\\"')+'"';
+						csfilter = '(kjstatus = 2 OR kjstatus = 3)';
+						csfield = 2;
+						sort = 'kjinputtgl desc'; */
+						break;
+					case 'txtDiagnosa':
+						if(cmbPerawatan.textInput.text != ""){
+							if(cmbPerawatan.selectedIndex == 0){
+								paket = 'CdM1_Diagnosis';
+								wsfilter = '(daktif = 1) AND dkategori = "RI" AND dkode ="'+txtDiagnosa.text.split('"').join('\\"')+'"';
+								csfilter = '(daktif = 1) AND dkategori = "RI"';
+								csfield = 2;
+								sort = 'dkode asc';
+							}
+							else{
+								paket = 'CdM1_Diagnosis';
+								wsfilter = '(daktif = 1) AND dkategori = "RJ" AND dkode ="'+txtDiagnosa.text.split('"').join('\\"')+'"';
+								csfilter = '(daktif = 1) AND dkategori = "RJ"';
+								csfield = 2;
+								sort = 'dkode asc';
+							}
+						}
+						else{
+							cmbPerawatan.setFocus();
+							Alert.show("Perawatan harus ditentukan terlebih dahulu");
+						}
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox, id, kondisi];
+			}
+			
+			public function f_wsHasil():void
+			{
+				//if (dg1.dataProvider != null && parentApplication.rowIndex < dg1.dataProviderLength)
+				//	var ob : Object = dg1.dataProvider[parentApplication.rowIndex];
+				var ob:Object;
+				var s:String = parentApplication.subject;
+				if(parentApplication.wsSuccess == true){
+					obj = parentApplication.wsArrUtama.getItemAt(0);
+					switch(s){	
+						case 'txtNoPasien':
+							txtNoPasien.text = obj.pkode; 
+							lblNama.text = obj.pnama;
+							txtKategoriPasien.text = obj.pkategoripasien;
+							lblNamaKatPasien.text = obj.pkategoripasiennama;
+							u.getItemAt(0).rmawalankatpasien = obj.pawalankatpasien;
+							u.getItemAt(0).rmnorm = obj.pkode;
+							break;
+						case 'txtLayanan':
+							txtLayanan.text = obj.lkode;
+							lblNamaLayanan.text = obj.lnama;
+							/* if((txtLayanan.text == "IMUNI") || (txtLayanan.text == "IM") || (txtLayanan.text == "IMU") || (txtLayanan.text == "IMUN") || (lblNamaLayanan.text == "IMUNISASI") || (lblNamaLayanan.text == "Imunisasi") || (lblNamaLayanan.text == "imunisasi")){
+								cmbStatusImunisasi.enabled = true;
+							}
+							else cmbStatusImunisasi.enabled = false; */
+							break;
+						case 'txtRujukan':
+							txtRujukan.text = obj.rkode;
+							lblNamaRujukan.text = obj.rnama;
+							u.getItemAt(0).rmrujukan = obj.rid;
+							u.getItemAt(0).rmrujukandetail = obj.rid;
+							break;
+						case 'txtPetugas':
+							txtPetugas.text = obj.kkode;
+							lblNamaPetugas.text = obj.knama;
+							u.getItemAt(0).rmpetugas = obj.kid;
+							break;
+						case 'txtKecelakaan':
+							txtKecelakaan.text = obj.akode;
+							lblNamaKecelakaan.text = obj.anama;
+							break;
+						case 'txtICD':
+							txtICD.text = obj.ikode;
+							lblNamaICD.text = obj.inama;
+							break;
+						case 'txtICD10':
+							txtICD10.text = obj.ikode;
+							lblNamaICD10.text = obj.inama;
+							break;
+						case 'txtTindakanRM':
+							txtTindakanRM.text = obj.trmkode;
+							lblNamaTRM.text = obj.trmnama;
+							break;
+						case 'txtDiagnosa':
+							txtDiagnosa.text = obj.dkode;
+							lblNamaDiagnosa.text = obj.dnama;
+							break;
+						case 'txtKategoriPasien':
+							txtKategoriPasien.text = obj.pckode;
+							lblNamaKatPasien.text = obj.pcnama;
+							u.getItemAt(0).rmkategoripasien = obj.pckode;
+							u.getItemAt(0).rmawalankatpasien = obj.pcawalannotran;
+							break;
+						case 'txtDokter':
+							txtDokter.text = obj.kkode;
+							lblNamaDokter.text = obj.knama;
+							u.getItemAt(0).rmdokter = obj.kkode;
+							break;
+						case 'txtKunjungan':
+							var tgllahirK:Array;
+							txtKunjungan.text = obj.kjnotransaksi;
+							txtNoPasien.text = obj.kjnopasien;
+							lblNama.text = obj.kjnama;
+							if(obj.kjperawatan == 'RI')cmbPerawatan.selectedIndex = 0;
+							else cmbPerawatan.selectedIndex = 1;
+							lblNamaPerawatan.text = cmbPerawatan.selectedItem.v;
+							txtKategoriPasien.text = obj.kjkategoripasien;
+							lblNamaKatPasien.text = obj.kjkategoripasiennama;
+							txtLayanan.text = obj.kjlayanan;
+							lblNamaLayanan.text = obj.kjlayanannama;
+							txtDiagnosa.text = obj.kjdiagnosa;
+							lblNamaDiagnosa.text = obj.kjdiagnosanama;
+							txtDokter.text = obj.kjdokter;
+							lblNamaDokter.text = obj.kjdokternama;
+							tgllahirK = obj.kjtgllahir.split("/");
+							txtTglLahir.text = tgllahirK[0];
+							txtBulanLahir.text = tgllahirK[1];
+							txtTahunLahir.text = tgllahirK[2];
+							txtUmur.text = obj.kjumur;
+							u.getItemAt(0).rmidkj = obj.kjid;
+							u.getItemAt(0).rmawalankatpasien = obj.kjawalannotran;
+							break;
+						case 'tampil':
+							var pecahTglLahir:Array;
+							f_focusOnMe();
+							btnUpdate.visible = true;
+							mb.menuBarItems[3].enabled = true;
+							mb.menuBarItems[4].enabled = true;
+							mb.menuBarItems[5].enabled = true;
+							mb.menuBarItems[6].visible = false;
+							mb.menuBarItems[7].visible = false;
+							if(parentApplication.wsArrUtama.length < 0)return;
+							with(parentApplication.wsArrUtama.getItemAt(0)){
+								isUpdate = true;
+								//Alert.show(kjtgl);
+								dtTglTransaksi.text = rmtgl;
+								cmbPerawatan.dataProvider = new ArrayCollection([{l:'RI',v:'Rawat Inap'},{l:'RJ',v:'Rawat Jalan'}]);
+								cmbKasus.dataProvider = new ArrayCollection([{l:'Baru',v:1},{l:'Lama',v:2}]);
+								cmbStatus.dataProvider = new ArrayCollection([{l:'Draft', v:0}, {l:'Approved', v:2}, {l:'Inprogress', v:3}, {l:'Complete', v:4}]);
+								cmbCaraKRS.dataProvider = new ArrayCollection([{l:'Dipulangkan',v:1},{l:'Dirujuk',v:2},{l:'Pulang Paksa',v:3},{l:'Lain-lain',v:4}]);
+								cmbTindakLanjut.dataProvider = new ArrayCollection([{l:'Rujuk',v:1},{l:'Mati',v:2},{l:'Pulang APS',v:3},{l:'MRS',v:4},{l:'VK',v:5},{l:'OK',v:6},{l:'Sembuh',v:7}]);
+								cmbKeadaanKRS.dataProvider = new ArrayCollection([{l:'Sembuh',v:1},{l:'PAPS',v:2},{l:'Meninggal < 48 Jam',v:3},{l:'Meninggal >= 48 Jam',v:4}]);
+								cmbAlasan.dataProvider = new ArrayCollection([{l:'Merasa Sembuh',v:1},{l:'Rawat Jalan',v:2},{l:'Sudah Kritis',v:3},{l:'Permintaan Pasien',v:4},{l:'Permintaan Keluarga',v:5},{l:'Tidak Kerasan',v:6},{l:'Biaya',v:7},{l:'Lain-Lain',v:8}]);
+								cmbStatusImunisasi.dataProvider = new ArrayCollection([{l:'',v:''},{l:'0',v:'Belum pernah Imunisasi'},{l:'1',v:''},{l:'2',v:''},{l:'3',v:''},{l:'4',v:''},{l:'5',v:''},{l:'TK',v:'Tidak tahu'}]);
+								cmbRujukan.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Rujukan Dari Bawah',v:1},{l:'Dirujuk Ke Atas',v:2},{l:'Dikembalikan Ke RS Awal',v:3}]);
+								cmbPersalinan.dataProvider = new ArrayCollection([{l:'',v:0},{l:'SC',v:1},{l:'Normal',v:2}]);
+								cmbKeadaanBayi.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Hidup',v:1},{l:'Mati < 7 Hari',v:2},{l:'Mati >= 1 Bln',v:2}]);
+								cmbJenisKelamin.dataProvider = new ArrayCollection([{l:'',v:''},{l:'Laki-laki',v:'L'},{l:'Perempuan',v:'P'}]);
+								cmbDokumen.dataProvider = new ArrayCollection([{l:'',v:0},{l:'Lengkap',v:1},{l:'Tidak Lengkap',v:2}]);
+								cmbStatusLessPasien.dataProvider = new ArrayCollection([{l:'',v:0},{l:'TPIP',v:1},{l:'IGD',v:2},{l:'VK',v:3},{l:'JAGA ATAS',v:4},{l:'JAGA VIP',v:5},{l:'JAGA CENTRAL',v:6},{l:'OK',v:7},{l:'GIZI',v:8},{l:'FARMASI',v:9},{l:'BPJS',v:10},{l:'ASURANSI',v:11}]);
+								txtKunjungan.text = rmnotransaksikj;
+								txtNoPasien.text = rmnorm;
+								lblNama.text = rmnama;
+								parentApplication.vpVarCurrent = txtKunjungan.text;
+								txtNoTransaksi.text = rmnotransaksi; 
+								if(rmperawatan == "RI")cmbPerawatan.selectedIndex = 0;
+								else cmbPerawatan.selectedIndex = 1;
+								lblNamaPerawatan.text = cmbPerawatan.selectedItem.v;
+								txtKategoriPasien.text = rmkategoripasien;
+								txtLayanan.text = rmlayanan;
+								pecahTglLahir = rmtgllahir.split("/");
+								txtTglLahir.text = pecahTglLahir[0];
+								txtBulanLahir.text = pecahTglLahir[1];
+								txtTahunLahir.text = pecahTglLahir[2];
+								txtUmur.text = rmumur;
+								if(rmketumur == 'tahun'){
+									rbTahun.selected = true;
+									rbHari.selected = false;
+								}
+								else if(rmketumur == 'hari'){
+									rbTahun.selected = false;
+									rbHari.selected = true;
+								}
+								txtDiagnosa.text = rmdiagnosa;
+								lblNamaDiagnosa.text = rmdiagnosanama;
+								cmbRujukan.selectedIndex = rmrujukan;
+								if(cmbRujukan.selectedIndex == 1){
+									cmbRujukanDetail.dataProvider.removeAll();
+									cmbRujukanDetail.dataProvider = new ArrayCollection([{l:'Diterima Dari Puskesmas',v:1},{l:'Diterima Dari Fasilitas Kes. Lain',v:2},{l:'Diterima Dari RS Lain',v:3},{l:'Dikembalikan Ke Puskesmas',v:4},{l:'Dikembalikan Ke Fasilitas Kes. Lain',v:5}]);
+									cmbRujukanDetail.selectedIndex = rmrujukandetail;
+								}
+								else if(cmbRujukan.selectedIndex == 2){
+									cmbRujukanDetail.dataProvider.removeAll();
+									cmbRujukanDetail.dataProvider = new ArrayCollection([{l:'Pasien Rujukan',v:1},{l:'Pasien Datang Sendiri',v:2},{l:'Diterima Kembali',v:3}]);
+									cmbRujukanDetail.selectedIndex = rmrujukandetail;
+								}
+								else{
+									cmbRujukanDetail.dataProvider.removeAll();
+								}
+								txtRujukan.text = rmrujukankode;
+								lblNamaRujukan.text = rmrujukannama;
+								txtCatatanDiagnosa.text = rmcatatandiagnosa;
+								txtTindakanRM.text = rmrehabmedik;
+								txtHamilKe.text = rmhamilke;
+								cmbPersalinan.selectedIndex = rmpersalinan;
+								cmbKeadaanBayi.selectedIndex = rmkeadaanbayi;
+								txtPetugas.text = rmpetugaskode;
+								lblNamaPetugas.text = rmpetugasnama;
+								if(rmjeniskelamin == 'L')cmbJenisKelamin.selectedIndex = 1;
+								else if(rmjeniskelamin == 'P')cmbJenisKelamin.selectedIndex = 2;
+								else cmbJenisKelamin.selectedIndex = 0;
+								o.txtPanjang = rmpanjang;
+								txtPanjang.text = FlexGlobals.topLevelApplication.m.nfNominal.format(o.txtPanjang);
+								o.txtBerat = rmberat;
+								txtBerat.text = FlexGlobals.topLevelApplication.m.nfNominal.format(o.txtBerat);
+								txtKeterangan.text = rmketerangan;
+								/* if(rmstatusimunisasi != 0){
+									cmbStatusImunisasi.selectedIndex = rmstatusimunisasi-1;
+									cmbStatusImunisasi.enabled = true;
+								}
+								else{
+									cmbStatusImunisasi.selectedIndex = rmstatusimunisasi;
+									cmbStatusImunisasi.enabled = false;
+								} */
+								cmbStatusImunisasi.selectedIndex = rmstatusimunisasi;
+								lblNamaStatusImunisasi.text = cmbStatusImunisasi.selectedItem.v;
+								txtDokter.text = rmdokter;
+								if(rmkecelakaan != "")txtKecelakaan.text = rmkecelakaan;
+								else txtKecelakaan.text = "";
+								txtICD.text = rmicd;
+								txtICD10.text = rmicd10;
+								cmbKasus.selectedIndex = rmkasus-1;
+								cmbTindakLanjut.selectedIndex = rmtindaklanjut-1;
+								cmbKeadaanKRS.selectedIndex = rmkrs-1;
+								cmbAlasan.selectedIndex = rmalasan-1;
+								cmbCaraKRS.selectedIndex = rmcarakrs-1;
+								switch(rmlokasidokumen){
+									case '':
+										cmbStatusLessPasien.selectedIndex = 0;
+										break;
+									case 'TPIP':
+										cmbStatusLessPasien.selectedIndex = 1;
+										break;
+									case 'IGD':
+										cmbStatusLessPasien.selectedIndex = 2;
+										break;
+									case 'VK':
+										cmbStatusLessPasien.selectedIndex = 3;
+										break;
+									case 'JAGA ATAS':
+										cmbStatusLessPasien.selectedIndex = 4;
+										break;
+									case 'JAGA VIP':
+										cmbStatusLessPasien.selectedIndex = 5;
+										break;
+									case 'JAGA CENTRAL':
+										cmbStatusLessPasien.selectedIndex = 6;
+										break;
+									case 'OK':
+										cmbStatusLessPasien.selectedIndex = 7;
+										break;
+									case 'GIZI':
+										cmbStatusLessPasien.selectedIndex = 8;
+										break;
+									case 'FARMASI':
+										cmbStatusLessPasien.selectedIndex = 9;
+										break;
+									case 'BPJS':
+										cmbStatusLessPasien.selectedIndex = 10;
+										break;
+									case 'ASURANSI':
+										cmbStatusLessPasien.selectedIndex = 11;
+										break;
+								}
+								lblNamaKatPasien.text = rmkategoripasiennama;
+								lblNamaDokter.text = rmdokternama;
+								lblNamaLayanan.text = rmlayanannama;
+								lblNamaICD.text = rmicdnama;
+								lblNamaICD10.text = rmicd10nama;
+								lblNamaKecelakaan.text = rmkecelakaannama;
+								chkDokumen.selected = Boolean(int(rmdokumen));
+								/* if(rmdokumen == 0 || rmdokumen == 1){
+									lblTPIP.visible = false;
+									lblIGD.visible = false;
+									lblVK.visible = false;
+									lblRawat.visible = false;
+									lblFP.visible = false;
+									lblGizi.visible = false;
+									lblOK.visible = false;			
+									groupTPIP.visible = false;
+									groupIGD.visible = false;
+									groupVK.visible = false;
+									groupRawat.visible = false;
+									groupFP.visible = false;
+									groupGizi.visible = false;
+									groupOK.visible = false;
+								}
+								else{
+									lblTPIP.visible = true;
+									lblIGD.visible = true;
+									lblVK.visible = true;
+									lblRawat.visible = true;
+									lblFP.visible = true;
+									lblGizi.visible = true;
+									lblOK.visible = true;			
+									groupTPIP.visible = true;
+									groupIGD.visible = true;
+									groupVK.visible = true;
+									groupRawat.visible = true;
+									groupFP.visible = true;
+									groupGizi.visible = true;
+									groupOK.visible = true;
+								} */
+								//Alert.show(Boolean(int(rmtpip11)));
+								chkTPIP11.selected = Boolean(int(rmtpip11)); chkVK10.selected = Boolean(int(rmvk10));
+								chkTPIP12.selected = Boolean(int(rmtpip12)); chkVK10b.selected = Boolean(int(rmvk10b));
+								chkTPIP13.selected = Boolean(int(rmtpip13)); chkVK22bayi.selected = Boolean(int(rmvk22bayi));
+								chkTPIP4.selected = Boolean(int(rmtpip4)); chkFP16oral.selected = Boolean(int(rmfp16oral));
+								chkTPIP5.selected = Boolean(int(rmtpip5)); chkGizi17.selected = Boolean(int(rmgizi17));
+								chkIGD21.selected = Boolean(int(rmigd21)); chkOK19.selected = Boolean(int(rmok19)); chkOK18.selected = Boolean(int(rmok18));
+								chkIGD22.selected = Boolean(int(rmigd22)); chkOKLapanastesi.selected = Boolean(int(rmoklapanastesi));
+								chkIGD18a.selected = Boolean(int(rmigd18a)); chkRawat36.selected = Boolean(int(rmrawat36));
+								chkIGD31.selected = Boolean(int(rmigd31)); chkRawat37.selected = Boolean(int(rmrawat37));
+								chkIGD32.selected = Boolean(int(rmigd32)); chkRawat38.selected = Boolean(int(rmrawat38));
+								chkIGD33.selected = Boolean(int(rmigd33)); chkRawat9.selected = Boolean(int(rmrawat9));
+								chkIGD34.selected = Boolean(int(rmigd34)); chkRawat10.selected = Boolean(int(rmrawat10));
+								chkIGD35.selected = Boolean(int(rmigd35)); chkRawat14.selected = Boolean(int(rmrawat14));
+								chkIGD6.selected = Boolean(int(rmigd6)); chkRawat15.selected = Boolean(int(rmrawat15));
+								chkIGD7.selected = Boolean(int(rmigd7)); chkRawat16.selected = Boolean(int(rmrawat16)); chkRawat18.selected = Boolean(int(rmrawat18));
+								chkRawat20.selected = Boolean(int(rmrawat20)); chkRawat21a.selected = Boolean(int(rmrawat21a));
+								chkRawat21b.selected = Boolean(int(rmrawat21b)); chkRawat22.selected = Boolean(int(rmrawat22)); 
+								
+								if(int(rmstatus) == 0){
+									cmbStatus.dataProvider = new ArrayCollection([{l:'Draft', v:0}, {l:'Approved', v:2}]);
+									cmbStatus.selectedIndex = 0;
+								}else{
+									cmbStatus.dataProvider = new  ArrayCollection([{l : 'Approved', v : 2},{l : 'Inprogress', v : 3}, {l : 'Complete', v : 4},{l : 'Close', v : 7}]);
+									if(rmstatus == 2){cmbStatus.selectedIndex = 0}
+									else  if(kjstatus == 3){cmbStatus.selectedIndex = 1}
+									else  if(kjstatus == 4){cmbStatus.selectedIndex = 2}
+									else  if(kjstatus == 7){cmbStatus.selectedIndex = 3}
+									cmbStatus.enabled = false;
+									mb.menuBarItems[0].enabled = false;
+								}
+								chkauto.selected = true;
+								getNotransaksi = parentApplication.wsArrUtama[0].rmnotransaksi;
+								f_chkAuto(); 
+								
+								u = new ArrayCollection([{
+									rmid:rmid, rmidkj:rmidkj, rmnorm:rmnorm, rmperawatan:rmperawatan, rmkategoripasien:rmkategoripasien, rmlayanan:rmlayanan, rmdokter:rmdokter, 
+									rmkecelakaan:rmkecelakaan, rmtgl:rmtgl, rmnotransaksi:rmnotransaksi, rmkasus:rmkasus,
+									rmicd:rmicd, rmtindaklanjut:rmtindaklanjut, rmkrs:rmkrs, rmcarakrs:rmcarakrs,
+									rmstatus:rmstatus, rmstatussebelumnya:rmstatussebelumnya, rmjmlrevisi:rmjmlrevisi, rmcetakanke:rmcetakanke, rminputuser:rminputuser, 
+									rminputtgl:rminputtgl, rmmodifikasiuser:rmmodifikasiuser, rmmodifikasitgl:rmmodifikasitgl, rmisclose:rmisclose, rmjmlrawat:rmjmlrawat, rmsumber:'RM',rmawalankatpasien:rmawalannotran,
+									rmstatusimunisasi:rmstatusimunisasi, rmpetugas:rmpetugas, rmalasan:rmalasan, rmdiagnosa:rmdiagnosa, rmrujukan:rmrujukan, rmrujukandetail:rmrujukandetail
+								}]);
+								dtTglTransaksi.text = rmtgl;
+							}
+							break;
+						case 'simpan':
+							FlexGlobals.topLevelApplication.FormFilter = '';
+							f_kondisiAwal();
+							f_defaultGrid();
+							FlexGlobals.topLevelApplication.F_alertCetak(11, 45, 'RM', parentApplication.wsIdtransaksi, parentApplication.wsErrmessage, n.dttanggal+" s.d "+n.dttanggal);
+							break;
+						case 'print':	
+							parentApplication.F_openReportDefault(11, 45, 'rmid = '+parentApplication.wsIdtransaksi);
+							break;
+					}
+				}else{					
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'tampil':
+							case 'tampilHistory':
+							case 'simpan':
+								Alert.show(parentApplication.wsErrmessage, parentApplication.l('Informasi'));
+								break;
+						}
+				}
+				//parentApplication.F_dgRefresh(dg1);
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtLayanan':parentApplication.F_KosongkanText([txtLayanan, lblNamaLayanan]);break;
+					case 'txtKecelakaan':parentApplication.F_KosongkanText([txtKecelakaan, lblNamaKecelakaan]);break;
+					case 'txtICD':parentApplication.F_KosongkanText([txtICD, lblNamaICD]);break;
+					case 'txtICD10':parentApplication.F_KosongkanText([txtICD10, lblNamaICD10]);break;
+					case 'txtTindakanRM':parentApplication.F_KosongkanText([txtTindakanRM, lblNamaTRM]);break;
+					case 'txtDokter':parentApplication.F_KosongkanText([txtDokter, lblNamaDokter]);break;
+					case 'txtKategoriPasien':parentApplication.F_KosongkanText([txtKategoriPasien, lblNamaKatPasien]);break;
+					case 'txtKunjungan':parentApplication.F_KosongkanText([txtKunjungan]);break;
+					case 'txtNoPasien':parentApplication.F_KosongkanText([txtNoPasien]);break;
+					case 'txtPetugas':parentApplication.F_KosongkanText([txtPetugas,lblNamaPetugas]);break;
+					case 'txtDiagnosa':parentApplication.F_KosongkanText([txtDiagnosa, lblNamaDiagnosa]);break;
+					case 'txtRujukan':parentApplication.F_KosongkanText([txtRujukan, lblNamaRujukan]);break;
+				}
+			}
+			
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String, tgl:String, tglKeluar:String, tglMeninggal:String,kasus:int=0, statusimun:int = 0, kecelakaan:String="",
+					tindaklanjut:int=0, keadaankrs:int=0,carakrs:int=0, ketumur:String="tahun", tgllahir:String="0000-00-00", rujukandetail:int=0, panjang:Number=0,berat:Number=0, alasan:int=0;
+				parentApplication.vpFocusEvent = true;
+				//n.dttanggal = dttanggal.text;
+				if(mb.menuBarItems[0].enabled == true){
+					validasiForm();
+					if(validasi == true){						
+						u.refresh();
+						// Set Utama
+						if(cmbKasus.textInput.text != "")kasus = cmbKasus.selectedItem.v;
+						if(cmbTindakLanjut.textInput.text != "")tindaklanjut = cmbTindakLanjut.selectedItem.v;
+						if(cmbCaraKRS.textInput.text != "")carakrs = cmbCaraKRS.selectedItem.v;
+						if(cmbKeadaanKRS.textInput.text != "")keadaankrs = cmbKeadaanKRS.selectedItem.v;
+						if(cmbAlasan.textInput.text != "")alasan = cmbAlasan.selectedItem.v;
+						if(txtTahunLahir.text != '' && txtBulanLahir.text != '' && txtTglLahir.text != ''){
+							if(txtTglLahir.text.length == 1 && txtBulanLahir.text.length > 1)tgllahir = txtTahunLahir.text+"-"+txtBulanLahir.text+"-0"+txtTglLahir.text;
+							else if(txtTglLahir.text.length > 1 && txtBulanLahir.text.length == 1)tgllahir = txtTahunLahir.text+"-0"+txtBulanLahir.text+"-"+txtTglLahir.text;
+							else if(txtTglLahir.text.length == 1 && txtBulanLahir.text.length == 1)tgllahir = txtTahunLahir.text+"-0"+txtBulanLahir.text+"-0"+txtTglLahir.text;
+							else tgllahir = txtTahunLahir.text+"-"+txtBulanLahir.text+"-"+txtTglLahir.text;
+						}
+						if(rbHari.selected == true)ketumur = 'hari';
+						else if(rbTahun.selected == true)ketumur = 'tahun';
+						if(cmbRujukan.selectedIndex != 0 && cmbRujukan.selectedIndex != 3)rujukandetail = cmbRujukanDetail.selectedIndex+1;
+						if(txtKecelakaan.text != "")kecelakaan = txtKecelakaan.text;
+						/* if(txtPanjang.text != '0' || txtPanjang.text != '0,00')panjang = Number(txtPanjang.text);
+						if(txtBerat.text != '0' || txtBerat.text != '0,00')berat = Number(txtBerat.text); */
+						
+						with(u.getItemAt(0))
+							a = [rmid, rmidkj, txtNoPasien.text, cmbPerawatan.textInput.text, txtKategoriPasien.text, txtLayanan.text, txtDokter.text, 
+								kecelakaan, parentApplication.F_tglFormatDB(dtTglTransaksi.text), txtNoTransaksi.text, kasus,
+								txtICD.text, tindaklanjut, keadaankrs, carakrs,
+								cmbStatus.selectedItem.v, rmstatussebelumnya, rmjmlrevisi, rmcetakanke, rminputuser, 
+								parentApplication.F_tglFormatDB(rminputtgl), rmmodifikasiuser, parentApplication.F_tglFormatDB(rmmodifikasitgl), rmisclose, rmjmlrawat, rmsumber,rmawalankatpasien,
+								cmbStatusImunisasi.selectedIndex,tgllahir,Number(txtUmur.text),ketumur,/* cmbRujukan.selectedIndex,rujukandetail */rmrujukan,rmrujukandetail,txtTindakanRM.text,
+								Number(txtHamilKe.text),cmbPersalinan.selectedIndex,cmbKeadaanBayi.selectedIndex,cmbJenisKelamin.selectedItem.v,o.txtPanjang,
+								o.txtBerat,txtKeterangan.text,txtICD10.text,int(chkDokumen.selected), int(chkTPIP11.selected), int(chkTPIP12.selected), int(chkTPIP13.selected), int(chkTPIP4.selected)
+								, int(chkTPIP5.selected), int(chkIGD21.selected), int(chkIGD22.selected), int(chkIGD18a.selected), int(chkIGD31.selected), int(chkIGD32.selected), int(chkIGD33.selected)
+								, int(chkIGD34.selected), int(chkIGD35.selected), int(chkIGD6.selected), int(chkIGD7.selected), int(chkVK10.selected), int(chkVK10b.selected), int(chkVK22bayi.selected)
+								, int(chkRawat36.selected), int(chkRawat37.selected), int(chkRawat38.selected), int(chkRawat9.selected), int(chkRawat10.selected), int(chkRawat14.selected), int(chkRawat15.selected)
+								, int(chkRawat16.selected), int(chkRawat20.selected), int(chkRawat21a.selected), int(chkRawat21b.selected), int(chkRawat22.selected), int(chkFP16oral.selected), int(chkGizi17.selected)
+								, int(chkOKLapanastesi.selected), int(chkOK19.selected), rmpetugas, alasan, int(chkRawat18.selected), int(chkOK18.selected), txtDiagnosa.text, txtCatatanDiagnosa.text, cmbStatusLessPasien.textInput.text, lblNamaICD10.text
+							];						
+						
+						utama = parentApplication.F_splitArrayToString(a);
+						
+						FlexGlobals.topLevelApplication.F_wsSimpan('simpan', "M11_RmSimpan", parentApplication.userid, isUpdate, utama);	// kirim ketika simpan ke WS
+					}
+				}
+				
+				function validasiForm():void
+				{
+					pesanAlert='';
+					validasi = true;
+					//parentApplication.F_hapusBarisKosongGrid(dg1);
+					if(txtNoPasien.text.length == 0)parentApplication.msgAlert(txtNoPasien,'No Pasien');
+					if(cmbPerawatan.textInput.text.length == 0)parentApplication.msgAlert(cmbPerawatan,'Perawatan');
+					if(txtKategoriPasien.text.length == 0)parentApplication.msgAlert(txtKategoriPasien,'Kategori Pasien');
+					if(txtLayanan.text.length == 0)parentApplication.msgAlert(txtNoPasien,'Layanan');
+					if(txtICD10.text.length == 0)parentApplication.msgAlert(cmbPerawatan,'ICD 10');
+					if(cmbTindakLanjut.textInput.text.length == 0)parentApplication.msgAlert(txtKategoriPasien,'Tindak Lanjut');
+					if(cmbKeadaanKRS.textInput.text.length == 0)parentApplication.msgAlert(cmbPerawatan,'Cara KRS');
+					/* if(cmbAlasan.textInput.text.length == 0)parentApplication.msgAlert(txtKategoriPasien,'Alasan Pulang Paksa'); */
+					if(dtTglTransaksi.text.length == 0)parentApplication.msgAlert(dtTglTransaksi,'Tanggal Transaksi');
+					if(txtNoTransaksi.text.length == 0)parentApplication.msgAlert(txtNoTransaksi,'No Transaksi');
+					if(cmbStatus.selectedIndex < 0 || cmbStatus.textInput.text.length == 0)parentApplication.msgAlert(cmbStatus,'Status');
+					if(txtPetugas.text.length == 0)parentApplication.msgAlert(txtPetugas,'Petugas');
+					if(pesanAlert != '')parentApplication.msgAlert('pesanAlert', '');
+				}
+			}
+			
+			public function f_hitungTotal():void
+			{
+			}
+			
+			public function f_defaultGrid():void
+			{
+				parentApplication.rowIndex = 0;
+				f_focusOnMe();
+			}
+			
+			protected function f_chkAuto():void
+			{
+				if(FlexGlobals.topLevelApplication.FormFilter != ''){
+					if(chkauto.selected == true){
+						txtNoTransaksi.enabled = false;
+						txtNoTransaksi.text = getNotransaksi; 
+					}else{
+						txtNoTransaksi.enabled = true;
+						txtNoTransaksi.text = getNotransaksi;
+						txtNoTransaksi.setFocus(); 
+					}
+				}else{
+					if(chkauto.selected == true){
+						txtNoTransaksi.enabled = false;
+						txtNoTransaksi.text = 'Auto'; 
+					}else{
+						txtNoTransaksi.enabled = true;
+						txtNoTransaksi.text = '';
+						txtNoTransaksi.setFocus(); 
+					}
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/link.png")]  public var tblink:Class;
+			[Bindable] [Embed(source="assets/tb/bukatransaksi.png")]  public var tbbuka:Class;
+			
+			protected function cmbPerawatan_changeHandler(event:IndexChangeEvent):void
+			{
+				lblNamaPerawatan.text = cmbPerawatan.selectedItem.v;
+				txtDiagnosa.text = '';
+				lblNamaDiagnosa.text = '';
+			}
+			
+			protected function cmbStatusImunisasi_changeHandler(event:IndexChangeEvent):void
+			{
+				lblNamaStatusImunisasi.text = cmbStatusImunisasi.selectedItem.v;
+			}
+			
+			
+			protected function cmbRujukan_changeHandler(event:IndexChangeEvent):void
+			{
+				if(cmbRujukan.selectedIndex == 1){
+					cmbRujukanDetail.dataProvider.removeAll();
+					cmbRujukanDetail.dataProvider = new ArrayCollection([{l:'Diterima Dari Puskesmas',v:1},{l:'Diterima Dari Fasilitas Kes. Lain',v:2},{l:'Diterima Dari RS Lain',v:3},{l:'Dikembalikan Ke Puskesmas',v:4},{l:'Dikembalikan Ke Fasilitas Kes. Lain',v:5}]);
+					cmbRujukanDetail.selectedIndex = 0;
+				}
+				else if(cmbRujukan.selectedIndex == 2){
+					cmbRujukanDetail.dataProvider.removeAll();
+					cmbRujukanDetail.dataProvider = new ArrayCollection([{l:'Pasien Rujukan',v:1},{l:'Pasien Datang Sendiri',v:2},{l:'Diterima Kembali',v:3}]);
+					cmbRujukanDetail.selectedIndex = 0;
+				}
+				else{
+					cmbRujukanDetail.dataProvider.removeAll();
+				}
+			}
+			
+			protected function cmbDokumen_changeHandler(event:IndexChangeEvent):void
+			{
+				 if(cmbDokumen.selectedIndex == 0){
+					chkTPIP11.selected = false; chkVK10.selected = false;
+					chkTPIP12.selected = false; chkVK10b.selected = false;
+					chkTPIP13.selected = false; chkVK22bayi.selected = false;
+					chkTPIP4.selected = false; chkFP16oral.selected = false;
+					chkTPIP5.selected = false; chkGizi17.selected = false;
+					chkIGD21.selected = false; chkOK19.selected = false; chkOK18.selected = false;
+					chkIGD22.selected = false; chkOKLapanastesi.selected = false;
+					chkIGD18a.selected = false; chkRawat36.selected = false;
+					chkIGD31.selected = false; chkRawat37.selected = false;
+					chkIGD32.selected = false; chkRawat38.selected = false;
+					chkIGD33.selected = false; chkRawat9.selected = false;
+					chkIGD34.selected = false; chkRawat10.selected = false;
+					chkIGD35.selected = false; chkRawat14.selected = false;
+					chkIGD6.selected = false; chkRawat15.selected = false;
+					chkIGD7.selected = false; chkRawat16.selected = false; chkRawat18.selected = false;
+					chkRawat20.selected = false; chkRawat21a.selected = false;
+					chkRawat21b.selected = false; chkRawat22.selected = false;
+					lblTPIP.visible = false;
+					lblIGD.visible = false;
+					lblVK.visible = false;
+					lblRawat.visible = false;
+					lblFP.visible = false;
+					lblGizi.visible = false;
+					lblOK.visible = false;			
+					groupTPIP.visible = false;
+					groupIGD.visible = false;
+					groupVK.visible = false;
+					groupRawat.visible = false;
+					groupFP.visible = false;
+					groupGizi.visible = false;
+					groupOK.visible = false;
+					BoxGroup.visible = false;
+				}
+				else if(cmbDokumen.selectedIndex == 1){
+					chkTPIP11.selected = true; chkVK10.selected = true;
+					chkTPIP12.selected = true; chkVK10b.selected = true;
+					chkTPIP13.selected = true; chkVK22bayi.selected = true;
+					chkTPIP4.selected = true; chkFP16oral.selected = true;
+					chkTPIP5.selected = true; chkGizi17.selected = true;
+					chkIGD21.selected = true; chkOK19.selected = true; chkOK18.selected = true;
+					chkIGD22.selected = true; chkOKLapanastesi.selected = true;
+					chkIGD18a.selected = true; chkRawat36.selected = true;
+					chkIGD31.selected = true; chkRawat37.selected = true;
+					chkIGD32.selected = true; chkRawat38.selected = true;
+					chkIGD33.selected = true; chkRawat9.selected = true;
+					chkIGD34.selected = true; chkRawat10.selected = true;
+					chkIGD35.selected = true; chkRawat14.selected = true;
+					chkIGD6.selected = true; chkRawat15.selected = true;
+					chkIGD7.selected = true; chkRawat16.selected = true; chkRawat18.selected = true;
+					chkRawat20.selected = true; chkRawat21a.selected = true;
+					chkRawat21b.selected = true; chkRawat22.selected = true;
+					lblTPIP.visible = false;
+					lblIGD.visible = false;
+					lblVK.visible = false;
+					lblRawat.visible = false;
+					lblFP.visible = false;
+					lblGizi.visible = false;
+					lblOK.visible = false;			
+					groupTPIP.visible = false;
+					groupIGD.visible = false;
+					groupVK.visible = false;
+					groupRawat.visible = false;
+					groupFP.visible = false;
+					groupGizi.visible = false;
+					groupOK.visible = false;
+					BoxGroup.visible = false;
+				}
+				else{
+					chkTPIP11.selected = false; chkVK10.selected = false;
+					chkTPIP12.selected = false; chkVK10b.selected = false;
+					chkTPIP13.selected = false; chkVK22bayi.selected = false;
+					chkTPIP4.selected = false; chkFP16oral.selected = false;
+					chkTPIP5.selected = false; chkGizi17.selected = false;
+					chkIGD21.selected = false; chkOK19.selected = false; chkOK18.selected = false;
+					chkIGD22.selected = false; chkOKLapanastesi.selected = false;
+					chkIGD18a.selected = false; chkRawat36.selected = false;
+					chkIGD31.selected = false; chkRawat37.selected = false;
+					chkIGD32.selected = false; chkRawat38.selected = false;
+					chkIGD33.selected = false; chkRawat9.selected = false;
+					chkIGD34.selected = false; chkRawat10.selected = false;
+					chkIGD35.selected = false; chkRawat14.selected = false;
+					chkIGD6.selected = false; chkRawat15.selected = false;
+					chkIGD7.selected = false; chkRawat16.selected = false; chkRawat18.selected = false;
+					chkRawat20.selected = false; chkRawat21a.selected = false;
+					chkRawat21b.selected = false; chkRawat22.selected = false;
+					lblTPIP.visible = true;
+					lblIGD.visible = true;
+					lblVK.visible = true;
+					lblRawat.visible = true;
+					lblFP.visible = true;
+					lblGizi.visible = true;
+					lblOK.visible = true;			
+					groupTPIP.visible = true;
+					groupIGD.visible = true;
+					groupVK.visible = true;
+					groupRawat.visible = true;
+					groupFP.visible = true;
+					groupGizi.visible = true;
+					groupOK.visible = true;
+					BoxGroup.visible = true;
+				} 
+			}
+			
+			protected function chkDokumen_changeHandler(event:Event):void
+			{
+				if(chkDokumen.selected == true){
+					chkTPIP11.selected = true; chkVK10.selected = true;
+					chkTPIP12.selected = true; chkVK10b.selected = true;
+					chkTPIP13.selected = true; chkVK22bayi.selected = true;
+					chkTPIP4.selected = true; chkFP16oral.selected = true;
+					chkTPIP5.selected = true; chkGizi17.selected = true;
+					chkIGD21.selected = true; chkOK19.selected = true; chkOK18.selected = true;
+					chkIGD22.selected = true; chkOKLapanastesi.selected = true;
+					chkIGD18a.selected = true; chkRawat36.selected = true;
+					chkIGD31.selected = true; chkRawat37.selected = true;
+					chkIGD32.selected = true; chkRawat38.selected = true;
+					chkIGD33.selected = true; chkRawat9.selected = true;
+					chkIGD34.selected = true; chkRawat10.selected = true;
+					chkIGD35.selected = true; chkRawat14.selected = true;
+					chkIGD6.selected = true; chkRawat15.selected = true;
+					chkIGD7.selected = true; chkRawat16.selected = true; chkRawat18.selected = true;
+					chkRawat20.selected = true; chkRawat21a.selected = true;
+					chkRawat21b.selected = true; chkRawat22.selected = true;
+				}
+				else{
+					chkTPIP11.selected = false; chkVK10.selected = false;
+					chkTPIP12.selected = false; chkVK10b.selected = false;
+					chkTPIP13.selected = false; chkVK22bayi.selected = false;
+					chkTPIP4.selected = false; chkFP16oral.selected = false;
+					chkTPIP5.selected = false; chkGizi17.selected = false;
+					chkIGD21.selected = false; chkOK19.selected = false; chkOK18.selected = false;
+					chkIGD22.selected = false; chkOKLapanastesi.selected = false;
+					chkIGD18a.selected = false; chkRawat36.selected = false;
+					chkIGD31.selected = false; chkRawat37.selected = false;
+					chkIGD32.selected = false; chkRawat38.selected = false;
+					chkIGD33.selected = false; chkRawat9.selected = false;
+					chkIGD34.selected = false; chkRawat10.selected = false;
+					chkIGD35.selected = false; chkRawat14.selected = false;
+					chkIGD6.selected = false; chkRawat15.selected = false;
+					chkIGD7.selected = false; chkRawat16.selected = false; chkRawat18.selected = false;
+					chkRawat20.selected = false; chkRawat21a.selected = false;
+					chkRawat21b.selected = false; chkRawat22.selected = false;
+				}
+			}
+			
+			protected function btnUpdate_clickHandler(event:MouseEvent):void
+			{
+				var a:Array, utama:String, detail:String, tgl:String, tglKeluar:String, tglMeninggal:String,kasus:int=0, statusimun:int = 0, kecelakaan:String="",
+					tindaklanjut:int=0, keadaankrs:int=0,carakrs:int=0, ketumur:String="tahun", tgllahir:String="0000-00-00", rujukandetail:int=0, panjang:Number=0,berat:Number=0, alasan:int=0;
+				parentApplication.vpFocusEvent = true;
+				//n.dttanggal = dttanggal.text;		
+				u.refresh();
+				// Set Utama
+				if(cmbKasus.textInput.text != "")kasus = cmbKasus.selectedItem.v;
+				if(cmbTindakLanjut.textInput.text != "")tindaklanjut = cmbTindakLanjut.selectedItem.v;
+				if(cmbCaraKRS.textInput.text != "")carakrs = cmbCaraKRS.selectedItem.v;
+				if(cmbKeadaanKRS.textInput.text != "")keadaankrs = cmbKeadaanKRS.selectedItem.v;
+				if(cmbAlasan.textInput.text != "")alasan = cmbAlasan.selectedItem.v;
+				if(txtTahunLahir.text != '' && txtBulanLahir.text != '' && txtTglLahir.text != ''){
+					if(txtTglLahir.text.length == 1 && txtBulanLahir.text.length > 1)tgllahir = txtTahunLahir.text+"-"+txtBulanLahir.text+"-0"+txtTglLahir.text;
+					else if(txtTglLahir.text.length > 1 && txtBulanLahir.text.length == 1)tgllahir = txtTahunLahir.text+"-0"+txtBulanLahir.text+"-"+txtTglLahir.text;
+					else if(txtTglLahir.text.length == 1 && txtBulanLahir.text.length == 1)tgllahir = txtTahunLahir.text+"-0"+txtBulanLahir.text+"-0"+txtTglLahir.text;
+					else tgllahir = txtTahunLahir.text+"-"+txtBulanLahir.text+"-"+txtTglLahir.text;
+				}
+				if(rbHari.selected == true)ketumur = 'hari';
+				else if(rbTahun.selected == true)ketumur = 'tahun';
+				if(cmbRujukan.selectedIndex != 0 && cmbRujukan.selectedIndex != 3)rujukandetail = cmbRujukanDetail.selectedIndex+1;
+				if(txtKecelakaan.text != "")kecelakaan = txtKecelakaan.text;
+				/* if(txtPanjang.text != '0' || txtPanjang.text != '0,00')panjang = Number(txtPanjang.text);
+				if(txtBerat.text != '0' || txtBerat.text != '0,00')berat = Number(txtBerat.text); */
+				
+				with(u.getItemAt(0))
+					a = [rmid, rmidkj, txtNoPasien.text, cmbPerawatan.textInput.text, txtKategoriPasien.text, txtLayanan.text, txtDokter.text, 
+						kecelakaan, parentApplication.F_tglFormatDB(dtTglTransaksi.text), txtNoTransaksi.text, kasus,
+						txtICD.text, tindaklanjut, keadaankrs, carakrs,
+						cmbStatus.selectedItem.v, rmstatussebelumnya, rmjmlrevisi, rmcetakanke, rminputuser, 
+						parentApplication.F_tglFormatDB(rminputtgl), rmmodifikasiuser, parentApplication.F_tglFormatDB(rmmodifikasitgl), rmisclose, rmjmlrawat, rmsumber,rmawalankatpasien,
+						cmbStatusImunisasi.selectedIndex,tgllahir,Number(txtUmur.text),ketumur,/* cmbRujukan.selectedIndex,rujukandetail */rmrujukan,rmrujukandetail,txtTindakanRM.text,
+						Number(txtHamilKe.text),cmbPersalinan.selectedIndex,cmbKeadaanBayi.selectedIndex,cmbJenisKelamin.selectedItem.v,o.txtPanjang,
+						o.txtBerat,txtKeterangan.text,txtICD10.text,int(chkDokumen.selected), int(chkTPIP11.selected), int(chkTPIP12.selected), int(chkTPIP13.selected), int(chkTPIP4.selected)
+						, int(chkTPIP5.selected), int(chkIGD21.selected), int(chkIGD22.selected), int(chkIGD18a.selected), int(chkIGD31.selected), int(chkIGD32.selected), int(chkIGD33.selected)
+						, int(chkIGD34.selected), int(chkIGD35.selected), int(chkIGD6.selected), int(chkIGD7.selected), int(chkVK10.selected), int(chkVK10b.selected), int(chkVK22bayi.selected)
+						, int(chkRawat36.selected), int(chkRawat37.selected), int(chkRawat38.selected), int(chkRawat9.selected), int(chkRawat10.selected), int(chkRawat14.selected), int(chkRawat15.selected)
+						, int(chkRawat16.selected), int(chkRawat20.selected), int(chkRawat21a.selected), int(chkRawat21b.selected), int(chkRawat22.selected), int(chkFP16oral.selected), int(chkGizi17.selected)
+						, int(chkOKLapanastesi.selected), int(chkOK19.selected), rmpetugas, alasan, int(chkRawat18.selected), int(chkOK18.selected), txtDiagnosa.text, txtCatatanDiagnosa.text, cmbStatusLessPasien.textInput.text
+					];						
+				
+				utama = parentApplication.F_splitArrayToString(a);
+				
+				FlexGlobals.topLevelApplication.F_wsSimpan('simpan', "M11_RmUpdatePosisi", parentApplication.userid, isUpdate, utama);	// kirim ketika simpan ke WS
+					
+			}
+			
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group left="10" top="38" width="813" height="425">
+		<s:Label id="lblNoPasien" left="0" top="26" text="No RM"/>
+		<s:TextInput id="txtKunjungan" left="145" top="0"/>
+		<s:TextInput id="txtNoPasien" left="145" top="21"/>
+		<s:ComboBox id="cmbPerawatan" y="42" left="145" width="146" change="cmbPerawatan_changeHandler(event)"/>
+		<s:TextInput id="txtKategoriPasien" left="145" top="64" width="128"/>
+		<s:TextInput id="txtTglLahir" x="145" y="85" maxChars="2" restrict="0-9" textAlign="right"/>
+		<s:TextInput id="txtBulanLahir" x="145" y="106" maxChars="2" restrict="0-9" textAlign="right"/>
+		<s:TextInput id="txtTahunLahir" x="145" y="127" maxChars="4" restrict="0-9" textAlign="right"/>
+		<s:TextInput id="txtUmur" x="145" y="148" restrict="0-9" textAlign="right"/>
+		<s:TextInput id="txtDiagnosa" left="145" top="169"/>
+		<s:TextInput id="txtCatatanDiagnosa" left="145" top="190" width="476"/>
+		<s:TextInput id="txtLayanan" left="145" top="211" width="128"/>
+		<s:ComboBox id="cmbStatusImunisasi" y="232" left="145" width="146"
+					change="cmbStatusImunisasi_changeHandler(event)" enabled="true"/>
+		<s:TextInput id="txtDokter" left="145" top="254" width="128"/>
+		<s:TextInput id="txtKecelakaan" left="145" top="275" width="128"/>
+		<s:ComboBox id="cmbKasus" y="296" left="145" width="146"/>
+		<s:TextInput id="txtICD" left="145" top="318" width="128"/>
+		<s:TextInput id="txtICD10" left="145" top="339" width="128"/>
+		<s:TextInput id="txtRujukan" left="145" top="360" width="128"/>
+		<s:TextInput id="txtTindakanRM" left="145" top="381"/>
+		<s:ComboBox id="cmbDokumen" y="427" left="145" width="146" change="cmbDokumen_changeHandler(event)" visible="false"/>
+		<s:RadioButton id="rbHari" x="302" y="148" label="Hari" selected="false"/>
+		<s:RadioButton id="rbTahun" x="366" y="148" label="Tahun" selected="true"/>		
+		<s:Label id="lblPerawatan" left="0" top="48" text="Perawatan"/>
+		<s:Label id="lblKategoriPasien" left="0" top="70" text="Kategori Pasien"/>
+		<s:Label id="lblLayanan" left="0" top="217" text="Layanan"/>
+		<s:Label id="lblKecelakaan" left="0" top="281" text="Kecelakaan"/>
+		<s:Label id="lblDokter" left="0" top="260" text="Dokter"/>
+		<s:Label id="lblNamaPerawatan" y="49" left="302" width="478"/>
+		<s:Label id="lblNamaKatPasien" y="71" left="302" width="477"/>
+		<s:Label id="lblNamaLayanan" y="217" left="302" width="477"/>
+		<s:Label id="lblNamaKecelakaan" y="282" left="302" width="477"/>
+		<s:Label id="lblNamaDokter" y="260" left="302" width="477"/>
+		<s:Label id="lblKunjungan" left="0" top="5" text="Kunjungan"/>
+		<s:Label id="lblKasus" left="0" top="302" text="Kasus"/>
+		<s:Label id="lblICD" left="0" top="323" text="ICD 9"/>
+		<s:Label id="lblNamaICD" y="324" left="302" width="477"/>
+		<s:Label id="lblNama" y="27" left="302" width="477"/>
+		<s:Label id="lblStatusImunisasi" left="0" top="239" text="Status Imunisasi"/>
+		<s:Label id="lblNamaStatusImunisasi" y="238" left="302" width="477"/>
+		<s:Label id="lblTglLahir" left="0" top="91" text="Tgl Lahir"/>
+		<s:Label id="lblBulanLahir" left="0" top="111" text="Bulan Lahir"/>
+		<s:Label id="lblTahunLahir" left="0" top="132" text="Tahun Lahir"/>
+		<s:Label id="lblKategoriPasien3" left="0" top="153" text="Umur"/>
+		<s:Label id="lblICD10" left="0" top="345" text="ICD 10"/>
+		<s:Label id="lblNamaICD10" y="346" left="302" width="477"/>
+		<s:Label id="lblDokumen" left="0" top="407" text="Dokumen"/>
+		<s:CheckBox id="chkDokumen" left="145" top="404" label="Centang Semua" change="chkDokumen_changeHandler(event)"/>
+		<s:ComboBox id="cmbRujukan" visible="false" x="145" y="339" width="170"
+					change="cmbRujukan_changeHandler(event)"/>
+		<s:ComboBox id="cmbRujukanDetail" visible="false" x="321" y="339" width="250"/>
+		<s:Label id="lblRujukan" y="366" left="0" text="Rujukan"/>
+		<s:Label id="lblTindakanRM" y="386" left="0" text="Kelas"/>
+		<s:Label id="lblNamaTRM" x="302" y="389" width="477"/>
+		<s:Label id="lblDiagnosa" y="174" left="0" text="Diagnosa"/>
+		<s:Label id="lblNamaDiagnosa" x="302" y="177" width="477"/>
+		<s:Label id="lblNamaRujukan" y="367" left="302" width="477"/>
+		<s:Label id="lblCatatanDiagnosa" y="195" left="0" text="Catatan Diagnosa"/>
+	</s:Group>
+	<s:Group right="10" top="38" width="308" height="111">
+		<mx:DateField id="dtTglTransaksi" x="120" y="0" width="153"/>
+		<s:TextInput id="txtNoTransaksi" x="120" y="22"/>
+		<s:ComboBox id="cmbStatus" x="120" top="43" width="146"/>
+		<s:Label id="lblStatus" left="1" top="49" text="Status"/>
+		<s:Label id="lblTglTransaksi" x="1" y="6" text="Tgl Transaksi"/>
+		<s:Label id="lblNoTransaksi" x="1" y="27" text="No Transaksi"/>
+		<s:CheckBox id="chkauto" x="253" y="24" label="Auto" change="f_chkAuto()"/>
+		<s:TextInput id="txtPetugas" left="120" top="65" width="128"/>
+		<s:Label id="lblPetugas" y="71" left="0" text="Petugas"/>
+		<s:Label id="lblNamaPetugas" y="92" right="0" width="188" height="17"/>
+	</s:Group>	
+	<s:BorderContainer right="10" top="273" width="308" height="174">
+		<s:TextInput id="txtHamilKe" x="120" y="12" width="154" restrict="0-9"/>
+		<s:ComboBox id="cmbPersalinan" x="120" y="33" width="172"/>
+		<s:ComboBox id="cmbKeadaanBayi" x="120" y="55" width="172"/>
+		<s:ComboBox id="cmbJenisKelamin" x="120" y="77" width="172"/>
+		<s:TextInput id="txtPanjang" x="120" y="99" width="154"/>
+		<s:TextInput id="txtBerat" x="120" y="120" width="154"/>
+		<s:TextInput id="txtKeterangan" x="120" y="141" width="154"/>
+		<s:Label id="lblPersalinan" x="10" y="39" text="Persalinan"/>
+		<s:Label id="lblHamilKe" x="10" y="16" text="Hamil Ke"/>
+		<s:Label id="lblJenisKelamin" x="10" y="83" text="Jenis Kelamin"/>
+		<s:Label id="lblKeadaanBayi" x="10" y="61" text="Keadaan Bayi"/>
+		<s:Label id="lblBerat" x="10" y="126" text="Berat (gr)"/>
+		<s:Label id="lblPanjang" x="10" y="105" text="Panjang (cm)"/>
+		<s:Label id="lblKeterangan" x="10" y="147" text="Keterangan"/>
+	</s:BorderContainer>
+	<s:Label right="204" top="258" fontWeight="bold" text="Layanan Persalinan"
+			 textDecoration="underline"/>
+	<s:Group right="10" top="152" width="308" height="97">
+		<s:ComboBox id="cmbTindakLanjut" y="0" left="135" width="146"/>
+		<s:ComboBox id="cmbKeadaanKRS" y="22" left="135" width="146"/>
+		<s:ComboBox id="cmbAlasan" y="44" left="135" width="146"/>
+		<s:ComboBox id="cmbStatusLessPasien" y="66" left="135" width="146"/>
+		<s:ComboBox id="cmbCaraKRS" visible="false" right="52" top="197" width="146"/>
+		<s:Label id="lblCaraKRS" visible="false" right="260" top="200" text="Cara KRS"/>
+		<s:Label id="lblTindakLanjut" y="8" left="0" text="Tindak Lanjut"/>
+		<s:Label id="lblKeadaanKRS" left="0" y="29" width="65" text="Cara KRS" textAlign="left"/>
+		<s:Label id="lblAlasan" left="0" y="50" width="124" text="Alasan Pulang Paksa"
+				 textAlign="left"/>
+		<s:Label id="lblStatusLessPasien" left="0" y="72" width="124" text="Posisi Status"
+				 textAlign="left"/>
+	</s:Group>
+	<s:BorderContainer id="BoxGroup" left="10" top="464" width="1023" height="131">
+		<s:BorderContainer id="groupTPIP" left="10" top="26" width="105" height="98">
+			<s:CheckBox id="chkTPIP11" left="10" bottom="73" label="RM 1.1"/>
+			<s:CheckBox id="chkTPIP12" left="10" bottom="56" label="RM 1.2"/>
+			<s:CheckBox id="chkTPIP13" left="10" bottom="39" label="RM 1.3"/>
+			<s:CheckBox id="chkTPIP4" left="10" bottom="22" label="RM 4"/>
+			<s:CheckBox id="chkTPIP5" left="10" bottom="5" label="RM 5"/>
+		</s:BorderContainer>
+		<s:Label id="lblTPIP" left="10" top="10" text="TPIP"/>
+		<s:BorderContainer id="groupIGD" left="124" top="26" width="195" height="98">
+			<s:CheckBox id="chkIGD21" left="10" bottom="73" label="RM 2.1"/>
+			<s:CheckBox id="chkIGD22" left="10" bottom="56" label="RM 2.2"/>
+			<s:CheckBox id="chkIGD18a" left="10" bottom="39" label="RM 18.a"/>
+			<s:CheckBox id="chkIGD31" left="10" bottom="22" label="RM 3.1"/>
+			<s:CheckBox id="chkIGD32" left="10" bottom="5" label="RM 3.2"/>
+			<s:CheckBox id="chkIGD33" left="100" bottom="73" label="RM 3.3"/>
+			<s:CheckBox id="chkIGD34" left="100" bottom="56" label="RM 3.4"/>
+			<s:CheckBox id="chkIGD35" left="100" bottom="39" label="RM 3.5"/>
+			<s:CheckBox id="chkIGD6" left="100" bottom="22" label="RM 6"/>
+			<s:CheckBox id="chkIGD7" left="100" bottom="4" label="RM 7"/>
+		</s:BorderContainer>
+		<s:Label id="lblIGD" left="124" top="10" text="IGD"/>
+		<s:BorderContainer id="groupVK" left="328" top="26" width="127" height="98">
+			<s:CheckBox id="chkVK10" left="10" bottom="73" label="RM 10"/>
+			<s:CheckBox id="chkVK10b" left="10" bottom="56" label="RM 10.b"/>
+			<s:CheckBox id="chkVK22bayi" left="10" bottom="39" label="RM 22 bayi"/>
+		</s:BorderContainer>
+		<s:Label id="lblVK" left="328" top="10" text="VK"/>
+		<s:BorderContainer id="groupRawat" left="463" top="26" width="282" height="98">
+			<s:CheckBox id="chkRawat36" left="10" bottom="73" label="RM 3.6"/>
+			<s:CheckBox id="chkRawat37" left="10" bottom="56" label="RM 3.7"/>
+			<s:CheckBox id="chkRawat38" left="10" bottom="39" label="RM 3.8"/>
+			<s:CheckBox id="chkRawat9" left="10" bottom="22" label="RM 9"/>
+			<s:CheckBox id="chkRawat10" left="10" bottom="5" label="RM 10"/>
+			<s:CheckBox id="chkRawat14" left="100" bottom="73" label="RM 14"/>
+			<s:CheckBox id="chkRawat15" left="100" bottom="56" label="RM 15"/>
+			<s:CheckBox id="chkRawat16" left="100" bottom="39" label="RM 16"/>
+			<s:CheckBox id="chkRawat20" left="100" bottom="22" label="RM 20"/>
+			<s:CheckBox id="chkRawat21a" left="100" bottom="5" label="RM 21.a"/>
+			<s:CheckBox id="chkRawat21b" left="190" bottom="73" label="RM 21.b"/>
+			<s:CheckBox id="chkRawat22" left="190" bottom="56" label="RM 22"/>
+			<s:CheckBox id="chkRawat18" left="190" bottom="39" label="RM 18"/>
+		</s:BorderContainer>
+		<s:Label id="lblRawat" left="463" top="10" text="Perawatan"/>
+		<s:BorderContainer id="groupOK" left="752" top="26" width="147" height="48">
+			<s:CheckBox id="chkOKLapanastesi" left="10" bottom="22" label="Lap anastesi"/>
+			<s:CheckBox id="chkOK18" left="10" bottom="5" label="RM 18"/>
+			<s:CheckBox id="chkOK19" left="80" bottom="5" label="RM 19"/>
+		</s:BorderContainer>
+		<s:Label id="lblOK" left="752" top="10" text="OK"/>
+		<s:BorderContainer id="groupFP" left="752" top="96" width="147" height="28">
+			<s:CheckBox id="chkFP16oral" left="10" bottom="5" label="RM 16.oral"/>
+		</s:BorderContainer>
+		<s:Label id="lblFP" left="752" top="80" text="Farmasi dan Perawat"/>
+		<s:BorderContainer id="groupGizi" left="907" top="26" width="104" height="98">
+			<s:CheckBox id="chkGizi17" left="10" bottom="73" label="RM 17"/>
+		</s:BorderContainer>
+		<s:Label id="lblGizi" left="907" top="10" text="Gizi"/>
+	</s:BorderContainer>
+	<s:Button id="btnUpdate" right="331" top="198" label="Update" click="btnUpdate_clickHandler(event)"/>
+</s:Module>

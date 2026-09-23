@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%" creationComplete="f_persiapan()"
+		  xmlns:net="flash.net.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.events.GridEvent;
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			public var tbsave:Class;
+			public var tbpreview:Class;
+			public var i:int, ArrSetting:ArrayCollection, arr:Array, fr:Array = [], o:Object = {}, filterterakhir:String = "";
+			
+			public function f_persiapan():void
+			{
+				arr = [];
+				arr.push(new FileFilter("Images", ".gif;*.jpeg;*.jpg;*.png"));
+				
+				tbsave = FlexGlobals.topLevelApplication.tbsave;
+				tbpreview = FlexGlobals.topLevelApplication.tbpreview;
+				
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 16, [dg], "transaksi");
+				// fungsi menubar
+				var arrMenuBar:ArrayCollection = new ArrayCollection([
+					{label:"Simpan", icon:"tbsave", enabled:"true"}]);
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				/* parentApplication.F_txtpencarian([txtgrup]); */
+				FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbgrup]);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				
+				imgfirst.enabled = false;
+				imgprevious.enabled = false;
+				imgnext.enabled = false;
+				imglast.enabled = false;
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign", "center");
+				txtpaging.text = "0";
+				txtpaging.maxChars = 4;
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				
+				function f_mbTampilkan():void
+				{
+					f_kondisiAwal();
+				}
+				
+				function f_mbSimpan():void
+				{
+					simpanData(0);
+				}
+				
+				function f_firstCLICK():void
+				{
+					if(imgfirst.enabled)
+						f_tampil();
+				}
+				
+				function f_previousCLICK():void
+				{
+					if(imgprevious.enabled)
+						f_tampil(int(txtpaging.text)-1);
+				}
+				
+				function f_nextCLICK():void
+				{
+					if(imgnext.enabled)
+						f_tampil(int(txtpaging.text)+1);
+				}
+				
+				function f_lastCLICK():void
+				{
+					if(imglast.enabled)
+						f_tampil(int(-1));
+				}
+				
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ENTER)
+						if(int(txtpaging.text) > 0)
+							f_tampil(int(txtpaging.text));
+				}
+				
+				f_kondisiAwal();
+			}
+			
+			public function f_kondisiAwal():void
+			{
+				f_tampil();
+			}
+			
+			public function f_tampil(page:int = 1):void
+			{
+				var filter:String = "";
+				
+				if(cmbgrup.selectedItem != null)
+				{
+					filter += "sgrup = '" + cmbgrup.selectedItem.l + "'";	
+					filterterakhir = cmbgrup.selectedItem.l;
+				}
+				FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M0_SetAplikasiSearch', 0, 0, filter, "smodule, sgrup, surutan");
+			}
+			
+			public function f_wsHasil():void
+			{
+				var i:int, j:int, arr:Object, ada:Boolean;
+				
+				if(parentApplication.wsSuccess)
+				{
+					switch(parentApplication.subject)
+					{
+						/*   case "txtgrup": 
+							txtgrup.text = parentApplication.wsArrUtama[0].sgrup;
+							break;   */
+						
+						case "snilai":
+							dg.dataProvider[dg.selectedCell.rowIndex].snilai = parentApplication.wsArrUtama.getItemAt(0)[dg.dataProvider[dg.selectedCell.rowIndex].snilai_v.toString().split("^")[2]];
+							FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg, dg.selectedCell.rowIndex); 
+							dg.setFocus();
+							dg.setSelectedCell(FlexGlobals.topLevelApplication.rowIndex, FlexGlobals.topLevelApplication.columnIndex);
+							break;
+						case "tampil":
+							dg.dataProvider = parentApplication.wsArrUtama;
+
+							for(i=0;i<dg.dataProviderLength;i++)
+							{				
+								dg.dataProvider[i].snilai_v = dg.dataProvider[i].scombodata;
+							}
+							
+							dg.dataProvider = parentApplication.wsArrUtama; 
+							cmbgrup.dataProvider = parentApplication.wsArrDetail;
+							if(filterterakhir.length == 0)
+							{
+								cmbgrup.selectedIndex = 0;
+							}
+							else
+							{
+								for(i=0;i<cmbgrup.dataProvider.length;i++)
+								{
+									if(cmbgrup.dataProvider[i].l == filterterakhir)
+									{
+										cmbgrup.selectedIndex = i;
+										break;
+									}
+								}
+							}
+							dg.setSelectedCell(0,0);
+							parentApplication.rowIndex = 0;
+							imgfirst.enabled = parentApplication.wsIsPrev;
+							imgprevious.enabled = parentApplication.wsIsPrev;
+							imgnext.enabled = parentApplication.wsIsNext;
+							imglast.enabled = parentApplication.wsIsNext;
+							txtpaging.text = parentApplication.wsCurPage;
+							
+							parentApplication.F_dgRefresh(dg);
+							dg.setFocus();
+							dg.setSelectedCell(0, 0);
+							break;
+					}
+				}
+				else
+				{					
+					if(parentApplication.F_validasiFalse(parentApplication.subject))
+					{
+						if(parentApplication.subject.indexOf("bukacompencarian") < 0)
+						{
+							Alert.show("subject : "+parentApplication.subject + " " +FlexGlobals.topLevelApplication.wsErrmessage, "Informasi");
+						}
+						else
+						{
+							dg.dataProvider[dg.selectedCell.rowIndex].snilai = "";
+						}
+					} 
+				}
+			}
+			
+			public function getSetting(ModuleID:int, Grup:String, Kode:String):String
+			{
+				var i:int;
+				for(i=0;i<ArrSetting.length;i++)
+				{
+					if(parseInt(ArrSetting[i].smodule) == ModuleID && ArrSetting[i].sgrup == Grup && ArrSetting[i].skode == Kode)
+					{
+						return ArrSetting[i].snilai; 
+					}
+				}
+				
+				return '';
+			}
+			
+			public function simpanData(id:int):void
+			{
+				 var a:Array, i:int, j:int, data:String = "", datadetail:String = "";
+				switch(id)
+				{
+					case 0:
+						data = "";
+						
+						for(i=0;i<dg.dataProviderLength;i++)
+						{
+							with(dg.dataProvider[i])
+							{
+								a = [smodule, sgrup, skode, snama, suraian, surutan, snilai, stipedata, sjenisinputan, scombodata];
+								
+								if(data.length == 0)
+								{
+									data = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+								}
+								else
+								{
+									data += "▲" + FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+								}
+							}
+						}
+						
+						FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M0_SettingSimpan", parentApplication.userid, true, data, "", 0, 0, "INA" + parentApplication.sptField + "");
+						break;
+				} 
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false, id:String = '';
+				
+				switch(target)
+				{
+					/* case "txtgrup":
+						paket = 'CdM0_SettingGrup';
+						wsfilter = "sgrup = '" + txtgrup.text + "'";
+						break; */
+					case "snilai":
+						arr = dg.dataProvider[dg.selectedCell.rowIndex].snilai_v.split("^");
+						if(int(arr[0]) == 2)
+						{
+							paket = arr[1];
+							wsfilter = arr[2] + " = '" + dg.dataProvider[dg.selectedCell.rowIndex].snilai + "'";
+							csfilter = arr[3];
+							sort = arr[4];
+							
+							if(csfilter.length > 0)
+							{
+								wsfilter = csfilter + " AND " + wsfilter;	
+							}
+						}
+						break;
+				}
+				
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox, id];
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target)
+				{
+					/* case "txtgrup":
+						parentApplication.F_KosongkanText([txtgrup]);
+						break; */
+				}
+			}
+			
+			public function dg_gridClickHandler():void
+			{
+				if(dg.selectedCell != null)
+				{
+					txadeskripsi.text = dg.dataProvider[dg.selectedCell.rowIndex].suraian;
+				}
+			}
+			
+			public function f_getProperty(components:String, dataField:String, data:Object, info:String = ''):Object
+			{
+				var arr:Array, arrData:Array, arrDataDetail:Array, i:int, ArrCol:ArrayCollection = new ArrayCollection();
+				switch(components){
+					case "comboBox":
+						if(dataField == 'snilai')
+						{
+							arr = data.split("^");
+							if(int(arr[0]) == 1)
+							{
+								switch(int(arr[1]))
+								{
+									case 0:
+										arrData = arr[2].split("#");
+										for(i=0;i<arrData.length;i++)
+										{
+											arrDataDetail = arrData[i].split("~");
+											ArrCol.addItem({l:arrDataDetail[0], v:arrDataDetail[1]})
+										}
+										break;
+									case 1:
+										arrData = arr[2].split("#");
+										for(i=0;i<arrData.length;i++)
+										{
+											ArrCol.addItem({l:arrData[i], v:arrData[i]})
+										}
+										break;
+									case 2:
+										break;
+									case 3:
+										break;
+								}
+							}
+							return ArrCol;
+						}
+						break;
+					case "dinamis":
+						if(dataField == 'snilai')
+						{
+							if(data != null)
+							{
+								arr = data.split("^");
+								switch(int(arr[0]))
+								{
+									case 0:
+										return "text";
+										break;
+									case 1:
+										return "comboBox";
+										break;
+									case 2:
+										return "pencarian";
+										break;
+									case 3:
+										return "multiLine";
+										break;
+								}
+							}
+						}
+						break;
+				} 
+				return new ArrayCollection([]);
+			}
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch(components)
+				{ 
+					case "dinamis":
+						break;
+					case "multiLine":
+						dg.dataProvider[dg.selectedCell.rowIndex][dataField] = data;
+						parentApplication.F_dgColumnRefresh(dg, dg.selectedCell.rowIndex);
+						break;
+				}
+			}
+			
+			public function txadeskripsi_changeHandler(event:TextOperationEvent):void
+			{
+				dg.dataProvider[dg.selectedCell.rowIndex].suraian = txadeskripsi.text;
+			}
+			
+			protected function cmbgrup_changeHandler(event:IndexChangeEvent):void
+			{
+				f_tampil(int(txtpaging.text));
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5" visible="false">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{parentApplication.navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{parentApplication.navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{parentApplication.navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{parentApplication.navl}"/>
+	</s:Group>
+	<s:Group left="10" right="10" top="40" bottom="10">
+		<s:Label x="10" y="6" text="Grup"/>
+		<s:ComboBox id="cmbgrup" left="48" top="0" changing="cmbgrup_changeHandler(event)"/>
+		<s:DataGrid id="dg" left="0" right="0" top="39" bottom="80" gridClick="dg_gridClickHandler()" keyDown="dg_gridClickHandler()"/>
+		<s:Group left="10" right="0" bottom="0" height="70">
+			<s:Label id="tdeskripsi" x="3" top="3" text="Deskripsi :"/>
+			<s:TextArea id="txadeskripsi" left="71" right="0" top="0" bottom="0"
+						change="txadeskripsi_changeHandler(event)" editable="false"/>
+		</s:Group>
+	</s:Group>
+	<s:Image visible="false" x="437" y="32"/>
+	<s:ComboBox x="790" y="32" visible="false"/>
+</s:Module>

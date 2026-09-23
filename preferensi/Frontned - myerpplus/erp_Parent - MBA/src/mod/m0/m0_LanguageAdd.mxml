@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*" initialize="p=parentApplication"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			import spark.components.Button;
+			import spark.components.CheckBox;
+			import spark.components.ComboBox;
+			import spark.components.supportClasses.ItemRenderer;
+			import spark.events.GridEvent;
+			import spark.events.GridItemEditorEvent;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] [Embed(source="assets/main/photo.png")]  public var tbphoto:Class; //Photo
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			
+			protected var p:Object, o:Object;
+			protected var vgDown:Boolean = false, vgRollOut:Boolean=false, vgInsertAktif:Boolean = false, vgMyCol:int, vgMyRow:int, vgRowInsert:int;	
+			protected var vgColumnStart:int, vgRowDel:int, vgRowCek:int, i:int, ob:Object = {};
+			
+			protected function f_persiapan():void
+			{
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tkode, tnama]);
+				FlexGlobals.topLevelApplication.F_RequiredLabel([tkode, tnama]);
+				ob.isUpload = false;
+				if(p.FormFilter == '@')
+				{
+					o = p.m[p.idmodcurr].child.dg.dataProvider.getItemAt(p.m[p.idmodcurr].child.dg.selectedIndex);
+					txtkode.text = o.lkode;
+					txtkode.enabled = false;
+					txtnama.text = o.lnama;
+					chkaktif.selected = Boolean(int(o.laktif));
+					ob.isUpdate = true;
+					ob.imgCountry = o.lkode_source.split('/')[o.lkode_source.split('/').length-1];
+					if(o.lkode_source != '')imgCountry.source = o.lkode_source;
+				}else{
+					ob.isUpdate = false;
+					ob.imgCountry = '';
+					chkaktif.selected = true;
+				}
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_upload);
+				this.addEventListener(KeyboardEvent.KEY_DOWN, f_keydown);
+				
+				function f_keydown(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ESCAPE)
+						p.closeform();
+				}
+				
+				function f_upload():void
+				{
+					f_browseFile();
+				}
+				
+				function f_mbSimpan():void
+				{
+					if(txtkode.text == '')
+						Alert.show('Kode tidak boleh kosong !', 'Validasi');
+					else if(txtkode.text == '')
+						Alert.show('Nama tidak boleh kosong !', 'Validasi');
+					else{ 
+						if(ob.isUpload ) 
+							ob.imgCountry = 'm0_language-'+txtkode.text+'.jpg';
+						FlexGlobals.topLevelApplication.F_wsSimpan('tampil', 'M0_LanguageSimpan', p.userid, ob.isUpdate, FlexGlobals.topLevelApplication.F_splitArrayToString([txtkode.text, txtnama.text, int(chkaktif.selected), ob.imgCountry]), '')
+					}
+				}
+			}
+			
+			public function f_wsHasil():void
+			{
+				if(p.subject == 'tampil'){
+					p.m[p.idmodcurr].child.f_wsHasil();
+					if(p.wsSuccess == false){
+						Alert.show(p.wsErrmessage, 'Pesan Error');
+						return;
+					}
+					if(ob.isUpload == false){
+						p.m[p.idmodcurr].child.f_wsHasil();
+					}else{
+						ob.data = p.wsArrUtama;
+						FlexGlobals.topLevelApplication.F_wsUpload('setUpload', 'uploadFile', '0', 'm0_language', 'jpg', imgCountry.source, 0, txtkode.text, '', '@', FlexGlobals.topLevelApplication.DefaultTanggalforDB);
+					}
+				}else if(p.subject == 'setUpload'){
+					ob.isUpload = false;
+					p.wsArrUtama = ob.data;
+					p.m[p.idmodcurr].child.f_wsHasil();
+					p.closeFormPopUp();
+				}
+			}
+			
+			// Upload Foto
+			private function f_browseFile():void {
+				var arr:Array = [];
+				arr.push(new FileFilter("Images", ".gif;*.jpeg;*.jpg;*.png"));
+				fileReference.browse(arr);
+			}
+			
+			private function fileReference_select(evt:Event):void {
+				fileReference.load();
+			}
+			
+			private function fileReference_complete(evt:Event):void {
+				f_gantiGambar(fileReference.data);
+			}
+			
+			public function f_gantiGambar(ba:ByteArray):void
+			{
+				ob.isUpload = true;
+				imgCountry.source = ba;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Country" icon="tbphoto"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<net:FileReference id="fileReference"  select="fileReference_select(event);" complete="fileReference_complete(event);" />
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:TextInput id="txtkode" x="54" y="39"/>
+	<s:TextInput id="txtnama" x="54" y="60"/>
+	<s:Label id="tkode" left="10" y="45" text="Kode"/>
+	<s:Label id="tnama" left="10" y="64" text="Nama"/>
+	<s:CheckBox id="chkaktif" x="55" y="86" label="Aktif"/>
+	<s:Image id="imgCountry" x="104" y="84" width="28" height="18" scaleMode="stretch" source="{tbphoto}" />
+</s:Module>

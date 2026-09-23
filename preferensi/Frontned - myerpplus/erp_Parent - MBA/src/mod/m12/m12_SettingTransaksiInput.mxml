@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan();" keyDown="f_keyDownModule(event)">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			public var o:Object = {};
+			public var vUserId:int, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String, userEdit:Number=0;
+			public var vKeyOut:Boolean = true, p:Object, dg:DataGrid;
+			[Bindable]protected var arrMenuBar:ArrayCollection;
+			private function f_persiapan():void{
+				txtlokasi.setFocus();
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtkategoripos, txtlokasi])
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				parentApplication.F_TranslateLabel([tkode, tnama]);
+				parentApplication.F_RequiredLabel([tkode, tnama]);
+				arrMenuBar = new ArrayCollection([
+					{label:"Simpan", icon:"tbsave", enabled:"true"},
+					{label:"Batal", icon:"tbclose", enabled:"true"}]);
+				
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbReset);
+				function f_mbSimpan():void{
+					if(mb.menuBarItems[0].enabled ==true){
+						f_simpan(false);
+					}
+				}
+				function f_mbReset():void{
+					FlexGlobals.topLevelApplication.closeFormPopUp(1);
+				}
+				
+				if(p.FormFilter != ''){
+					isUpdate = true;
+					txtkategoripos.text = dg.dataProvider[dg.selectedCell.rowIndex].lkategoripos;
+					lblkategori.text = dg.dataProvider[dg.selectedCell.rowIndex].pcnama;
+					txtlokasi.text = dg.dataProvider[dg.selectedCell.rowIndex].lkode;
+					lbllokasi.text = dg.dataProvider[dg.selectedCell.rowIndex].lnama;
+					userEdit = FlexGlobals.topLevelApplication.userid;
+					if(parentApplication.m.ArrFilter != null){
+						mb.menuBarItems[0].enabled = false;
+						mb.menuBarItems[1].enabled = false;
+					}
+				}
+			}
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey)
+							f_simpan(false);
+						break;
+					case Keyboard.ESCAPE:
+						FlexGlobals.topLevelApplication.closeFormPopUp(1);
+						break;
+				}
+			}
+			public function f_kondisi_awal():void
+			{
+				txtlokasi.setFocus();
+				parentApplication.F_KosongkanText([txtkategoripos,txtlokasi]);
+			}
+			
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtkategoripos, n:'Kategori POS'}, {t:txtlokasi, n:'Lokasi'}]) == true){
+					arr = [txtlokasi.text, txtkategoripos.text]
+					utama = parentApplication.F_splitArrayToString(arr);
+					FlexGlobals.topLevelApplication.F_MasterSimpan(baru, 'M1_LocationSimpanKategoriPOS', utama, "", p.m[p.idmodcurr].child.f_filterdata());
+					userEdit = 0;
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkategoripos': //no rek
+						paket = 'CdM12_Pos_CategoryAll';
+						wsfilter = 'pcaktif=1 and pckode ="'+txtkategoripos.text+'"';
+						csfilter = 'pcaktif=1';
+						sort = 'pckode asc';
+						break;
+					
+					case 'txtlokasi': //lokasi
+						paket = 'CdM1_Location';
+						wsfilter = 'laktif=1 AND lkode = "'+txtlokasi.text+'"';
+						csfilter = 'laktif=1';
+						sort = 'lkode asc';
+						
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void{
+				var ws:Object, s:String = parentApplication.subject, i:int;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){	
+						case 'txtkategoripos':
+							ws = parentApplication.wsArrUtama.getItemAt(0);
+							txtkategoripos.text = ws.pckode;
+							lblkategori.text = ws.pcnama;
+							break;
+						case 'txtlokasi':
+							ws = parentApplication.wsArrUtama.getItemAt(0);
+							txtlokasi.text = ws.lkode;
+							lbllokasi.text = ws.lnama
+							break;
+						
+					}
+				}else{					
+					if(FlexGlobals.topLevelApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txtkategoripos':
+								txtkategoripos.text = "";
+								lblkategori.text = "";
+								break;
+							case 'txtlokasi':
+								txtlokasi.text = "";
+								lbllokasi.text = "";
+								break
+						}
+				}
+			}
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkategoripos':
+						txtkategoripos.text = "";
+						lblkategori.text = "";
+						break;
+					case 'txtlokasi':
+						txtlokasi.text = "";
+						lbllokasi.text = "";
+						break;
+				}
+			}
+			
+			
+
+			[Bindable] [Embed(source="assets/tb/save.png")] public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/savenew.png")] public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")] public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<s:Label id="tkode" left="10" top="63" text="Kategori POS"/>
+	<s:Label id="lblkategori" left="250" top="63"/>
+	<s:Label id="lbllokasi" left="250" top="41"/>
+	<s:Label id="tnama" left="10" top="42" text="Lokasi"/>
+	
+	<s:TextInput id="txtlokasi" left="98" top="37" maxChars="50" />
+	<s:TextInput id="txtkategoripos" top="58" left="98" width="128"/>
+	<s:CheckBox id="chkaktif" x="178" y="41" label="Aktif" selected="true" visible="false"/>
+</s:Module>

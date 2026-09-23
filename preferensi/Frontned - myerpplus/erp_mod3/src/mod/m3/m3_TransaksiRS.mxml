@@ -1,0 +1,1602 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan()"
+		  keyDown="f_keyDownModule(event)">
+	
+	<fx:Script> 
+		<![CDATA[			
+			import MyClass.SettingNoTransaction;
+			import MyClass.ValidasiSerialBatch;
+			
+			import flexlib.scheduling.scheduleClasses.utils.Selection;
+			 
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			
+			import spark.components.DataGrid;
+			import spark.components.Image;
+			import spark.components.TitleWindow;
+			
+			public var validasi:Boolean,t:TitleWindow,pesanAlert:String, pesanAlertIng:String, img:Image, i:int, vUang:String, vTgl:String, vNotransaksi:String, vDefNotransaksi:String, getNotransaksi:String;
+			[Bindable] public var u:ArrayCollection;
+			public var tglDB:String  = FlexGlobals.topLevelApplication.DefaultTanggal;
+			public var o:Object = {}, n:Object = {};
+			public var obj:Object = {};
+			
+			[Bindable]public var acserial:ArrayCollection= new ArrayCollection();
+			[Bindable]public var acbatch:ArrayCollection= new ArrayCollection();
+			[Bindable]public var acaktiva:ArrayCollection= new ArrayCollection();
+			[Bindable]public var acserialdetail:ArrayCollection= new ArrayCollection();
+			[Bindable]public var acbatchdetail:ArrayCollection= new ArrayCollection();
+			[Bindable]public var acaktivadetail:ArrayCollection= new ArrayCollection();
+			[Bindable]public var ws_Batch:ArrayCollection= new ArrayCollection();
+			[Bindable]public var ws_Serial:ArrayCollection= new ArrayCollection();
+			[Bindable]public var ws_Aktiva:ArrayCollection= new ArrayCollection();
+			public var isUpdate:Boolean;
+			public var fserial : String = 's';
+			public var fbatch : String = 'b';
+			public var faktiva : String = 'a';
+			[Bindable]protected var arrMenuBar:ArrayCollection;
+			public var settingNotransaksi:SettingNoTransaction = new SettingNoTransaction(3, "Rs");
+			public var validasibatch:ValidasiSerialBatch = new ValidasiSerialBatch()
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				return new ArrayCollection([]);
+			}
+			
+// mengeset ketika change pada grid =========================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case "calculator":
+						dg1.dataProvider[dg1.selectedCell.rowIndex][dataField] = data
+						with(dg1.dataProvider.getItemAt(parentApplication.rowIndex)){
+							switch(dataField){
+								case "jml":
+									jmlbarang = Number(jml) * Number(nilaisatuan);
+									break;
+							}
+						}
+						FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg1, dg1.selectedCell.rowIndex);
+						break;
+				}
+			}
+			
+			public function f_filtersb():void{
+				fserial = 's'; fbatch = 'b'; faktiva = 'a';
+				for(i=0; i<dg1.dataProviderLength; i++){
+					if(dg1.dataProvider[i].bserial ==	1){
+						if(fserial == 's'){
+							fserial = '(nsiidbarang = ' + dg1.dataProvider[i].idbarang +' and nsiisclose = 0 and nsigudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}else{
+							fserial += ' or (nsiidbarang = ' + dg1.dataProvider[i].idbarang +' and nsiisclose = 0 and nsigudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}
+					}
+					
+					if(dg1.dataProvider[i].bbatch ==	1){
+						if(fbatch == 'b'){
+							fbatch = '(nbiidbarang = ' + dg1.dataProvider[i].idbarang +' and nbiisclose = 0 and nbigudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}else{
+							fbatch += ' or (nbiidbarang = ' + dg1.dataProvider[i].idbarang +' and nbiisclose = 0 and nbigudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}
+					}
+					
+					if(dg1.dataProvider[i].basset ==	1){
+						if(faktiva == 'a'){
+							faktiva = '(aidbarang = ' + dg1.dataProvider[i].idbarang +' and aisclose = 0 and agudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}else{
+							faktiva += ' or (aidbarang = ' + dg1.dataProvider[i].idbarang +' and aisclose = 0 and agudang = "'+dg1.dataProvider[i].gudangtransit+'")';
+						}
+					}
+				}
+			}
+			
+// set fokus ketika pertama kali form diload ===================================
+			public function f_focusOnMe():void
+			{
+				txtgudangasal.setFocus();
+			}
+
+// set persiapan form ==========================================================
+			protected function f_persiapan():void
+			{
+				parentApplication.F_persiapanFormTransaksi("RS",3);
+				
+				if(FlexGlobals.topLevelApplication.getSetting(3, 'options', 'LokasiRS') == 1)
+				{
+					tlokasi.text = FlexGlobals.topLevelApplication.getSetting(3, 'options', 'LabelLokasiRS');
+					FlexGlobals.topLevelApplication.F_RequiredLabel([tlokasi]);
+					FlexGlobals.topLevelApplication.F_txtpencarian([txtlokasi]);
+					tlokasi.visible = true;
+					txtlokasi.visible = true;
+				}
+				else
+				{
+					tlokasi.visible = false;
+					txtlokasi.visible = false;
+				}
+				
+				parentApplication.F_tabvalidatenow(tab);
+				chkauto.label = FlexGlobals.topLevelApplication.l(chkauto.label);
+				parentApplication.F_TranslateLabel([tbagterima, tgudangasal, tgudangtransit, tgudangtujuan, turaian, ttanggal, tnotransaksi, tprogress, tkontakperson, tcatatan, tnoref, ttglnoref, tlokasi]);
+				parentApplication.F_RequiredLabel([tgudangasal, tgudangtransit, tgudangtujuan, ttanggal, tnotransaksi, tprogress]);
+				parentApplication.F_DateFieldStandard([dttanggal, dttanggalnoref]);
+				parentApplication.F_ComboBoxStandard([cmbprogress]);
+				parentApplication.F_txtpencarian([txtbagianterima, txtgudangasal, txtgudangtujuan]);
+				parentApplication.F_txtPencarianKhusus([txtkontakperson, txtcatatan]);
+				parentApplication.F_SetNavigasiKeyboard([txtnotransaksi, txturaian, txtnoref]);
+				parentApplication.F_AutoNoTransaksi(txtnotransaksi, chkauto);
+				vTgl = parentApplication.getSetting(0, 'accounting', 'EditableDate');
+				vNotransaksi = parentApplication.getSetting(0, 'accounting', 'AutoNoTransaction');
+				vDefNotransaksi = parentApplication.getSetting(0, 'accounting', 'DefaultAutoNoTransaction');
+				tab.tabFocusEnabled = false;
+
+				
+				// fungsi menubar
+				arrMenuBar = new ArrayCollection([
+					{label:"Simpan", icon:"tbsave", enabled:"true"},
+					{label:"Buka Transaksi", icon:"tbbuka", enabled:"true"},
+					{label:"Reset", icon:"tbreset", enabled:"true"},
+//					{label:"Ambil TS", icon:"tbtake", enabled:"true"},
+					{label:"Ambil TS", icon:"tbtake", enabled:"true", children:[
+						{label:"Per Detail", icon:"tbtake", enabled:"true"},
+						{label:"Per No Transaksi", icon:"tbtake", enabled:"true"}]},
+					{label:"No.Serial/Batch Out", icon:"tbserialout", enabled:"true"},
+					{label:"Aktiva In", icon:"tbaktivaout", enabled:"true"},
+					{label:"Catatan", icon:"tbnote", enabled:"true"},
+					{label:"File", icon:"tbattachment", enabled:"true"},
+					{label:"Links", icon:"tblink", enabled:"true"},
+					{label:"History", icon:"tbhistory", enabled:"true"},
+					{label:"Bantuan", icon:"tbhelp", enabled:"true"}]);
+				
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbBuka);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbReset);
+//				mb.menuBarItems[3].addEventListener(MouseEvent.CLICK, f_mbAmbilTS);
+				mb.menuBarItems[4].addEventListener(MouseEvent.CLICK, f_SerialBatch);
+				mb.menuBarItems[5].addEventListener(MouseEvent.CLICK, f_Aktiva);
+				mb.menuBarItems[6].addEventListener(MouseEvent.CLICK, f_mbCatatan);
+				mb.menuBarItems[7].addEventListener(MouseEvent.CLICK, f_mbUpload);
+				mb.menuBarItems[8].addEventListener(MouseEvent.CLICK, f_mbLinks);
+				mb.menuBarItems[9].addEventListener(MouseEvent.CLICK, f_mbHistory);
+				mb.menuBarItems[10].addEventListener(MouseEvent.CLICK, f_mbBantuan);
+				
+				mb.addEventListener(mx.events.MenuEvent.ITEM_CLICK, f_mbItemClick); 
+				function f_mbItemClick(e:MenuEvent):void
+				{
+					
+					switch(e.index){
+						case 0:
+							if(txtgudangasal.text.length <= 0 && txtgudangtujuan.text.length <= 0){
+								txtgudangasal.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal dan Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else if(txtgudangasal.text.length <= 0){
+								txtgudangasal.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else if(txtgudangtujuan.text.length <= 0){
+								txtgudangtujuan.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else{
+								parentApplication.F_popUpCari("ambilTS");
+							}
+							break;
+						
+						case 1:
+							if(txtgudangasal.text.length <= 0 && txtgudangtujuan.text.length <= 0){
+								txtgudangasal.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal dan Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else if(txtgudangasal.text.length <= 0){
+								txtgudangasal.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else if(txtgudangtujuan.text.length <= 0){
+								txtgudangtujuan.setFocus();
+								Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+							}else{
+								parentApplication.F_popUpCari("ambilTS2");
+							}
+							break;
+						
+					}
+				}
+				
+				function f_mbSimpan():void
+				{
+					if(mb.menuBarItems[0].enabled){
+						var jenissimpan:int = 1;
+						if(isUpdate == false){jenissimpan = 1}else{jenissimpan = 2}
+						if(FlexGlobals.topLevelApplication.apaBisaAkses(3,5,jenissimpan)){
+							f_simpan();
+						}
+					}
+				}
+				function f_mbBuka():void
+				{
+					FlexGlobals.topLevelApplication.f_bukaTransaksi("Rs");
+				}
+				function f_mbReset():void
+				{
+					FlexGlobals.topLevelApplication.FormFilter = '';
+					f_kondisiAwal();
+					acserialdetail.removeAll();
+					acbatchdetail.removeAll();
+					acaktivadetail.removeAll();
+				}
+				function f_mbAmbilTS():void
+				{
+					if(txtgudangasal.text.length <= 0 && txtgudangtujuan.text.length <= 0){
+						txtgudangasal.setFocus();
+						Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal dan Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+					}else if(txtgudangasal.text.length <= 0){
+						txtgudangasal.setFocus();
+						Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Asal terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+					}else if(txtgudangtujuan.text.length <= 0){
+						txtgudangtujuan.setFocus();
+						Alert.show(FlexGlobals.topLevelApplication.l("Isi Gudang Tujuan terlebih dahulu"), FlexGlobals.topLevelApplication.l("Informasi"));
+					}else{
+						parentApplication.F_popUpCari("ambilTS");
+					}
+				}
+				
+				function f_SerialBatch():void{
+					if(mb.menuBarItems[4].enabled){
+						o.ceks = true; o.cekb = true;
+						o.sumber = 'RS';
+						o.moduleid = 3;
+						o.mnid = 5;
+						o.idgrid = dg1.id;
+						o.gudang = txtgudangtransit.text;
+						f_filtersb()
+						o.aserial = acserialdetail;
+						o.abatch = acbatchdetail;
+						FlexGlobals.topLevelApplication.openFormX("No. Serial/Batch",1,'mod/m0/m0_SerialOut.swf',426,602,'t1');
+					}
+					
+				}
+				
+				function f_Aktiva():void{
+					if(mb.menuBarItems[5].enabled){
+						o.ceka = true;
+						o.sumber = 'RS';
+						o.moduleid = 3;
+						o.mnid = 5;
+						o.idgrid = dg1.id;
+						o.gudang = txtgudangtransit.text;
+						f_filtersb()
+						o.aaktiva = acaktivadetail;
+						FlexGlobals.topLevelApplication.openFormX("Asset",1,'mod/m0/m0_AktivaOut.swf',426,602,'t1');
+					}
+					
+				}
+				
+				function f_mbCatatan():void
+				{
+					if(mb.menuBarItems[6].enabled){
+						parentApplication.F_OpenNotes('Rs', u.getItemAt(0).rsid, txtnotransaksi.text);
+					}
+				}
+				
+				function f_mbUpload():void
+				{
+					if(mb.menuBarItems[7].enabled){
+						parentApplication.F_OpenUploadFile('RS', u.getItemAt(0).rsid, txtnotransaksi.text);
+					}
+				}
+				
+				function f_mbLinks():void
+				{
+					if(mb.menuBarItems[8].enabled)FlexGlobals.topLevelApplication.f_mbLinks(3,'Rs');
+				}
+				function f_mbHistory():void
+				{
+				}
+				function f_mbBantuan():void
+				{
+				}
+				
+				// untuk ambil setting dari Json
+				FlexGlobals.topLevelApplication.F_RegGrid(3, 5, [dg1], 'TransaksiBarang');
+				f_validasi();
+			}
+			public function f_validasi():void{
+				var filtersplit : Array = FlexGlobals.topLevelApplication.FormFilter.split("[]");
+				var idtransaksi :String = filtersplit[0];
+				o.DefaultProgress = parentApplication.setProgress(cmbprogress, 3, "RS");
+				settingNotransaksi.F_KondisiAwalNoTransaksi(txtnotransaksi, chkauto);
+				if(FlexGlobals.topLevelApplication.FormFilter == ''){
+					f_kondisiAwal();
+				}else{
+					if(filtersplit.length > 1){
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampilHistory', 'M3_RsHistoryGetdataById', idtransaksi, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					}else {
+						FlexGlobals.topLevelApplication.F_wsGetDataById('tampil', 'M3_RsGetdataById', idtransaksi, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					}
+				}
+			}
+			protected function f_kondisiAwal():void
+			{
+				txtlokasi.text = FlexGlobals.topLevelApplication.ulokasi;
+				o.rslokasi=FlexGlobals.topLevelApplication.ulokasi;
+				o.DefaultProgress = parentApplication.setProgress(cmbprogress, 3, "RS");
+				isUpdate = false;
+				parentApplication.F_SetNilaiText([dttanggal, dttanggalnoref], parentApplication.DefaultTanggal);
+				parentApplication.F_SetNilaiText([], 0);
+				parentApplication.F_KosongkanText([txtbagianterima, lblbagianterima, txtkontakperson, txtgudangasal, lblgudangasal, txtgudangtransit, lblgudangtransit, txtgudangtujuan, lblgudangtujuan, txtcatatan, txtnoref]);
+				txtnotransaksi.text = 'Auto';		
+				txturaian.text = parentApplication.getNomor("RS");
+				txtcatatan.text = parentApplication.getNomor("RS",1);
+				txtgudangtujuan.text = parentApplication.ugudang;
+				lblgudangtujuan.text = parentApplication.ugudangnama;
+				txtgudangtransit.text = parentApplication.getSetting(3, 'defaultgudang', 'GudangTransit');
+				lblgudangtransit.text = parentApplication.getSetting(3, 'defaultgudang', 'GudangTransitNama');
+				cmbprogress.enabled = true;
+				mb.menuBarItems[0].enabled = true;
+				mb.menuBarItems[6].enabled = false;
+				mb.menuBarItems[7].enabled = false;
+				mb.menuBarItems[8].enabled = false;
+				mb.menuBarItems[9].visible = false;
+				mb.menuBarItems[10].visible = false;
+				if (vTgl == '0'){
+					dttanggal.enabled = false;
+				}else{
+					dttanggal.enabled = true;
+				}
+				if (vNotransaksi == '1'){
+					chkauto.selected = true;
+					chkauto.enabled = false;
+				}else{
+					if (vDefNotransaksi == '0'){
+						chkauto.selected = false;
+					}else{
+						chkauto.selected = true;
+					}
+				}
+				f_chkAuto();
+				f_focusOnMe();
+				f_defaultGrid();
+				
+				u = new ArrayCollection([{rsid:0, rscabang:parentApplication.ucabang, rslokasi:parentApplication.ulokasi, rsgudangasal:'', rsgudangtransit:'', rsgudangtujuan:'', rssumber:'RS', 
+					rsautonotransaksi:0, rsnotransaksi:txtnotransaksi.text, rstgl:dttanggal.text, rskodepa:0, rsbagianterima:parentApplication.ukontak, rsbagianterimakontak:txtkontakperson.text, rsuraian:txturaian.text, 
+					rscatatan:txtcatatan.text, rsnoref:txtnoref.text, rstglnoref:dttanggalnoref.text, rsidmr:0, rsidts:0, rsstatusrs:0, rsstatus:cmbprogress.selectedItem.v, rsstatussebelumnya:0, 
+					rsjmlrevisi:0, rscetakanke:0, rsinputuser:parentApplication.userid, rsinputtgl:tglDB, rsmodifikasiuser:0, rsmodifikasitgl:tglDB, rsisclose:0, 
+					rscustomtext1:'', rscustomtext2:'', rscustomtext3:'', rscustomtext4:'', rscustomtext5:'', rscustomint1:0, rscustomint2:0, 
+					rscustomint3:0, rscustomdbl1:0, rscustomdbl2:0, rscustomdbl3:0, rscustomdate1:parentApplication.m.DateFirst, rscustomdate2:parentApplication.m.DateFirst, rscustomdate3:parentApplication.m.DateFirst}]);
+				settingNotransaksi.F_KondisiAwalNoTransaksi(txtnotransaksi, chkauto);
+			}
+			
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey)
+							if(mb.menuBarItems[0].enabled){
+								var jenissimpan:int = 1;
+								if(isUpdate == false){jenissimpan = 1}else{jenissimpan = 2}
+								if(FlexGlobals.topLevelApplication.apaBisaAkses(3,5,jenissimpan)){
+									f_simpan();
+								}
+							}
+						break;
+				}
+			}	
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{ 
+				o.a = column.split('|');
+				if((column == 'add' || o.a[0] == 'add')){
+					if(o.a.length == 1)o.o = dg.dataProvider.getItemAt(dg.dataProviderLength-1);
+					else o.d = dg.dataProvider.getItemAt(o.a[1]);
+					o.o.nilaisatuan = 0;
+					return
+				}
+				if(parentApplication.rowIndex < dg1.dataProviderLength)
+				with(dg1.dataProvider.getItemAt(parentApplication.rowIndex)){
+					switch(column){
+//						case "jml":
+//							customdbl1 = Number(jml) / Number(nilaisatuanlapangan);
+//							jmlbarang = Number(jml) * Number(nilaisatuan);
+//							break;
+//						case "customdbl1":
+//							jml = Number(customdbl1) * Number(nilaisatuanlapangan);
+//							jmlbarang = Number(jml) * Number(nilaisatuan);
+//							break;
+						case "jml":
+							customdbl1 = (Number(jml) *  Number(nilaisatuan))/ Number(nilaisatuanlapangan);
+							jmlbarang = Number(jml) * Number(nilaisatuan);
+							//							customdbl1 = Number(jml) / Number(nilaisatuanlapangan);
+							break;
+						case "customdbl1":
+							jml = (Number(nilaisatuanlapangan) / Number(nilaisatuan)) * Number(customdbl1)
+							jmlbarang = Number(jml) * Number(nilaisatuan);
+							//							jml = Number(customdbl1) * Number(nilaisatuanlapangan);
+							//							jmlbarang = Number(jml) * Number(nilaisatuan);
+							break;
+						case "pre_del":
+							hapusserial();
+							hapusbatch();
+							hapusaktiva();
+							break;
+						
+					}
+				}
+				parentApplication.F_dgRefresh(dg);
+			}
+			
+			//hapus serial jika barangnya tidak ada
+			public function hapusserial():void{
+				var s:int;
+				if(acserialdetail.length > 0){
+					for(s=acserialdetail.length-1; s>=0; s--){
+						if(acserialdetail[s].nstidbarang == dg1.dataProvider[FlexGlobals.topLevelApplication.rowIndex].idbarang){
+							acserialdetail.removeItemAt(s);
+						}
+					}
+				}
+			}
+			
+			public function hapusbatch():void{
+				var b:int;
+				if(acbatchdetail.length > 0){
+					for(b=acbatchdetail.length-1; b>=0; b--){
+						if(acbatchdetail[b].nbtidbarang == dg1.dataProvider[FlexGlobals.topLevelApplication.rowIndex].idbarang){
+							acbatchdetail.removeItemAt(b);
+						}
+					}
+				}
+			}
+			
+			public function hapusaktiva():void{
+				var a:int;
+				if(acaktivadetail.length > 0){
+					for(a=acaktivadetail.length-1; a>=0; a--){
+						if(acaktivadetail[a].atidbarang == dg1.dataProvider[FlexGlobals.topLevelApplication.rowIndex].idbarang){
+							acaktivadetail.removeItemAt(a);
+						}
+					}
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false, id:String='';
+				if(dg1.selectedCell != null && parentApplication.rowIndex < dg1.dataProviderLength)obj = dg1.dataProvider.getItemAt(dg1.selectedCell.rowIndex);
+				switch(target){
+					case "txtlokasi":
+						paket = "CdM1_Location";
+						wsfilter = 'laktif=1 AND lkode="'+txtlokasi.text+'"';
+						csfilter = 'laktif=1';
+						//csfield = 2;
+						sort = 'lkode asc';
+						break;
+					case "txtbagianterima":
+						paket = 'CdM1_Contact';
+						wsfilter = '(kaktif = 1 AND kkategori="K" OR kkategori="M") AND kkode = "'+txtbagianterima.text.split('"').join('\\"')+'"';
+						csfilter = '(kaktif = 1 AND kkategori="K" OR kkategori="M")';
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case "txtkontakperson":
+						paket = 'CdM1_Contact_Attention';
+						wsfilter = 'kaidkontak ='+u.getItemAt(0).rsbagianterima+' and kakodekontak ="'+txtkontakperson.text.split('"').join('\\"')+'"';
+						csfilter = 'kaidkontak ='+u.getItemAt(0).rsbagianterima+'';
+						csfield = 2;
+						sort = 'kakodekontak asc';
+						break;
+					case "txtgudangasal":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode ="'+txtgudangasal.text.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						csfield = 2;
+						sort = 'wkode asc';
+						break;
+					case "txtgudangtransit":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode ="'+txtgudangtransit.text.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						csfield = 2;
+						sort = 'wkode asc';
+						break;
+					case "txtgudangtujuan":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode ="'+txtgudangtujuan.text.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						csfield = 2;
+						sort = 'wkode asc';
+						break;
+					case "txtcatatan":
+						paket = 'CdM1_Transaction_Note';
+						csfilter = 'tnaktif = 1 AND tnsumber = "RS"';
+						sort = 'tncatatan asc';
+						break;
+					case "kodebarang":
+						if(txtgudangtujuan.text.length > 0){
+							FlexGlobals.topLevelApplication.txtGudang = FlexGlobals.topLevelApplication.sptSubParam+txtgudangtujuan.text;
+							paket = 'CdM1_Item';
+							wsfilter = 'baktif = 1 AND bassembly <> 1 AND bkode = "'+obj.kodebarang.split('"').join('\\"')+'"';
+							csfilter = 'baktif = 1 AND bassembly <> 1';
+							sort = 'bkode asc';
+							Alert.show("FlexGlobals.topLevelApplication.txtGudang : " + FlexGlobals.topLevelApplication.txtGudang);
+						}else{
+							Alert.show("Gudang tujuan harus diisi terlebih dahulu", "Informasi");
+						}
+						break;
+					case "satuan":
+						paket = 'CdM1_Unit';
+						wsfilter = 'uaktif = 1 AND ukode = "'+obj.satuan.split('"').join('\\"')+'"';
+						csfilter = 'uaktif = 1';
+						sort = 'ukode asc';
+						break;
+					case "customtext1":
+						paket = 'CdM1_Unit';
+						wsfilter = 'uaktif = 1 AND ukode = "'+obj.customtext1.split('"').join('\\"')+'"';
+						csfilter = 'uaktif = 1';
+						sort = 'ukode asc';
+						break;
+					case "matauang":
+						paket = 'CdM1_Currency';
+						wsfilter = 'caktif = 1 AND ckode = "'+obj.matauang.split('"').join('\\"')+'"';
+						csfilter = 'caktif = 1';
+						sort = 'ckode asc';
+						break;
+					case "cabang":
+						paket = 'CdM1_Branch';
+						wsfilter = 'baktif = 1 AND bkode = "'+obj.cabang.split('"').join('\\"')+'"';
+						csfilter = 'baktif = 1';
+						sort = 'bkode asc';
+						break;
+					case "lokasi":
+						paket = 'CdM1_Location';
+						wsfilter = 'laktif = 1 AND lkode = "'+obj.lokasi.split('"').join('\\"')+'"';
+						csfilter = 'laktif = 1';
+						sort = 'lkode asc';
+						break;
+					case "gudangasal":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode = "'+obj.gudangasal.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						sort = 'wkode asc';
+						break;
+					case "gudangtransit":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode = "'+obj.gudangtransit.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						sort = 'wkode asc';
+						break;
+					case "gudangtujuan":
+						paket = 'CdM1_Warehouse';
+						wsfilter = 'waktif = 1 AND wkode = "'+obj.gudangtujuan.split('"').join('\\"')+'"';
+						csfilter = 'waktif = 1';
+						sort = 'wkode asc';
+						break;
+					case "catatan":
+						paket = 'CdM1_Transaction_Note_Detail';
+						csfilter = 'tndaktif = 1 AND tndsumber = "RS"';
+						sort = 'tndcatatan asc';
+						break;
+					case "costcenter":
+						paket = 'CdM1_Cost_Center';
+						wsfilter = 'ccaktif = 1 AND cckode = "'+obj.costcenter.split('"').join('\\"')+'"';
+						csfilter = 'ccaktif = 1';
+						sort = 'cckode asc';
+						break;
+					case "divisi":
+						paket = 'CdM1_Division';
+						wsfilter = 'daktif = 1 AND dkode = "'+obj.divisi.split('"').join('\\"')+'"';
+						csfilter = 'daktif = 1';
+						sort = 'dkode asc';
+						break;
+					case "subdivisi":
+						paket = 'CdM1_Subdivision';
+						wsfilter = 'sdaktif = 1 AND sddivisi = "'+obj.divisi.split('"').join('\\"')+'" AND sdkode = "'+obj.subdivisi.split('"').join('\\"')+'"';
+						csfilter = 'sdaktif = 1 AND sddivisi = "'+obj.divisi.split('"').join('\\"')+'"';
+						sort = 'sdkode asc';
+						break;
+					case "proyek":
+						paket = 'CdM1_Project';
+						wsfilter = 'paktif = 1 AND pkode = "'+obj.proyek+'"';
+						csfilter = 'paktif = 1';
+						sort = 'pkode asc';
+						break;
+					case "ambilTS":
+						paket = 'CdM3_Ts_Detail';
+						csfilter='(tsstatus=2 OR tsstatus=3) AND tsjenis = 0 AND statusrealisasi <> 2 AND tsgudangasal = "'+txtgudangasal.text.split('"').join('\\"')+'" AND tsgudangtujuan = "'+txtgudangtujuan.text.split('"').join('\\"')+'"';
+						sort = 'tsnotransaksi desc, urutan asc';
+						checkbox = true;
+						id = 'idtsdetail';
+						break;
+					case "ambilTS2":
+						paket = 'CdM3_Ts';
+						csfilter='(tsstatus=2 OR tsstatus=3) AND tsjenis = 0 AND tsgudangasal = "'+txtgudangasal.text.split('"').join('\\"')+'" AND tsgudangtujuan = "'+txtgudangtujuan.text.split('"').join('\\"')+'"';
+						sort = 'tsid desc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox, id];
+			}
+			
+			public function f_wsHasil():void
+			{
+				if (dg1.dataProvider != null && parentApplication.rowIndex < dg1.dataProviderLength)
+				var ob : Object = dg1.dataProvider[parentApplication.rowIndex];
+				var s:String = parentApplication.subject, sort:String='';
+				if(parentApplication.wsSuccess){
+					obj = parentApplication.wsArrUtama.getItemAt(0);
+					switch(s){	
+						case "txtlokasi":
+							txtlokasi.text = obj.lkode;
+							o.rslokasi = obj.lkode;
+							break;
+						case "txtbagianterima":
+							txtbagianterima.text = obj.kkode;
+							lblbagianterima.text = obj.knama;
+							u.getItemAt(0).rsbagianterima = obj.kid;
+							break;
+						case "txtkontakperson":
+							txtkontakperson.text = obj.kakodekontak;
+							u.getItemAt(0).rsbagianterimakontak = obj.kaid;
+							break;
+						case "txtgudangasal":
+							FlexGlobals.topLevelApplication.vpVarCurrent = obj.wkode;
+							o.gudangasalnama = lblgudangasal.text;
+							txtgudangasal.text = obj.wkode;
+							
+							lblgudangasal.text = obj.wnama;
+							u.getItemAt(0).tsgudangasal = obj.wid;
+							
+							o.cekid = false;
+							for(i = 0; i<dg1.dataProviderLength; i++){
+								if(dg1.dataProvider[i].idtsdetail > 0 && dg1.dataProvider[i].idtsdetail != undefined && dg1.dataProvider[i].gudangasal != obj.wkode){
+									o.cekid = true; o.gudangasal = dg1.dataProvider[i].gudangasal;
+								}
+							}
+							
+							if(o.cekid == true && txtgudangasal.text != o.gudangasal){
+								Alert.show(FlexGlobals.topLevelApplication.l('Data akan dihapus, lanjutkan ?'), FlexGlobals.topLevelApplication.l('Konfirmasi'), 3, null, function(e:Object):void{	
+									if(e.detail == Alert.YES){
+										FlexGlobals.topLevelApplication.F_defaultGridItem(dg1);
+										if(acbatchdetail.length > 0){
+											validasibatch.f_ValidasiSerialBatch(txtgudangasal.text,acbatchdetail[0].nbtgudang,acbatchdetail);
+										}else if(acserialdetail.length > 0){
+											validasibatch.f_ValidasiSerialBatch(txtgudangasal.text,acserialdetail[0].nstgudang,acserialdetail);
+										}
+									}else{
+										txtgudangasal.text = o.gudangasal;
+										lblgudangasal.text = o.gudangasalnama;
+										FlexGlobals.topLevelApplication.vpVarCurrent = txtgudangasal.text;
+									}
+								});
+							}else{
+								if(acbatchdetail.length > 0){
+									validasibatch.f_ValidasiSerialBatch(txtgudangasal.text,acbatchdetail[0].nbtgudang,acbatchdetail);
+								}else if(acserialdetail.length > 0){
+									validasibatch.f_ValidasiSerialBatch(txtgudangasal.text,acserialdetail[0].nstgudang,acserialdetail);
+								}
+								for(i = 0; i<dg1.dataProviderLength; i++){
+									dg1.dataProvider[i].gudangasal = obj.wkode;
+								}
+							}
+							break;
+						case "txtgudangtransit":
+							txtgudangtransit.text = obj.wkode;
+							lblgudangtransit.text = obj.wnama;
+							u.getItemAt(0).tsgudangtransit = obj.wid;
+							f_setGudang();
+							break;
+						
+						
+						case "txtgudangtujuan":
+							o.gudangtujuannama = lblgudangtujuan.text;
+							FlexGlobals.topLevelApplication.vpVarCurrent = obj.wkode;
+							txtgudangtujuan.text = obj.wkode;
+							lblgudangtujuan.text = obj.wnama;
+							u.getItemAt(0).tsgudangtujuan = obj.wid;
+							
+							o.cekid = false;
+							for(i = 0; i<dg1.dataProviderLength; i++){
+								if(dg1.dataProvider[i].idtsdetail > 0 && dg1.dataProvider[i].idtsdetail != undefined && dg1.dataProvider[i].gudangtujuan != obj.wkode){
+									o.cekid = true; o.gudangtujuan = dg1.dataProvider[i].gudangtujuan;
+								}
+							}
+							
+							if(o.cekid == true && txtgudangtujuan.text != o.gudangtujuan){
+								Alert.show(FlexGlobals.topLevelApplication.l('Data akan dihapus, lanjutkan ?'), FlexGlobals.topLevelApplication.l('Konfirmasi'), 3, null, function(e:Object):void{	
+									if(e.detail == Alert.YES){
+										FlexGlobals.topLevelApplication.F_defaultGridItem(dg1);
+									}else{
+										txtgudangtujuan.text = o.gudangtujuan;
+										lblgudangtujuan.text = o.gudangtujuannama;
+										FlexGlobals.topLevelApplication.vpVarCurrent = txtgudangtujuan.text;
+									}
+								});
+							}else{
+								for(i = 0; i<dg1.dataProviderLength; i++){
+									dg1.dataProvider[i].gudangtujuan = obj.wkode;
+								}
+							}
+							
+							break;
+						case "txtcatatan":
+							txtcatatan.text = obj.tncatatan;
+							break;
+						case "kodebarang":
+								ob.idbarang = obj.bid;
+								ob.kodebarang = obj.bkode;
+								ob.tipebarang = obj.btipe;
+								ob.namabarang = obj.bnama;
+								ob.jml = 1;
+								ob.satuan = obj.bsatuandefault;
+								ob.gudangasal = txtgudangasal.text;
+								ob.gudangtransit = txtgudangtransit.text;
+								ob.gudangtujuan = txtgudangtujuan.text;
+								ob.catatan = '';
+								ob.cabang = parentApplication.ucabang;
+								ob.lokasi = parentApplication.ulokasi;
+								ob.costcenter = '';
+								ob.divisi = '';
+								ob.subdivisi = '';
+								ob.proyek = '';
+								ob.customtext1 = obj.bsatuanlapangan;
+								ob.customtext2 = '';
+								ob.customtext3 = '';
+								ob.nilaisatuanlapangan = obj.bjmllapangan;
+//								ob.customdbl1 = Number(ob.jml) / Number(obj.bjmllapangan);
+								ob.customdbl2 = 0;
+								ob.customdbl3 = 0;
+								ob.customdate1 = parentApplication.m.DateFirst;
+								ob.customdate2 = parentApplication.m.DateFirst;
+								ob.customdate3 = parentApplication.m.DateFirst;
+								ob.tsnotransaksi = '';
+								
+								ob.idrsdetail = 0;
+								ob.idrs = 0;
+								ob.nilaisatuan = obj.bnilaisatuandefault;
+								ob.jmlbarang = Number(ob.jml) * Number(ob.nilaisatuan);
+								ob.satuanbarang = obj.bsatuan;
+								ob.idmrdetail = 0;
+								ob.idtsdetail = 0;
+								ob.isclose = 0;
+								ob.bserial = obj.bserial;
+								ob.bbatch = obj.bbatch;
+								ob.basset = obj.basset;
+								ob.customdbl1 = (Number(ob.jml) * Number(ob.nilaisatuan)) / Number(obj.bjmllapangan);
+							break;
+//						case "satuan":
+//							ob.satuan = obj.ukode;
+//							ob.nilaisatuan = obj.unilai;
+//							ob.jmlbarang = Number(ob.jml) * Number(ob.nilaisatuan);
+//							break;
+//						case "customtext1":
+//							ob.customtext1 = obj.ukode;
+//							break;
+						case "satuan":
+							ob.satuan = obj.ukode;
+							ob.nilaisatuan = obj.unilai;
+							ob.jmlbarang = Number(ob.jml)*Number(ob.nilaisatuan);
+							ob.customdbl1 = (Number(ob.jml) *  Number(ob.nilaisatuan))/ Number(ob.nilaisatuanlapangan);
+							ob.harga = parentApplication.hargatotal * ob.nilaisatuan;
+							f_hitungTotal();
+							break;
+						case "customtext1":
+							ob.customtext1 = obj.ukode;
+							ob.nilaisatuanlapangan = obj.bnilaisatuan;
+							ob.jml = (Number(ob.nilaisatuanlapangan) / Number(ob.nilaisatuan)) * Number(ob.customdbl1);
+							ob.jmlbarang = Number(ob.jml) * Number(ob.nilaisatuan)
+							break;
+						case "matauang":
+							ob.matauang = obj.ckode;
+							ob.kurs = obj.ckurs;
+							break;
+						case "cabang":
+							ob.cabang = obj.bkode;
+							break;
+						case "lokasi":
+							ob.lokasi = obj.lkode;
+							break;
+						case "gudangasal":
+							ob.gudangasal = obj.wkode;
+							break;
+						case "gudangtransit":
+							ob.gudangtransit = obj.wkode;
+							break;
+						case "gudangtujuan":
+							ob.gudangtujuan = obj.wkode;
+							break;
+						case "catatan":
+							ob.catatan = obj.tndcatatan;
+							break;
+						case "costcenter":
+							ob.costcenter = obj.cckode;
+							break;
+						case "divisi":
+							ob.divisi = obj.dkode;
+							break;
+						case "subdivisi":
+							ob.subdivisi = obj.sdkode;
+							break;
+						case "proyek":
+							ob.proyek = obj.pkode;
+							break;
+						case "ambilTS2":
+							if(dg1.dataProviderLength == 1 && dg1.dataProvider[0].kodebarang == ""){
+								f_validasiAmbil('TSdetail2', 'M3_Ts_Detail_VSearch', 0, 0, 'tsnotransaksi = "'+FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0).tsnotransaksi+'" AND statusrealisasi <> 2', "urutan asc");	
+							}else{
+								Alert.show(FlexGlobals.topLevelApplication.l('Data akan dihapus, lanjutkan ?'), FlexGlobals.topLevelApplication.l('Konfirmasi'), 3, null, function(e:Object):void{ 
+									if(e.detail == Alert.YES){
+										f_validasiAmbil('TSdetail2', 'M3_Ts_Detail_VSearch', 0, 0, 'tsnotransaksi = "'+FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0).tsnotransaksi+'" AND statusrealisasi <> 2', "urutan asc");
+									}
+								});
+							}
+							
+//							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+//								if(i==0)s = 'idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail;
+//								else  s+= ' OR idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail;
+//								if(i==0)sort = 'idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail+' desc';
+//								else  sort+= ', idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail+' desc';}
+//							s = "("+s+")";
+//							sort = ""+sort+"";
+//							f_validasiAmbil('TSdetail2', 'M3_Ts_Detail_VSearch', 0, 0, s, sort);
+							break;
+						case "TSdetail2":
+							dg1.dataProvider.removeAll();
+							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+								//								parentApplication.F_hapusBarisKosongGrid(dg1);
+								obj = parentApplication.wsArrUtama.getItemAt(i);
+								dg1.dataProvider.addItem({
+									no : dg1.dataProviderLength+1,
+									idbarang : obj.idbarang,
+									kodebarang : obj.kodebarang,
+									tipebarang : obj.tipebarang,
+									namabarang : obj.namabarang,
+									jml : obj.jmlsisarealisasi,
+									satuan : obj.satuan,
+									gudangasal : obj.gudangasal,
+									gudangtransit : obj.gudangtransit,
+									gudangtujuan : obj.gudangtujuan,
+									catatan : obj.catatan,
+									cabang : obj.cabang,
+									lokasi : obj.lokasi,
+									costcenter : obj.costcenter,
+									divisi : obj.divisi,
+									subdivisi : obj.subdivisi,
+									proyek : obj.proyek,
+									customtext1 : obj.customtext1,
+									customtext2 : obj.customtext2,
+									customtext3 : obj.customtext3,
+//									customdbl1 : Number(obj.jmlsisarealisasi) / Number(obj.bjmllapangan),  
+									customdbl1 : (Number(obj.jmlsisarealisasi) *  Number(obj.nilaisatuan))/ Number(obj.bjmllapangan),
+									customdbl2 : obj.customdbl2,
+									customdbl3 : obj.customdbl3,
+									customdate1 : obj.customdate1,
+									customdate2 : obj.customdate2,
+									customdate3 : obj.customdate3,
+									idrsdetail : 0,
+									idrs : 0,
+									nilaisatuan : obj.nilaisatuan,
+									jmlbarang : Number(obj.jmlsisarealisasi) * Number(obj.nilaisatuan),
+									satuanbarang : obj.satuanbarang,
+									idmrdetail : 0,
+									idtsdetail : obj.idtsdetail,
+									isclose : obj.isclose,
+									tsnotransaksi : obj.tsnotransaksi,
+									bserial : obj.bserial,
+									bbatch : obj.bbatch,
+									basset : obj.basset,
+									nilaisatuanlapangan : obj.bjmllapangan
+								});
+							}
+							dg1.setSelectedCell(dg1.dataProviderLength-1, 1);
+							break;
+						
+						case "ambilTS":
+							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+								if(i==0)s = 'idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail;
+								else  s+= ' OR idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail;
+								if(i==0)sort = 'idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail+' desc';
+								else  sort+= ', idtsdetail = '+parentApplication.wsArrUtama.getItemAt(i).idtsdetail+' desc';}
+							s = "("+s+")";
+							sort = ""+sort+"";
+							f_validasiAmbil('TSdetail', 'M3_Ts_Detail_VSearch', 0, 0, s, sort);
+							break;
+						case "TSdetail":
+							if(dg1.dataProvider.getItemAt(0).kodebarang == ''){
+								dg1.dataProvider.removeAll();
+							}
+							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+//								parentApplication.F_hapusBarisKosongGrid(dg1);
+								obj = parentApplication.wsArrUtama.getItemAt(i);
+								dg1.dataProvider.addItem({
+									no : dg1.dataProviderLength+1,
+									idbarang : obj.idbarang,
+									kodebarang : obj.kodebarang,
+									tipebarang : obj.tipebarang,
+									namabarang : obj.namabarang,
+									jml : obj.jmlsisarealisasi,
+									satuan : obj.satuan,
+									gudangasal : obj.gudangasal,
+									gudangtransit : obj.gudangtransit,
+									gudangtujuan : obj.gudangtujuan,
+									catatan : obj.catatan,
+									cabang : obj.cabang,
+									lokasi : obj.lokasi,
+									costcenter : obj.costcenter,
+									divisi : obj.divisi,
+									subdivisi : obj.subdivisi,
+									proyek : obj.proyek,
+									customtext1 : obj.customtext1,
+									customtext2 : obj.customtext2,
+									customtext3 : obj.customtext3,
+//									customdbl1 : Number(obj.jmlsisarealisasi) / Number(obj.bjmllapangan),
+									customdbl1 : (Number(obj.jmlsisarealisasi) *  Number(obj.nilaisatuan))/ Number(obj.bjmllapangan),
+									customdbl2 : obj.customdbl2,
+									customdbl3 : obj.customdbl3,
+									customdate1 : obj.customdate1,
+									customdate2 : obj.customdate2,
+									customdate3 : obj.customdate3,
+									idrsdetail : 0,
+									idrs : 0,
+									nilaisatuan : obj.nilaisatuan,
+									jmlbarang : Number(obj.jmlsisarealisasi) * Number(obj.nilaisatuan),
+									satuanbarang : obj.satuanbarang,
+									idmrdetail : 0,
+									idtsdetail : obj.idtsdetail,
+									isclose : obj.isclose,
+									tsnotransaksi : obj.tsnotransaksi,
+									bserial : obj.bserial,
+									bbatch : obj.bbatch,
+									basset : obj.basset,
+									nilaisatuanlapangan : obj.bjmllapangan
+								});
+							}
+							dg1.setSelectedCell(dg1.dataProviderLength-1, 1);
+							break;
+						case "tampil":
+							f_focusOnMe();
+							mb.menuBarItems[6].enabled = true;
+							mb.menuBarItems[7].enabled = true;
+							mb.menuBarItems[8].enabled = true;
+							mb.menuBarItems[9].visible = false;
+							mb.menuBarItems[10].visible = false;
+							with(parentApplication.wsArrUtama.getItemAt(0)){
+								txtlokasi.text = rslokasi;
+								isUpdate = true;
+								txtbagianterima.text = rsbagianterimakode;	
+								lblbagianterima.text = rsbagianterimanama;
+								txtkontakperson.text = rsbagianterimakontak;
+								txtgudangasal.text = rsgudangasal;
+								lblgudangasal.text = rsgudangasalnama;
+								parentApplication.vpVarCurrent = txtgudangasal.text;
+								txtgudangtransit.text = rsgudangtransit;
+								lblgudangtransit.text = rsgudangtransitnama;
+								txtgudangtujuan.text = rsgudangtujuan;
+								lblgudangtujuan.text = rsgudangtujuannama;
+								dttanggal.text = rstgl;
+								txtnotransaksi.text = rsnotransaksi;
+								if(rsstatus == 2 || rsstatus == 3 || rsstatus == 4 || rsstatus == 7)
+								{
+									cmbprogress.enabled = false;
+									mb.menuBarItems[0].enabled = false;
+								}
+								parentApplication.selectedProgress(cmbprogress, rsstatus);
+								txturaian.text = rsuraian;
+								txtcatatan.text = rscatatan;
+								txtnoref.text = rsnoref;
+								dttanggalnoref.text = rstglnoref;
+								chkauto.selected = Boolean(int(rsautonotransaksi));
+								getNotransaksi = parentApplication.wsArrUtama[0].rsnotransaksi;
+								f_chkAuto();
+								
+								u = new ArrayCollection([{rsid:rsid, rscabang:rscabang, rslokasi:rslokasi, rsgudangasal:rsgudangasal, rsgudangtransit:rsgudangtransit, rsgudangtujuan:rsgudangtujuan, rssumber:rssumber, 
+									rsautonotransaksi:rsautonotransaksi, rsnotransaksi:rsnotransaksi, rstgl:rstgl, rskodepa:rskodepa, rsbagianterima:rsbagianterima, rsbagianterimakontak:rsbagianterimakontak, rsuraian:rsuraian, 
+									rscatatan:rscatatan, rsnoref:rsnoref, rstglnoref:rstglnoref, rsidmr:rsidmr, rsidts:rsidts, rsstatus:rsstatus, rsstatussebelumnya:rsstatussebelumnya, 
+									rsjmlrevisi:rsjmlrevisi, rscetakanke:rscetakanke, rsinputuser:rsinputuser, rsinputtgl:rsinputtgl, rsmodifikasiuser:parentApplication.userid, rsmodifikasitgl:rsmodifikasitgl, rsisclose:rsisclose, 
+									rscustomtext1:rscustomtext1, rscustomtext2:rscustomtext2, rscustomtext3:rscustomtext3, rscustomtext4:rscustomtext4, rscustomtext5:rscustomtext5, rscustomint1:rscustomint1, rscustomint2:rscustomint2, 
+									rscustomint3:rscustomint3, rscustomdbl1:rscustomdbl1, rscustomdbl2:rscustomdbl2, rscustomdbl3:rscustomdbl3, rscustomdate1:rscustomdate1, rscustomdate2:rscustomdate2, rscustomdate3:rscustomdate3, 
+									rscabangnama:rscabangnama, rslokasinama:rslokasinama, rsgudangasalnama:rsgudangasalnama, rsgudangtransitnama:rsgudangtransitnama, rsgudangtujuannama:rsgudangtujuannama, rsbagianterimakode:rsbagianterimakode, rsbagianterimanama:rsbagianterimanama, 
+									rsmrnotransaksi:rsmrnotransaksi, rstsnotransaksi:rstsnotransaksi, rsstatusnama:rsstatusnama, rsstatussebelumnyanama:rsstatussebelumnyanama, rsinputusernama:rsinputusernama, rsmodifikasiusernama:rsmodifikasiusernama}]);
+							}
+							dg1.dataProvider.removeAll();
+							
+							for(i=0;i<parentApplication.wsArrDetail.length;i++){
+								obj = parentApplication.wsArrDetail.getItemAt(i);
+								dg1.dataProvider.addItem({
+									no : dg1.dataProviderLength+1,
+									idbarang : obj.idbarang,
+									kodebarang : obj.kodebarang,
+									tipebarang : obj.tipebarang,
+									namabarang : obj.namabarang,
+									jml : obj.jml,
+									satuan : obj.satuan,
+									gudangasal : obj.gudangasal,
+									gudangtransit : obj.gudangtransit,
+									gudangtujuan : obj.gudangtujuan,
+									catatan : obj.catatan,
+									cabang : obj.cabang,
+									lokasi : obj.lokasi,
+									costcenter : obj.costcenter,
+									divisi : obj.divisi,
+									subdivisi : obj.subdivisi,
+									proyek : obj.proyek,
+									customtext1 : obj.customtext1,
+									customtext2 : obj.customtext2,
+									customtext3 : obj.customtext3,
+									customdbl1 : obj.customdbl1,
+									customdbl2 : obj.customdbl2,
+									customdbl3 : obj.customdbl3,
+									customdate1 : obj.customdate1,
+									customdate2 : obj.customdate2,
+									customdate3 : obj.customdate3,
+									idrsdetail : obj.idrsdetail,
+									idrs : obj.idrs,
+									nilaisatuan : obj.nilaisatuan,
+									jmlbarang : obj.jmlbarang,
+									satuanbarang : obj.satuanbarang,
+									idmrdetail : obj.idmrdetail,
+									idtsdetail : obj.idtsdetail,
+									isclose : obj.isclose,
+									tsnotransaksi : obj.tsnotransaksi,
+									bserial : obj.bserial,
+									bbatch : obj.bbatch,
+									basset : obj.basset,
+									nilaisatuanlapangan : obj.bjmllapangan
+								});
+							}
+							dg1.setSelectedCell(0, 1);
+							
+							
+							ws_Batch = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[2], FlexGlobals.topLevelApplication.vData[2]);
+							acbatchdetail.removeAll();
+							var b:Object = {};
+							if(ws_Batch.length > 0){
+								for(var g:int=0; g < ws_Batch.length; g++){
+									if(b[ws_Batch.getItemAt(g).nbtidbarang] == undefined)
+										b[ws_Batch.getItemAt(g).nbtidbarang] = 1;
+									with(ws_Batch.getItemAt(g)){
+										acbatchdetail.addItem({no:b[nbtidbarang]++, nbtid:nbtid, nbtjenismutasi:nbtjenismutasi, nbtidbarang:nbtidbarang, 
+											nbtkode:nbtkode, nbtsumber:nbtsumber, nbtidtransaksi:nbtidtransaksi, nbtsatuan:nbtsatuan, 
+											nbtjml:nbtjml, nbtcustomtext1:nbtcustomtext1, nbtcustomtext2:nbtcustomtext2, 
+											nbtcustomtext3:nbtcustomtext3, nbtcustomdbl1:nbtcustomdbl1, nbtcustomdbl2:nbtcustomdbl2, nbtcustomdbl3:nbtcustomdbl3, 
+											nbtcustomdate1:nbtcustomdate1, nbtcustomdate2:nbtcustomdate2, nbtcustomdate3:nbtcustomdate3, kodebarang:kodebarang,
+											nbtgudang:nbtgudang, nbtidbatchin:nbtidbatchin});
+									}
+								}
+							}
+							
+							ws_Serial = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[3], FlexGlobals.topLevelApplication.vData[3]);
+							acserialdetail.removeAll();
+							var r:Object = {};
+							if(ws_Serial.length > 0){
+								for(var j:int=0; j<ws_Serial.length; j++){
+									if(r[ws_Serial.getItemAt(j).nstidbarang] == undefined)
+										r[ws_Serial.getItemAt(j).nstidbarang] = 1;
+									with(ws_Serial.getItemAt(j)){
+										acserialdetail.addItem({no:r[nstidbarang]++, nstid:nstid, nstjenismutasi:nstjenismutasi, nstidbarang:nstidbarang, nstkode:nstkode, nstsumber:nstsumber, 
+											nstidtransaksi:nstidtransaksi, nstsatuan:nstsatuan, 
+											nstjml:nstjml, nstcustomtext1:nstcustomtext1, nstcustomtext2:nstcustomtext2, nstcustomtext3:nstcustomtext3, nstcustomdbl1:nstcustomdbl1, 
+											nstcustomdbl2:nstcustomdbl2, nstcustomdbl3:nstcustomdbl3, 
+											nstcustomdate1:nstcustomdate1, nstcustomdate2:nstcustomdate2, nstcustomdate3:nstcustomdate3, nstgudang:nstgudang, 
+											nstidserialin:nstidserialin,kodebarang:kodebarang})
+									}
+								}
+							}
+							
+							ws_Aktiva = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[4], FlexGlobals.topLevelApplication.vData[4]);
+							acaktivadetail.removeAll();
+							var at:Object = {};
+							if(ws_Aktiva.length > 0){
+								for(var k:int=0; k<ws_Aktiva.length; k++){
+									if(at[ws_Aktiva.getItemAt(k).atidbarang] == undefined)
+										at[ws_Aktiva.getItemAt(k).atidbarang] = 1;
+									with(ws_Aktiva.getItemAt(k)){
+										acaktivadetail.addItem({no:at[atidbarang]++, atid:atid, atasetid:atasetid, atjenismutasi:atjenismutasi, atsumber:atsumber, atidutama:atidutama, atidbarang:atidbarang, atkode:atkode,
+											atnama:atnama, atkategori:atkategori, atcabang:atcabang, atlokasi:atlokasi, atgudang:atgudang, atdivisi:atdivisi, atsubdivisi:atsubdivisi, 
+											atcostcenter:atcostcenter, atproyek:atproyek, atcatatan:atcatatan, atnomor:atnomor, attglbeli:attglbeli, attglpakai:attglpakai, atjml:atjml, 
+											atsatuan:atsatuan, atmatauang:atmatauang, atkurs:atkurs, atharga:atharga, atdiskon:atdiskon, atjmldiskon:atjmldiskon, atpajak1:atpajak1, 
+											atjmlpajak1:atjmlpajak1, atpajak2:atpajak2, atjmlpajak2:atjmlpajak2, athargabeli:athargabeli, atnilairesidu:atnilairesidu, atumurekonomis:atumurekonomis, atbebanperbln:atbebanperbln, 
+											atakumulasibeban:atakumulasibeban, atnilaibuku:atnilaibuku, atmetode:atmetode, attabelpenyusutan:attabelpenyusutan, atintangible:atintangible, atfiskal:atfiskal, atatastengahbulan:atatastengahbulan, 
+											atrekasset:atrekasset, atrekakumdepresiasi:atrekakumdepresiasi, atrekdepresiasi:atrekdepresiasi, atrekpenghapusan:atrekpenghapusan, atprodusen:atprodusen, attglpensiun:attglpensiun, atpenyusutanke:atpenyusutanke, 
+											atnilaimenurun:atnilaimenurun, atdispose:atdispose, atpembelian:atpembelian, atpenjualan:atpenjualan, atlocked:atlocked, atstatus:atstatus, atstatussebelumnya:atstatussebelumnya, 
+											atisclose:atisclose, atinputuser:atinputuser, atinputtgl:atinputtgl, atmodifikasiuser:atmodifikasiuser, atmodifikasitgl:atmodifikasitgl, atcustomtext1:atcustomtext1, atcustomtext2:atcustomtext2, 
+											atcustomtext3:atcustomtext3, atcustomtext4:atcustomtext4, atcustomtext5:atcustomtext5, atcustomint1:atcustomint1, atcustomint2:atcustomint2, atcustomint3:atcustomint3, atcustomint4:atcustomint4, 
+											atcustomint5:atcustomint5, atcustomdbl1:atcustomdbl1, atcustomdbl2:atcustomdbl2, atcustomdbl3:atcustomdbl3, atcustomdbl4:atcustomdbl4, atcustomdbl5:atcustomdbl5, atcustomdate1:atcustomdate1, 
+											atcustomdate2:atcustomdate2, atcustomdate3:atcustomdate3, atcustomdate4:atcustomdate4, atcustomdate5:atcustomdate5, kodebarang:atkode})
+									}
+								}
+							}
+							break;
+						case "tampilHistory":
+							f_focusOnMe();
+							mb.menuBarItems[4].enabled = true;
+							mb.menuBarItems[0].visible = false;
+							mb.menuBarItems[1].visible = false;
+							mb.menuBarItems[2].visible = false;
+							mb.menuBarItems[4].visible = false;
+							mb.menuBarItems[5].visible = false;
+							mb.menuBarItems[6].visible = false;
+							mb.menuBarItems[7].visible = false;
+							mb.menuBarItems[8].visible = false;
+							mb.menuBarItems[9].visible = false;
+							with(parentApplication.wsArrUtama.getItemAt(0)){
+								isUpdate = true;
+								txtbagianterima.text = rsbagianterimakode;	
+								lblbagianterima.text = rsbagianterimanama;
+								txtkontakperson.text = rsbagianterimakontak;
+								txtgudangasal.text = rsgudangasal;
+								lblgudangasal.text = rsgudangasalnama;
+								parentApplication.vpVarCurrent = txtgudangasal.text;
+								txtgudangtransit.text = rsgudangtransit;
+								lblgudangtransit.text = rsgudangtransitnama;
+								txtgudangtujuan.text = rsgudangtujuan;
+								lblgudangtujuan.text = rsgudangtujuannama;
+								dttanggal.text = rstgl;
+								txtnotransaksi.text = rsnotransaksi;
+								if(rsstatus == 2 || rsstatus == 3 || rsstatus == 4 || rsstatus == 7)
+								{
+									cmbprogress.enabled = false;
+									mb.menuBarItems[0].enabled = false;
+								}
+								parentApplication.selectedProgress(cmbprogress, rsstatus);
+								txturaian.text = rsuraian;
+								txtcatatan.text = rscatatan;
+								txtnoref.text = rsnoref;
+								dttanggalnoref.text = rstglnoref;
+								chkauto.selected = Boolean(int(rsautonotransaksi));
+								getNotransaksi = parentApplication.wsArrUtama[0].rsnotransaksi;
+								f_chkAuto();
+								
+								u = new ArrayCollection([{rsid:rsid, rscabang:rscabang, rslokasi:rslokasi, rsgudangasal:rsgudangasal, rsgudangtransit:rsgudangtransit, rsgudangtujuan:rsgudangtujuan, rssumber:rssumber, 
+									rsautonotransaksi:rsautonotransaksi, rsnotransaksi:rsnotransaksi, rstgl:rstgl, rskodepa:rskodepa, rsbagianterima:rsbagianterima, rsbagianterimakontak:rsbagianterimakontak, rsuraian:rsuraian, 
+									rscatatan:rscatatan, rsnoref:rsnoref, rstglnoref:rstglnoref, rsidmr:rsidmr, rsidts:rsidts, rsstatus:rsstatus, rsstatussebelumnya:rsstatussebelumnya, 
+									rsjmlrevisi:rsjmlrevisi, rscetakanke:rscetakanke, rsinputuser:rsinputuser, rsinputtgl:rsinputtgl, rsmodifikasiuser:parentApplication.userid, rsmodifikasitgl:rsmodifikasitgl, rsisclose:rsisclose, 
+									rscustomtext1:rscustomtext1, rscustomtext2:rscustomtext2, rscustomtext3:rscustomtext3, rscustomtext4:rscustomtext4, rscustomtext5:rscustomtext5, rscustomint1:rscustomint1, rscustomint2:rscustomint2, 
+									rscustomint3:rscustomint3, rscustomdbl1:rscustomdbl1, rscustomdbl2:rscustomdbl2, rscustomdbl3:rscustomdbl3, rscustomdate1:rscustomdate1, rscustomdate2:rscustomdate2, rscustomdate3:rscustomdate3, 
+									rscabangnama:rscabangnama, rslokasinama:rslokasinama, rsgudangasalnama:rsgudangasalnama, rsgudangtransitnama:rsgudangtransitnama, rsgudangtujuannama:rsgudangtujuannama, rsbagianterimakode:rsbagianterimakode, rsbagianterimanama:rsbagianterimanama, 
+									rsmrnotransaksi:rsmrnotransaksi, rstsnotransaksi:rstsnotransaksi, rsstatusnama:rsstatusnama, rsstatussebelumnyanama:rsstatussebelumnyanama, rsinputusernama:rsinputusernama, rsmodifikasiusernama:rsmodifikasiusernama}]);
+							}
+							dg1.dataProvider.removeAll();
+							
+							for(i=0;i<parentApplication.wsArrDetail.length;i++){
+								obj = parentApplication.wsArrDetail.getItemAt(i);
+								dg1.dataProvider.addItem({
+									no : dg1.dataProviderLength+1,
+									idbarang : obj.idbarang,
+									kodebarang : obj.kodebarang,
+									tipebarang : obj.tipebarang,
+									namabarang : obj.namabarang,
+									jml : obj.jml,
+									satuan : obj.satuan,
+									gudangasal : obj.gudangasal,
+									gudangtransit : obj.gudangtransit,
+									gudangtujuan : obj.gudangtujuan,
+									catatan : obj.catatan,
+									cabang : obj.cabang,
+									lokasi : obj.lokasi,
+									costcenter : obj.costcenter,
+									divisi : obj.divisi,
+									subdivisi : obj.subdivisi,
+									proyek : obj.proyek,
+									customtext1 : obj.customtext1,
+									customtext2 : obj.customtext2,
+									customtext3 : obj.customtext3,
+									customdbl1 : obj.customdbl1,
+									customdbl2 : obj.customdbl2,
+									customdbl3 : obj.customdbl3,
+									customdate1 : obj.customdate1,
+									customdate2 : obj.customdate2,
+									customdate3 : obj.customdate3,
+									idrsdetail : obj.idrsdetail,
+									idrs : obj.idrs,
+									nilaisatuan : obj.nilaisatuan,
+									jmlbarang : obj.jmlbarang,
+									satuanbarang : obj.satuanbarang,
+									idmrdetail : obj.idmrdetail,
+									idtsdetail : obj.idtsdetail,
+									isclose : obj.isclose,
+									tsnotransaksi : obj.tsnotransaksi,
+									bserial : obj.bserial,
+									bbatch : obj.bbatch,
+									basset : obj.basset
+								});
+							}
+							dg1.setSelectedCell(0, 1);
+							
+							
+							ws_Batch = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[2], FlexGlobals.topLevelApplication.vData[2]);
+							acbatchdetail.removeAll();
+							var hb:Object = {};
+							if(ws_Batch.length > 0){
+								for(var bg:int=0; bg < ws_Batch.length; bg++){
+									if(hb[ws_Batch.getItemAt(bg).nbtidbarang] == undefined)
+										hb[ws_Batch.getItemAt(bg).nbtidbarang] = 1;
+									with(ws_Batch.getItemAt(bg)){
+										acbatchdetail.addItem({no:hb[nbtidbarang]++, nbtid:nbtid, nbtjenismutasi:nbtjenismutasi, nbtidbarang:nbtidbarang, 
+											nbtkode:nbtkode, nbtsumber:nbtsumber, nbtidtransaksi:nbtidtransaksi, nbtsatuan:nbtsatuan, 
+											nbtjml:nbtjml, nbtcustomtext1:nbtcustomtext1, nbtcustomtext2:nbtcustomtext2, 
+											nbtcustomtext3:nbtcustomtext3, nbtcustomdbl1:nbtcustomdbl1, nbtcustomdbl2:nbtcustomdbl2, nbtcustomdbl3:nbtcustomdbl3, 
+											nbtcustomdate1:nbtcustomdate1, nbtcustomdate2:nbtcustomdate2, nbtcustomdate3:nbtcustomdate3, kodebarang:kodebarang,
+											nbtgudang:nbtgudang, nbtidbatchin:nbtidbatchin});
+									}
+								}
+							}
+							
+							ws_Serial = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[3], FlexGlobals.topLevelApplication.vData[3]);
+							acserialdetail.removeAll();
+							var sr:Object = {};
+							if(ws_Serial.length > 0){
+								for(var sj:int=0; sj<ws_Serial.length; sj++){
+									if(sr[ws_Serial.getItemAt(sj).nstidbarang] == undefined)
+										sr[ws_Serial.getItemAt(sj).nstidbarang] = 1;
+									with(ws_Serial.getItemAt(sj)){
+										acserialdetail.addItem({no:sr[nstidbarang]++, nstid:nstid, nstjenismutasi:nstjenismutasi, nstidbarang:nstidbarang, nstkode:nstkode, nstsumber:nstsumber, 
+											nstidtransaksi:nstidtransaksi, nstsatuan:nstsatuan, 
+											nstjml:nstjml, nstcustomtext1:nstcustomtext1, nstcustomtext2:nstcustomtext2, nstcustomtext3:nstcustomtext3, nstcustomdbl1:nstcustomdbl1, 
+											nstcustomdbl2:nstcustomdbl2, nstcustomdbl3:nstcustomdbl3, 
+											nstcustomdate1:nstcustomdate1, nstcustomdate2:nstcustomdate2, nstcustomdate3:nstcustomdate3, nstgudang:nstgudang, 
+											nstidserialin:nstidserialin,kodebarang:kodebarang})
+									}
+								}
+							}
+							
+							ws_Aktiva = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[4], FlexGlobals.topLevelApplication.vData[4]);
+							acaktivadetail.removeAll();
+							var att:Object = {};
+							if(ws_Aktiva.length > 0){
+								for(var kk:int=0; kk<ws_Aktiva.length; kk++){
+									if(att[ws_Aktiva.getItemAt(kk).atidbarang] == undefined)
+										att[ws_Aktiva.getItemAt(kk).atidbarang] = 1;
+									with(ws_Aktiva.getItemAt(kk)){
+										acaktivadetail.addItem({no:att[atidbarang]++, atid:atid, atasetid:atasetid, atjenismutasi:atjenismutasi, atsumber:atsumber, atidutama:atidutama, atidbarang:atidbarang, atkode:atkode,
+											atnama:atnama, atkategori:atkategori, atcabang:atcabang, atlokasi:atlokasi, atgudang:atgudang, atdivisi:atdivisi, atsubdivisi:atsubdivisi, 
+											atcostcenter:atcostcenter, atproyek:atproyek, atcatatan:atcatatan, atnomor:atnomor, attglbeli:attglbeli, attglpakai:attglpakai, atjml:atjml, 
+											atsatuan:atsatuan, atmatauang:atmatauang, atkurs:atkurs, atharga:atharga, atdiskon:atdiskon, atjmldiskon:atjmldiskon, atpajak1:atpajak1, 
+											atjmlpajak1:atjmlpajak1, atpajak2:atpajak2, atjmlpajak2:atjmlpajak2, athargabeli:athargabeli, atnilairesidu:atnilairesidu, atumurekonomis:atumurekonomis, atbebanperbln:atbebanperbln, 
+											atakumulasibeban:atakumulasibeban, atnilaibuku:atnilaibuku, atmetode:atmetode, attabelpenyusutan:attabelpenyusutan, atintangible:atintangible, atfiskal:atfiskal, atatastengahbulan:atatastengahbulan, 
+											atrekasset:atrekasset, atrekakumdepresiasi:atrekakumdepresiasi, atrekdepresiasi:atrekdepresiasi, atrekpenghapusan:atrekpenghapusan, atprodusen:atprodusen, attglpensiun:attglpensiun, atpenyusutanke:atpenyusutanke, 
+											atnilaimenurun:atnilaimenurun, atdispose:atdispose, atpembelian:atpembelian, atpenjualan:atpenjualan, atlocked:atlocked, atstatus:atstatus, atstatussebelumnya:atstatussebelumnya, 
+											atisclose:atisclose, atinputuser:atinputuser, atinputtgl:atinputtgl, atmodifikasiuser:atmodifikasiuser, atmodifikasitgl:atmodifikasitgl, atcustomtext1:atcustomtext1, atcustomtext2:atcustomtext2, 
+											atcustomtext3:atcustomtext3, atcustomtext4:atcustomtext4, atcustomtext5:atcustomtext5, atcustomint1:atcustomint1, atcustomint2:atcustomint2, atcustomint3:atcustomint3, atcustomint4:atcustomint4, 
+											atcustomint5:atcustomint5, atcustomdbl1:atcustomdbl1, atcustomdbl2:atcustomdbl2, atcustomdbl3:atcustomdbl3, atcustomdbl4:atcustomdbl4, atcustomdbl5:atcustomdbl5, atcustomdate1:atcustomdate1, 
+											atcustomdate2:atcustomdate2, atcustomdate3:atcustomdate3, atcustomdate4:atcustomdate4, atcustomdate5:atcustomdate5, kodebarang:atkode})
+									}
+								}
+							}
+							break;
+						case "simpan":
+							FlexGlobals.topLevelApplication.FormFilter = '';
+							f_kondisiAwal();
+							f_defaultGrid();
+							acbatch.removeAll();
+							acserial.removeAll();
+							acaktiva.removeAll();
+							acserialdetail.removeAll();
+							acbatchdetail.removeAll();
+							acaktivadetail.removeAll();
+							FlexGlobals.topLevelApplication.F_alertCetak(3, 5, 'RS', parentApplication.wsIdtransaksi, parentApplication.wsErrmessage, n.dttanggal+" s.d "+n.dttanggal);
+							break;
+						case "print":
+							parentApplication.F_openReportDefault(3, 5, 'rsid = '+parentApplication.wsIdtransaksi);
+							break;
+					}
+				}else{					
+					if(parentApplication.F_validasiFalse(s))
+						switch(s){
+							case "kodebarang":
+								ob.kodebarang = ''; ob.idbarang = ''; ob.tipebarang = ''; ob.namabarang = ''; ob.jml = 0; ob.satuan = ''; ob.gudangasal = '';
+								ob.gudangtransit = ''; ob.gudangtujuan = ''; ob.catatan = ''; ob.cabang = ''; ob.lokasi = ''; ob.costcenter = ''; ob.divisi = '';
+								ob.subdivisi = ''; ob.proyek = ''; ob.customtext1 = ''; ob.customtext2 = ''; ob.customtext3 = ''; ob.customdbl1 = ''; ob.customdbl2 = '';
+								ob.customdbl3 = ''; ob.customdate1 = ''; ob.customdate2 = ''; ob.customdate3 = ''; ob.tsnotransaksi = ''; ob.idrsdetail = ''; ob.idrs = '';
+								ob.nilaisatuan = ''; ob.jmlbarang = ''; ob.satuanbarang = ''; ob.idmrdetail = ''; ob.idtsdetail = ''; ob.isclose = '';
+								break;
+							case "satuan":
+								ob.satuan = '';
+								break;
+							case "customtext1":
+								ob.customtext1 = '';
+								break;
+							case "matauang":
+								ob.matauang = '';
+								ob.kurs = '';
+								break;
+							case "cabang":
+								ob.cabang = '';
+								break;
+							case "lokasi":
+								ob.lokasi = '';
+								break;
+							case "gudangasal":
+								ob.gudangasal = '';
+								break;
+							case "gudangtransit":
+								ob.gudangtransit = '';
+								break;
+							case "gudangtujuan":
+								ob.gudangtujuan = '';
+								break;
+							case "costcenter":
+								ob.costcenter = '';
+								break;
+							case "divisi":
+								ob.divisi = '';
+								break;
+							case "subdivisi":
+								ob.subdivisi = '';
+								break;
+							case "proyek":
+								ob.proyek = '';
+								break;
+//							case "ambilTS":
+//							case "TSdetail":
+							case "tampil":
+							case "simpan":
+								Alert.show(FlexGlobals.topLevelApplication.l(parentApplication.wsErrmessage), FlexGlobals.topLevelApplication.l("Informasi"));
+								break;
+						}
+				}
+				parentApplication.F_dgRefresh(dg1);
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case "txtbagianterima":parentApplication.F_KosongkanText([txtbagianterima, lblbagianterima]);break;
+					case "txtkontakperson":parentApplication.F_KosongkanText([txtkontakperson]);break;
+					case "txtgudangasal":parentApplication.F_KosongkanText([txtgudangasal, lblgudangasal]);break;
+					case "txtgudangtransit":parentApplication.F_KosongkanText([txtgudangtransit, lblgudangtransit]);break;
+					case "txtgudangtujuan":parentApplication.F_KosongkanText([txtgudangtujuan, lblgudangtujuan]);break;
+					case "txtcatatan":parentApplication.F_KosongkanText([txtcatatan]);break;
+					case "txtlokasi":parentApplication.F_KosongkanText([txtlokasi]);break;
+				}
+			}
+			
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String, tgl:String, batch:String = '', serial:String='', aktiva:String='';
+				parentApplication.vpFocusEvent = true;
+				n.dttanggal = dttanggal.text;
+				if(mb.menuBarItems[0].enabled){
+					validasiForm();
+					if(validasi){
+						u.refresh();
+						// Set Utama
+						
+						with(u.getItemAt(0))
+							a = [rsid, rscabang, txtlokasi.text, txtgudangasal.text, txtgudangtransit.text, txtgudangtujuan.text, rssumber, 
+								int(chkauto.selected), txtnotransaksi.text, parentApplication.F_tglFormatDB(dttanggal.text), rskodepa, rsbagianterima, txtkontakperson.text, txturaian.text, 
+								txtcatatan.text, txtnoref.text, parentApplication.F_tglFormatDB(dttanggalnoref.text), rsidmr, rsidts, cmbprogress.selectedItem.v, rsstatussebelumnya, 
+								rsjmlrevisi, rscetakanke, rsinputuser, parentApplication.F_tglFormatDB(rsinputtgl), rsmodifikasiuser, parentApplication.F_tglFormatDB(rsmodifikasitgl), rsisclose, 
+								rscustomtext1, rscustomtext2, rscustomtext3, rscustomtext4, rscustomtext5, rscustomint1, rscustomint2, 
+								rscustomint3, rscustomdbl1, rscustomdbl2, rscustomdbl3, parentApplication.F_tglFormatDB(rscustomdate1), parentApplication.F_tglFormatDB(rscustomdate2), parentApplication.F_tglFormatDB(rscustomdate3)];
+						utama = parentApplication.F_splitArrayToString(a);
+						
+						// Set Detail
+						for(i=0;i<dg1.dataProviderLength;i++){
+							with(dg1.dataProvider.getItemAt(i)){
+								a = [idrsdetail, idrs, idbarang, namabarang, tipebarang, jml, satuan, 
+									nilaisatuan, jmlbarang, satuanbarang, cabang, lokasi, gudangasal, gudangtransit, 
+									gudangtujuan, costcenter, divisi, subdivisi, proyek, catatan, (i+1), 
+									idmrdetail, idtsdetail, isclose, customtext1, customtext2, customtext3, customdbl1, 
+									customdbl2, customdbl3, parentApplication.F_tglFormatDB(customdate1), parentApplication.F_tglFormatDB(customdate2), parentApplication.F_tglFormatDB(customdate3)];
+								if(i == 0)detail = parentApplication.F_splitArrayToString(a);
+								else detail += "▲"+parentApplication.F_splitArrayToString(a);
+							}
+						}
+							
+						
+							//set serial
+						for(var ib:int=0;ib < acserialdetail.length;ib++){
+							with(acserialdetail.getItemAt(ib)){
+								a = [nstid, nstjenismutasi, nstidbarang, nstkode, nstsumber, nstidtransaksi, nstsatuan, 
+									1, nstcustomtext1, nstcustomtext2, nstcustomtext3, nstcustomdbl1, nstcustomdbl2, nstcustomdbl3, 
+									FlexGlobals.topLevelApplication.F_tglFormatDB(nstcustomdate1), FlexGlobals.topLevelApplication.F_tglFormatDB(nstcustomdate2), FlexGlobals.topLevelApplication.F_tglFormatDB(nstcustomdate3),
+									txtgudangasal.text, nstidserialin];
+								if(serial == '')serial =FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+								else serial += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							}
+						}
+						// Set batch
+						for(var ibb:int=0; ibb < acbatchdetail.length; ibb++){
+							with(acbatchdetail.getItemAt(ibb)){
+								a = [nbtid, nbtjenismutasi, nbtidbarang, nbtkode, nbtsumber, nbtidtransaksi, nbtsatuan, 
+									nbtjml, nbtcustomtext1, nbtcustomtext2, nbtcustomtext3, nbtcustomdbl1, nbtcustomdbl2, nbtcustomdbl3, 
+									FlexGlobals.topLevelApplication.F_tglFormatDB(nbtcustomdate1), 
+									FlexGlobals.topLevelApplication.F_tglFormatDB(nbtcustomdate2), 
+									FlexGlobals.topLevelApplication.F_tglFormatDB(nbtcustomdate3),
+									txtgudangasal.text, nbtidbatchin];
+								if(ibb == 0)batch =FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+								else batch += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							}
+						}
+						// Set aktiva
+						for(var ibbb:int=0; ibbb < acaktivadetail.length; ibbb++){
+							with(acaktivadetail.getItemAt(ibbb)){
+								a = [atid, atasetid, atjenismutasi, atsumber, atidutama, atidbarang, atkode, 
+									atnama, atkategori, atcabang, atlokasi, atgudang, atdivisi, atsubdivisi, 
+									atcostcenter, atproyek, atcatatan, atnomor, FlexGlobals.topLevelApplication.F_tglFormatDB(attglbeli), FlexGlobals.topLevelApplication.F_tglFormatDB(attglpakai), atjml, 
+									atsatuan, atmatauang, atkurs, atharga, atdiskon, atjmldiskon, atpajak1, 
+									atjmlpajak1, atpajak2, atjmlpajak2, athargabeli, atnilairesidu, atumurekonomis, atbebanperbln, 
+									atakumulasibeban, atnilaibuku, atmetode, attabelpenyusutan, atintangible, atfiskal, atatastengahbulan, 
+									atrekasset, atrekakumdepresiasi, atrekdepresiasi, atrekpenghapusan, atprodusen, FlexGlobals.topLevelApplication.F_tglFormatDB(attglpensiun), atpenyusutanke, 
+									atnilaimenurun, atdispose, atpembelian, atpenjualan, atlocked, atstatus, atstatussebelumnya, 
+									atisclose, atinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(atinputtgl), atmodifikasiuser, FlexGlobals.topLevelApplication.F_tglFormatDB(atmodifikasitgl), atcustomtext1, atcustomtext2, 
+									atcustomtext3, atcustomtext4, atcustomtext5, atcustomint1, atcustomint2, atcustomint3, atcustomint4, 
+									atcustomint5, atcustomdbl1, atcustomdbl2, atcustomdbl3, atcustomdbl4, atcustomdbl5, FlexGlobals.topLevelApplication.F_tglFormatDB(atcustomdate1), 
+									FlexGlobals.topLevelApplication.F_tglFormatDB(atcustomdate2), FlexGlobals.topLevelApplication.F_tglFormatDB(atcustomdate3), FlexGlobals.topLevelApplication.F_tglFormatDB(atcustomdate4), FlexGlobals.topLevelApplication.F_tglFormatDB(atcustomdate5)];
+								if(ibbb == 0)aktiva =FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+								else aktiva += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							}
+						}
+							
+						parentApplication.F_wsSimpan("simpan", "M3_RsSimpan", parentApplication.userid, isUpdate, utama, detail+"△"+batch+"△"+serial+"△"+aktiva);
+					}
+				}
+				
+				function validasiForm():void
+				{
+					validasi = true;
+					parentApplication.F_hapusBarisKosongGrid(dg1);
+					pesanAlertIng = "";
+					pesanAlert = "";
+//					if(txtbagianterima.text.length == 0)msgAlert(txtbagianterima,'Recieve Section','Bagian Terima');
+					if(txtgudangasal.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(txtgudangasal,'Gudang Asal');
+					if(txtgudangtransit.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(txtgudangtransit,'Gudang Transit');
+					if(txtgudangtujuan.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(txtgudangtujuan,'Gudang Tujuan');
+					if(dttanggal.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(dttanggal,'Tanggal');
+					if(txtlokasi.text.length <= 0)FlexGlobals.topLevelApplication.msgAlert(txtlokasi,'Lokasi');
+					if(txtnotransaksi.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(txtnotransaksi,'No Transaksi');
+					if(cmbprogress.selectedIndex < 0 || cmbprogress.textInput.text.length == 0)FlexGlobals.topLevelApplication.msgAlert(cmbprogress,'Progress');
+					if(dg1.dataProvider.getItemAt(0).idrsdetail == null)FlexGlobals.topLevelApplication.msgAlert(dg1,'Detail Item');
+					if(pesanAlert != '')FlexGlobals.topLevelApplication.msgAlert('pesanAlert', '');		
+					
+					function  msgAlert(focus: Object, inggris: String, indonesia: String):void
+					{ 
+						if(validasi)focus.setFocus();
+						pesanAlertIng += inggris+', ';
+						pesanAlert += indonesia+', ';
+						if(focus == 'clear'){
+							pesanAlert = pesanAlert.substr(0, pesanAlert.length-4);
+							pesanAlert += " harus diisi dengan benar";
+							pesanAlertIng = pesanAlertIng.substr(0, pesanAlertIng.length-4);
+							pesanAlertIng += " must be filled";
+							Alert.show(pesanAlertIng+"  ("+pesanAlert+")" , "Information");}	 
+						validasi = false; 
+					}
+				}
+			}
+			
+			public function f_hitungTotal():void
+			{
+			}
+			
+			public function f_defaultGrid():void
+			{
+				parentApplication.rowIndex = 0;
+				dg1.dataProvider.removeAll();
+				parentApplication.F_acAdd(dg1);
+				dg1.setSelectedCell(0, 1);
+				f_focusOnMe();
+			}
+			
+			protected function f_chkAuto():void
+			{
+				if(FlexGlobals.topLevelApplication.FormFilter != ''){
+					if(chkauto.selected){
+						txtnotransaksi.enabled = false;
+						txtnotransaksi.text = getNotransaksi;
+					}else{
+						txtnotransaksi.enabled = true;
+						txtnotransaksi.text = getNotransaksi;
+						txtnotransaksi.setFocus();
+					}
+				}else{
+					if(chkauto.selected){
+						txtnotransaksi.enabled = false;
+						txtnotransaksi.text = 'Auto';
+					}else{
+						txtnotransaksi.enabled = true;
+						txtnotransaksi.text = '';
+						txtnotransaksi.setFocus();
+					}
+				}
+			}
+			
+			public function f_setGudang():void
+			{
+				for(var i:int=0;i<dg1.dataProvider.length;i++){
+					switch(parentApplication.subject){
+						case "txtgudangasal":
+							dg1.dataProvider.getItemAt(i).gudangasal = txtgudangasal.text;
+							break;
+						case "txtgudangtransit":
+							dg1.dataProvider.getItemAt(i).gudangtransit = txtgudangtransit.text;
+							break;
+						case "txtgudangtujuan":
+							dg1.dataProvider.getItemAt(i).gudangtujuan = txtgudangtujuan.text;
+							break;
+					}
+				}
+			}
+			
+			public function f_validasiAmbil(subject:String, paket:String, pagenumber:Number, itemlimit:Number, strfilter:String, strSort:String):void
+			{
+//				if(dg1.dataProvider[0].idbarang != '' && dg1.dataProvider[0].idbarang != undefined && dg1.dataProvider[0].idbarang != null){
+//					Alert.show('Are data will be overwritten (Apakah data akan ditimpa) ?', 'Confirmation', 3, null, function(e:Object):void{	
+//						if(e.detail == Alert.YES){
+//							FlexGlobals.topLevelApplication.F_wsSearch(subject, paket, pagenumber, itemlimit, strfilter);
+//						}
+//					});
+//				}else{
+					FlexGlobals.topLevelApplication.F_wsSearch(subject, paket, pagenumber, itemlimit, strfilter, strSort);
+//				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/find.png")]  public var tbfind:Class;
+			[Bindable] [Embed(source="assets/tb/take.png")]  public var tbtake:Class;
+			[Bindable] [Embed(source="assets/tb/serialout.png")]  public var tbserialout:Class;
+			[Bindable] [Embed(source="assets/tb/link.png")]  public var tblink:Class;
+			[Bindable] [Embed(source="assets/tb/bukatransaksi.png")]  public var tbbuka:Class;
+			[Bindable] [Embed(source="assets/tb/aktivain.png")]  public var tbaktivaout:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+	</fx:Declarations>	
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0"/>
+	<s:Group left="10" top="40">
+		<s:Label id="tbagterima" left="0" top="7" text="Bagian Terima" visible="false"/>
+		<s:Label id="tgudangasal" left="0" top="5" text="Gudang Asal"/>
+		<s:Label id="tgudangtransit" left="0" top="26" text="Gudang Transit"/>
+		<s:Label id="tgudangtujuan" left="0" top="47" text="Gudang Tujuan"/>
+		<s:Label id="turaian" left="0" top="68" text="Uraian"/>
+		<s:TextInput id="txtbagianterima" left="97" top="0" visible="false"/>
+		<s:TextInput id="txtgudangasal" left="97" top="0"/>
+		<s:TextInput id="txtgudangtransit" left="97" top="21" enabled="false"/>
+		<s:TextInput id="txtgudangtujuan" left="97" top="42"/>
+		<s:TextInput id="txturaian" left="97" top="63" width="300"/>
+		<s:Label id="lblbagianterima" left="248" top="5" visible="false"/>
+		<s:Label id="lblgudangasal" left="248" top="5"/>	
+		<s:Label id="lblgudangtransit" left="248" top="26"/>
+		<s:Label id="lblgudangtujuan" left="248" top="47"/>
+	</s:Group>
+	<mx:TabNavigator id="tab" left="10" right="10" top="133" bottom="10">
+		<s:NavigatorContent width="100%" height="100%" label="Detail">
+			<s:DataGrid id="dg1" left="0" right="0" top="0" bottom="0"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Info">	
+			<s:Group left="10" top="10">
+				<s:Label id="tkontakperson" left="0" top="5" text="Kontak Person"/>
+				<s:Label id="tcatatan" left="0" top="26" text="Catatan"/>
+				<s:Label id="tnoref" left="0" top="47" text="No. Ref"/>
+				<s:Label id="ttglnoref" left="0" top="68" text="Tanggal No. Ref"/>
+				<s:TextInput id="txtkontakperson" left="107" top="0"/>
+				<s:TextInput id="txtcatatan" left="107" top="21" width="300"/>
+				<s:TextInput id="txtnoref" left="107" top="42"/>
+				<mx:DateField id="dttanggalnoref" x="107" y="63" width="153"/>
+				<s:Label id="lblcatatan" left="431" top="23"/>
+			</s:Group>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:Group right="10" top="40">
+		<s:Label id="ttanggal" left="0" top="6" text="Tanggal"/>
+		<s:Label id="tnotransaksi" left="0" top="27" text="No Transaksi"/>
+		<s:Label id="tprogress" left="0" top="48" text="Progress"/>
+		<mx:DateField id="dttanggal" x="88" y="0" width="165"/>
+		<s:TextInput id="txtnotransaksi" x="88" top="22" enabled="false" width="112"/>	
+		<s:ComboBox id="cmbprogress" x="88" top="43" width="165"/>
+		<s:CheckBox id="chkauto" left="208" top="24" label="Auto" change="settingNotransaksi.F_ClickCheckboxAuto(txtnotransaksi, chkauto);"/>
+		<s:TextInput id="txtlokasi" left="88" top="65"/>
+		<s:Label id="tlokasi" left="0" top="71" text="Lokasi"/>
+	</s:Group>
+</s:Module>

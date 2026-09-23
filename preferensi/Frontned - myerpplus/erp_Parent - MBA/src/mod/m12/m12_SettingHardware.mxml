@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan()"
+		  keyDown="f_keyDownModule(event)">
+	<fx:Script>
+		<![CDATA[
+			import MyClass.getInfoHardware;
+			
+			import flash.sampler.NewObjectSample;
+			import flash.sampler.getInvocationCount;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			import org.hamcrest.mxml.collection.Array;
+			
+			import spark.components.DataGrid;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] public var u:ArrayCollection;
+			[Bindable] public var arrListPrinter : ArrayCollection = new ArrayCollection;
+			public var validasi:Boolean, pesanAlert:String, vUserId:int, vUserIdEdit:int=0, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String, MacAddress:String, arrCetakBarang:ArrayCollection = new ArrayCollection, arrListStruk : ArrayCollection = new ArrayCollection;
+			public var vKeyOut:Boolean = true, o:Object = {}, obj:Object = {};
+			public var MyHardware:getInfoHardware;
+			
+			// SET PERSIAPAN FORM ============================================
+			public function f_persiapan():void{
+				arrCetakBarang = new ArrayCollection([{l:'Cetak Semua', v:0}, {l:'Cetak Yang Cocok', v:1}, {l:'Cetak Yang Baru', v:2}]);
+				cmbjenisstruk.dataProvider = new ArrayCollection([{l:'Struk 1', v:1}, {l:'Struk 2', v:2}, {l:'Struk 3', v:3}, {l:'Struk 4', v:4}, {l:'Struk 5', v:5}, {l:'Struk 6', v:6}, {l:'Struk 7', v:7}, {l:'Struk 8', v:8}, {l:'Struk 9', v:9}, {l:'Struk 10', v:10}]);
+				cmbcashdrawer.dataProvider = new ArrayCollection([{l:'Tidak Pakai', v:0}, {l:'Direct Port', v:2}, {l:'Spooling Printer', v:1}]);
+				cmbport1.dataProvider = new ArrayCollection([{l:'LPT1', v:0}, {l:'LPT2', v:1}, {l:'LPT3', v:2}, {l:'COM1', v:3}, {l:'COM2', v:4}, {l:'COM3', v:5}, {l:'COM4', v:6}, {l:'COM5', v:7}, {l:'COM6', v:8}]);
+				cmbpoledisplay.dataProvider = new ArrayCollection([{l:'Tidak Pakai', v:0}, {l:'EMAX', v:1}, {l:'Logic Control', v:2}, {l:'Epson', v:3}, {l:'Posiflex', v:4}]);
+				cmbport2.dataProvider = new ArrayCollection([{l:'COM1', v:0}, {l:'COM2', v:1}, {l:'COM3', v:2}, {l:'COM4', v:2}, {l:'COM5', v:2}, {l:'COM6', v:2}]);
+				cmbdisplay.dataProvider = new ArrayCollection([{l:'1 Baris', v:0}, {l:'2 Baris', v:1}]);
+				cmbparity.dataProvider = new ArrayCollection([{l:'n', v:0}, {l:'o', v:1}]);
+				
+				parentApplication.F_TranslateLabel([tprinterr, tcashdrawerr, tcashdrawer, tprinter, tport1, tpoledisplayy, tpoledisplay, tport2, tdisplay, tbaudrate, tparity, tdatabit, tstopbit, tesccode, theader, tbody, tfooter, tcashdrawerrr]);
+				parentApplication.F_RequiredLabel([]);
+				parentApplication.F_ComboBoxStandard([cmbjenisstruk, cmbcashdrawer, cmbprinter, cmbport1, cmbpoledisplay, cmbport2, cmbdisplay, cmbparity]);
+				FlexGlobals.topLevelApplication.F_TextInputNumberOnlyMode([txtbaudrate, txtdatabit, txtstopbit]);
+				f_TextInputNumberWithoutFormatMode([txtheader, txtbody, txtfooter, txtcashdrawer]);
+				
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				function f_mbSimpan():void
+				{
+					var  jenissimpan:int = 1;
+					if(isUpdate == false)
+					{
+						jenissimpan = 1
+					}
+					else
+					{
+						jenissimpan = 2
+					}
+					
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(3, 3, jenissimpan))
+					{
+						f_simpan();
+					}
+				}
+				
+				cmbcashdrawer.addEventListener(Event.CHANGE, f_changecashdrawer);
+				
+				function f_changecashdrawer():void
+				{
+					if(cmbcashdrawer.selectedIndex == 0){
+//						cmbprinter.enabled = false;
+						cmbport1.enabled = false;
+					}else if(cmbcashdrawer.selectedIndex == 1){
+//						cmbprinter.enabled = false;
+						cmbport1.enabled = true;
+					}else if(cmbcashdrawer.selectedIndex == 2){
+						cmbprinter.enabled = true;
+						cmbport1.enabled = false;
+					}
+				}
+				
+				cmbpoledisplay.addEventListener(Event.CHANGE, f_changepoledisplay);
+				function f_changepoledisplay():void
+				{
+					if(cmbpoledisplay.selectedIndex == 0){
+						cmbport2.enabled = false;
+						cmbdisplay.enabled = false;
+						txtbaudrate.enabled = false;
+						cmbparity.enabled = false;
+						txtdatabit.enabled = false;
+						txtstopbit.enabled = false;
+					}else{
+						cmbport2.enabled = true;
+						cmbdisplay.enabled = true;
+						txtbaudrate.enabled = true;
+						cmbparity.enabled = true;
+						txtdatabit.enabled = true;
+						txtstopbit.enabled = true;
+					}
+				}
+				
+				f_kondisiAwal();
+			}
+			// END OF SET PERSIAPAN FORM ========================================
+			
+			
+			
+			// SET KONDISI AWAL =================================================
+			public var data:String, ar:Array, p:Object;
+			public function f_kondisiAwal():void
+			{
+				data = parentApplication.m.POS_;
+				
+				if(data.length > 0)
+				{
+					ar = data.split(parentApplication.sptField);
+					u = new ArrayCollection([{
+						phcomputermac:ar[0], phcomputerip:ar[1], phprinter:ar[2], phprinterport:ar[3], phidreport:ar[4], phcetak:ar[5], phcetakbarang:ar[6], 
+						phfeed:ar[7], phcashdrawer:ar[8], phcashdrawerprinter:ar[9], phcashdrawerport:ar[10], phpolenama:ar[11], phpoleport:ar[12], phpoledisplay:ar[13], 
+						phpolebaudrate:ar[14], phpoleparity:ar[15], phpoledatabit:ar[16], phpolestopbit:ar[17], phescheader:ar[18], phescbody:ar[19], phescfooter:ar[20], 
+						phesccashdrawer:ar[21], phcustomtext1:ar[22], phcustomtext2:ar[23], phcustomtext3:ar[24], phcustomtext4:ar[25], phcustomtext5:ar[26], phcustomint1:ar[27], 
+						phcustomint2:ar[28], phcustomint3:ar[29], phcustomdbl1:ar[30], phcustomdbl2:ar[31], phcustomdbl3:ar[32], phcustomdate1:ar[33], phcustomdate2:ar[34], 
+						phcustomdate3:ar[35], phuserid:ar[36]
+					}]);
+					
+					p = u[0];
+					
+					// Connect to
+					txtiphardware.text = p.phcomputerip;
+					txtport.text = p.phprinterport;
+					
+					// Printer
+					cmbprinter.dataProvider = new ArrayCollection([{l:p.phprinter}]);
+					cmbprinter.selectedIndex = 0;
+					cmbjenisstruk.selectedIndex = int(p.phidreport)-1;
+					txtfeed.text = p.phfeed;
+					
+					// Cash Drawer
+					
+					// Pole Display
+					
+					// ESC Code
+				}
+				else
+				{
+					
+					
+					u = new ArrayCollection([{
+						phcomputermac:"NULL", phcomputerip:"127.0.0.1", phprinter:"Printer 1", phprinterport:8484, phidreport:1, 
+						phcetak:1, phcetakbarang:0, phfeed:0, phcashdrawer:1, phcashdrawerprinter:cmbprinter.textInput.text, 
+						phcashdrawerport:cmbcashdrawer.textInput.text, phpolenama:cmbcashdrawer.textInput.text, phpoleport:cmbport2.textInput.text, phpoledisplay:cmbdisplay.selectedItem.v, phpolebaudrate:txtbaudrate.text, 
+						phpoleparity:cmbparity.selectedItem.v, phpoledatabit:txtdatabit.text, phpolestopbit:txtstopbit.text, phescheader:txtheader.text, phescbody:txtbody.text, 
+						phescfooter:txtfooter.text, phesccashdrawer:txtcashdrawer.text, phcustomtext1:'', phcustomtext2:'', phcustomtext3:'', 
+						phcustomtext4:'', phcustomtext5:'', phcustomint1:0, phcustomint2:0, phcustomint3:0, 
+						phcustomdbl1:0, phcustomdbl2:0, phcustomdbl3:0, phcustomdate1:parentApplication.m.DateFirst, phcustomdate2:parentApplication.m.DateFirst, 
+						phcustomdate3:parentApplication.m.DateFirst, phuserid:parentApplication.userid
+					}]);
+					
+					p = u[0];
+					
+					// Connect to
+					txtiphardware.text = p.phcomputerip;
+					txtport.text = p.phprinterport;
+					
+					// Printer
+					cmbprinter.dataProvider = new ArrayCollection([{l:p.phprinter}]);
+					cmbjenisstruk.selectedIndex = int(p.phidreport)-1;
+					txtfeed.text = p.phfeed;
+					
+					// Cash Drawer
+					
+					// Pole Display
+					
+					// ESC Code
+				}
+				
+				
+			}
+			// END OF SET KONDISI AWAL ============================================
+			
+			
+			
+			// SET FOKUS KETIKA PERTAMA DI LOAD ===================================
+			public function f_focusOnMe():void
+			{
+			}
+			// END OF SET FOKUS KETIKA PERTAMA DI LOAD ============================
+			
+			
+			
+			// SET KETIKA CREATION COMPLETE PADA DATA GRID ========================
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				switch(components){
+					case 'comboBox':
+						if(dataField == "printer"){
+							return arrListPrinter;
+						}else if(dataField == "jenisstruk"){
+							return arrListStruk;
+						}else if(dataField == "cetakbarang"){
+							return arrCetakBarang;
+						}
+						break;
+				}
+				return new ArrayCollection([]);
+			}
+			// END OF SET KETIKA CREATION COMPLETE PADA DATA GRID =================
+			
+			
+			
+			// SET KETIKA CHANGE PADA DATA GRID  ===================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case 'listPrinter':
+						for (var i:int = 0; i < data.length; i++)
+						{
+							arrListPrinter.addItem({l:data[i], v:data[i]});
+						}
+						
+						Alert.show(arrListPrinter.length+' '+arrCetakBarang);
+						break;
+					case 'listStruk':
+						arrListStruk = new ArrayCollection;
+						for (var j:int = 0; j<data.length; j++)
+						{
+							arrListStruk.addItem({l:data[j], v:data[j]});
+						}
+						break;
+					case 'myMACaddress':
+						MacAddress = data.toString();
+						break;
+					case 'getInfo':
+						var arr:Array;
+						btntest.enabled = true;
+						txtiphardware.editable = true;
+						txtport.editable = true;
+						if(data.toString() == "notConnect")
+						{
+							Alert.show("Connection Failed: Can't connect to\nMyHardware on '"+txtiphardware.text+"' port '"+txtport.text+"'", "Informasi");
+						}
+						else
+						{
+							arr = data.toString().split("@p2@");
+							cmbprinter.dataProvider.removeAll();
+							for(i=0;i<arr.length;i++)
+							{
+								cmbprinter.dataProvider.addItem({l:arr[i], v:i});
+							}
+							cmbprinter.selectedIndex = 0;
+						}
+						break;
+				}
+			}
+			// END OF SET KETIKA CHANGE PADA DATA GRID  =============================
+			
+			
+			
+			// SET EVENT PADA DATA GRID SAAT INSERT, EDIT, HAPUS ====================
+			// END OF SET EVENT PADA DATA GRID SAAT INSERT, EDIT, HAPUS =============
+			
+			
+			
+			// SET SHOUTCUT KEYBOARD ================================================
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey){
+							f_simpan();
+						}
+						break;
+				}
+			}
+			// END OF SET SHOUTCUT KEYBOARD ==========================================
+			
+			
+			
+			
+			// SET KONDISI FILTER UNTUK PENCARIAN ====================================
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					/*case 'txtprovinsi':
+					paket = 'CdM1_Province';
+					csfilter = 'paktif = 1';
+					wsfilter = 'paktif = 1 and pkode = "'+txtprovinsi.text.split('"').join('\\"')+'"';
+					sort = 'pkode asc';
+					break;*/
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			// END OF SET KONDISI FILTER UNTUK PENCARIAN =============================
+			
+			
+			
+			// SET HASIL DARI WEB SERVICE ============================================
+			public function f_wsHasil():void
+			{
+				var s:String = parentApplication.subject;
+				if(parentApplication.wsSuccess == true){
+					obj = parentApplication.wsArrUtama.getItemAt(0);
+					switch(s){	
+						case 'simpan':
+							var i:int, d:String, a:Array, m:Object;
+							m = parentApplication.m;
+							with(u.getItemAt(0))
+							{
+								a = [phcomputermac, phcomputerip, phprinter, phprinterport, phidreport, phcetak, phcetakbarang, 
+									phfeed, phcashdrawer, phcashdrawerprinter, phcashdrawerport, phpolenama, phpoleport, phpoledisplay, 
+									phpolebaudrate, phpoleparity, phpoledatabit, phpolestopbit, phescheader, phescbody, phescfooter, 
+									phesccashdrawer, phcustomtext1, phcustomtext2, phcustomtext3, phcustomtext4, phcustomtext5, phcustomint1, 
+									phcustomint2, phcustomint3, phcustomdbl1, phcustomdbl2, phcustomdbl3, phcustomdate1, phcustomdate2, 
+									phcustomdate3, phuserid];
+							}
+							m.wsData = parentApplication.F_splitArrayToString(a);
+							m.POS_ = m.wsData;
+							m.wsData = parentApplication.F_splitArrayToString(a);
+							m.wsData = m.wsData.split(parentApplication.sptField);
+							m.POS_computerIP = m.wsData[1];
+							m.POS_port = m.wsData[3];
+							m.POS_print = m.wsData[2];
+							m.POS_struk = m.wsData[4];
+							m.POS_jarak = m.wsData[7];
+							 
+							FlexGlobals.topLevelApplication.FormFilter = '';
+							
+							f_kondisiAwal();
+//							FlexGlobals.topLevelApplication.F_alertCetak(12, 8, 'HD', parentApplication.wsIdtransaksi, parentApplication.wsErrmessage);
+							break;
+					}
+				}else{					
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							// 9.2.1 Result untuk WS False apa saja
+							case 'tampil':
+							case 'tampilHistory':
+							case 'simpan':
+								Alert.show(parentApplication.wsErrmessage, parentApplication.l('Informasi'));
+								break;
+						}
+				}
+			}
+			// END OF SET HASIL DARI WEB SERVICE ======================================
+			
+			
+			
+			// SET KETIKA PENCARIAN TEXTINPUT TIDAK DITEMUKAN =========================
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					/*case 'txtprovinsi':parentApplication.F_KosongkanText([txtprovinsi]);break;*/
+				}
+			}
+			// END OF SET KETIKA PENCARIAN TEXTINPUT TIDAK DITEMUKAN ==================
+			
+			
+			
+			// FUNGSI UNTUK SIMPAN ==================================================
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String, tgl:String, p:Object;
+				parentApplication.vpFocusEvent = true;
+				if(mb.menuBarItems[0].enabled)
+				{
+					validasiForm();
+					if(validasi)
+					{
+						
+						p = u.getItemAt(0);
+						
+						// Connect to
+						p.phcomputerip = txtiphardware.text;
+						p.phprinterport = txtport.text;
+						
+						// Printer
+						p.phprinter = cmbprinter.selectedItem.l;
+						p.phidreport = cmbjenisstruk.selectedItem.v;
+						p.phfeed = txtfeed.text;
+						
+						with(u.getItemAt(0))
+						{
+							a = [phcomputermac, phcomputerip, phprinter, phprinterport, phidreport, phcetak, phcetakbarang, 
+								phfeed, phcashdrawer, phcashdrawerprinter, phcashdrawerport, phpolenama, phpoleport, phpoledisplay, 
+								phpolebaudrate, phpoleparity, phpoledatabit, phpolestopbit, phescheader, phescbody, phescfooter, 
+								phesccashdrawer, phcustomtext1, phcustomtext2, phcustomtext3, phcustomtext4, phcustomtext5, phcustomint1, 
+								phcustomint2, phcustomint3, phcustomdbl1, phcustomdbl2, phcustomdbl3, phcustomdate1, phcustomdate2, 
+								phcustomdate3, phuserid];
+						}
+						utama = parentApplication.F_splitArrayToString(a);
+						parentApplication.F_wsSimpan('simpan', "M12_Pos_HardwareSimpan", parentApplication.userid, isUpdate, utama);
+					}
+				}
+				
+				function validasiForm():void
+				{
+					pesanAlert='';
+					validasi = true;
+					if(cmbcashdrawer.selectedIndex < 0 || cmbcashdrawer.textInput.text.length == 0)parentApplication.msgAlert(cmbcashdrawer,'Cash Drawer');
+					if(pesanAlert != '')parentApplication.msgAlert('pesanAlert', '');
+				}
+			}
+			// END OF FUNGSI UNTUK SIMPAN ============================================
+			
+			
+			
+			//melakukan set pada textinput agar menjadi numberonly input tapi ketika fokusout / fokusin tidak terset 0
+			public function f_TextInputNumberWithoutFormatMode(arTextInput:Array):void
+			{
+				FlexGlobals.topLevelApplication.f_refreshIDmodule(arTextInput[0]);
+				for (var i:int=0; i<arTextInput.length; i++)
+				{
+					arTextInput[i].restrict = "0-9";
+					arTextInput[i].setStyle("textAlign","right");
+				}
+				FlexGlobals.topLevelApplication.F_SetNavigasiKeyboard(arTextInput);
+			}
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			
+			protected function btntest_clickHandler(event:MouseEvent):void
+			{
+				if(btntest.enabled)
+				{
+					if(txtiphardware.text.length == 0)
+					{
+						txtiphardware.setFocus();
+						Alert.show("Isi IP Address dulu", "Informasi");
+						return;
+					}
+					
+					if(txtport.text.length == 0)
+					{
+						txtport.setFocus();
+						Alert.show("Isi IP Address dulu", "Informasi");
+						return;
+					}
+					
+					btntest.enabled = false;
+					txtiphardware.editable = false;
+					txtport.editable = false;
+					MyHardware = new getInfoHardware(txtiphardware.text, int(txtport.text));
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" right="1" top="-1" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<mx:VBox left="10" top="40" width="100%" height="100%" verticalGap="15">
+		<s:Group>
+			<s:Label id="tconnectto" fontWeight="bold" fontSize="13" text="Connect to :"/>
+			<s:Label id="tiphardware" x="0" top="22" text="IP Hardware"/>
+			<s:TextInput id="txtiphardware" top="16" left="85" width="182"/>
+			<s:Label id="tport" x="0" top="43" text="Port"/>
+			<s:TextInput id="txtport" top="37" left="85" width="63" textAlign="right"/>
+			<s:Button id="btntest" left="186" top="46" width="81" height="23" label="Test"
+					  click="btntest_clickHandler(event)"
+					  toolTip="Klik button untuk mendapatkan daftar printer"/>
+		</s:Group>
+		<s:Group>
+			<s:Label id="tprinterr" fontWeight="bold" fontSize="13" text="Printer :"/>
+			<s:Label id="tprinter" top="21" text="Printer"/>
+			<s:Label id="tjenisstruk" top="44" text="Jenis Struk"/>
+			<s:ComboBox id="cmbprinter" top="16" left="85" width="300"/>
+			<s:ComboBox id="cmbjenisstruk" top="38" left="85" width="182"/>
+			<s:Label id="tfeed" x="0" top="66" text="Jarak"/>
+			<s:TextInput id="txtfeed" top="60" left="85" width="63" textAlign="right"/>
+		</s:Group>
+		<s:Group>
+			<s:Label id="tcashdrawerr" fontWeight="bold" fontSize="13" text="Cash Drawer :"/>
+			<s:Label id="tcashdrawer" top="21" text="Cash Drawer"/>
+			<s:Label id="tcdprinter" top="44" text="Printer"/>
+			<s:Label id="tport1" left="276" top="44" text="Port"/>
+			<s:ComboBox id="cmbcashdrawer" top="16" left="85" width="300" labelField="rtitle"/>
+			<s:ComboBox id="cmbcdprinter" top="38" left="85" width="182" dataProvider="{arrListPrinter}"/>
+			<s:ComboBox id="cmbport1" top="38" left="305" width="80"/>
+		</s:Group>
+		<s:Group>
+			<s:Label id="tpoledisplayy" fontWeight="bold" fontSize="13" text="Pole Display :"/>
+			<s:Label id="tpoledisplay" top="21" text="Pole Display"/>
+			<s:Label id="tport2" top="44" text="Port"/>
+			<s:Label id="tdisplay" top="66" text="Display"/>
+			<s:Label id="tbaudrate" top="88" text="Baud Rate"/>
+			<s:Label id="tparity" left="303" top="22" text="Parity"/>
+			<s:Label id="tdatabit" left="303" top="44" text="Data Bit"/>
+			<s:Label id="tstopbit" left="303" top="66" text="Stop Bit"/>
+			<s:ComboBox id="cmbpoledisplay" top="16" left="85" width="182"/>
+			<s:ComboBox id="cmbport2" top="38" left="85" width="182"/>
+			<s:ComboBox id="cmbdisplay" top="60" left="85" width="182"/>
+			<s:TextInput id="txtbaudrate" top="82" left="85" width="182" textAlign="right"/>
+			<s:ComboBox id="cmbparity" top="16" left="359" width="79"/>
+			<s:TextInput id="txtdatabit" top="38" left="359" width="79" textAlign="right"/>
+			<s:TextInput id="txtstopbit" top="59" left="359" width="79" textAlign="right"/>
+		</s:Group>
+		<s:Group>
+			<s:Label id="tesccode" fontWeight="bold" fontSize="13" text="ESC Code :"/>
+			<s:Label id="theader" top="22" text="Header"/>
+			<s:Label id="tbody" top="43" text="Body"/>
+			<s:Label id="tfooter" top="64" text="Footer"/>
+			<s:Label id="tcashdrawerrr" top="85" text="Cash Drawer"/>
+			<s:TextInput id="txtheader" top="16" left="85" width="353" textAlign="right"/>
+			<s:TextInput id="txtbody" top="37" left="85" width="353" textAlign="right"/>
+			<s:TextInput id="txtfooter" top="58" left="85" width="353" textAlign="right"/>
+			<s:TextInput id="txtcashdrawer" top="79" left="85" width="353" textAlign="right"/>
+		</s:Group>
+	</mx:VBox>
+</s:Module>

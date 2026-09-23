@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="420" 
+		  creationComplete="f_persiapan();" keyDown="f_keyDownModule(event)">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			public var o:Object = {};
+			public var vUserId:int, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String, userEdit:Number=0;
+			public var vKeyOut:Boolean = true, p:Object, dg:DataGrid;
+			[Bindable]public var ac:ArrayCollection = new ArrayCollection();
+			
+			public function f_focusOnMe():void
+			{
+				txtkode.setFocus();
+			}
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey)
+							if(txtkode.text.length > 0){
+								f_simpan();
+							}else{
+								Alert.show("Kategori POS harus diisi terlebih dahulu","Informasi")
+							}
+						break;
+					case Keyboard.ESCAPE:
+						FlexGlobals.topLevelApplication.closeFormPopUp(1);
+						break;
+				}
+			}	
+			private function f_persiapan():void{
+				f_focusOnMe();
+				FlexGlobals.topLevelApplication.F_tabvalidatenow(tab)
+				cmbformatminusapp.dataProvider = new ArrayCollection([{l:'(n)', v:0}, {l:'-n', v:1}, {l:'- n', v:2}, {l:'n-', v:3}, {l:'n -', v:4}]);
+				cmbformatminusrpt.dataProvider = new ArrayCollection([{l:'-xxx', v:"-"}, {l:'(xxx)', v:"()"}]);
+				cmbpaymentrounding.dataProvider = new ArrayCollection([{l:'100', v:100}, {l:'500', v:500}, {l:'1000', v:1000}]);
+				cmbjenispoin.dataProvider = new ArrayCollection([{l:'No Point', v:0}, {l:'Item Based', v:1}, {l:'Nominal Based', v:2}]);
+				
+				FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbformatminusrpt, cmbformatminusapp, cmbpaymentrounding, cmbjenispoin]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtkode]);
+//				FlexGlobals.topLevelApplication.F_RequiredLabel([lblpaymentrounding, lbljenispoin]);
+				FlexGlobals.topLevelApplication.F_TextInputNumberDesimalMode([txtnilaipoin])
+				FlexGlobals.topLevelApplication.F_SetNavigasiKeyboard([txtcharge, txtformatjmldd, txtformatjmldg, txtformatjmlpd, txtformatjmlreportdd, txtformatjmlreportdg, txtformatjmlreportpd, txtformatjmlvolreportdd, txtformatjmlvolreportdg, txtformatjmlvolreportpd, txtformatnominaldd, txtformatnominaldg, txtformatnominalpd, txtformatnominalreportdd, txtformatnominalreportdg, txtformatnominalreportpd, txttglapp, txttglreport, txtwaktuapp, txtwaktureport, chkdeleteitem, chkincludetax, chklockdiskonjual, chklockhargajual, chklocktgl])
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbClose);
+				function f_mbSimpan():void{
+					if(txtkode.text.length > 0){
+						f_simpan();
+					}else{
+						Alert.show("Kategori POS harus diisi terlebih dahulu","Informasi")
+					}
+					
+				}
+				function f_mbClose():void{
+					FlexGlobals.topLevelApplication.closeFormPopUp(1);
+				}
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				if(FlexGlobals.topLevelApplication.FormFilter != ''){
+					isUpdate = true;
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].pcskategori;
+					lblkategoripos.text = dg.dataProvider[dg.selectedCell.rowIndex].pcnama;
+					userEdit = FlexGlobals.topLevelApplication.userid;
+					FlexGlobals.topLevelApplication.F_wsGetDataById('tampil', 'M12_Pos_Category_SettingGetdataById', txtkode.text, 0, 0, 'smodule = 0 and sgrup = "app"', 'surutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+					
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				tab.enabled = false;
+				o.txtnilaipoin = 0;
+				txtnilaipoin.text = o.txtnilaipoin;
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkode':
+						paket = 'CdM12_Pos_Category';
+						wsfilter = 'pcaktif=1 and pckode ="'+txtkode.text+'"';
+						csfilter = 'pcaktif=1';
+						sort = 'pckode asc';
+						break;
+					
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+
+			public function f_simpan():void{
+				var arr:Array, utama:String;
+				if(cmbpaymentrounding.selectedIndex < 0 || cmbjenispoin.selectedIndex < 0){
+					if(cmbpaymentrounding.selectedIndex < 0){
+						Alert.show(lblpaymentrounding.text+" tidak boleh kosong", "Informasi");
+					}else if(cmbjenispoin.selectedIndex < 0){
+						Alert.show(lbljenispoin.text+" tidak boleh kosong", "Informasi");
+					}
+				}else{
+					
+					for(var i:int=0;i<ac.length;i++)
+						with(ac.getItemAt(i)){
+							switch(pcskode){
+								case "Charge":
+									pcsnilai = txtcharge.text;
+									break;
+								case "DiskonBarang":
+									pcsnilai = int(chkdiskonbarang.selected)
+									break;
+								case "DiskonKategoriBarang":
+									pcsnilai = int(chkdiskonkategoribarang.selected);
+									break;
+								case "FormatJml":
+									pcsnilai = txtformatjmldg.text+"|"+txtformatjmlpd.text+"|"+txtformatjmldd.text;
+									break;
+								case "FormatJmlReport":
+									pcsnilai = txtformatjmlreportdg.text+"|"+txtformatjmlreportpd.text+"|"+txtformatjmlreportdd.text;
+									break;
+								case "FormatJmlVolumeReport":
+									pcsnilai = txtformatjmlvolreportdg.text+"|"+txtformatjmlvolreportpd.text+"|"+txtformatjmlvolreportdd.text;
+									break;
+								case "FormatMinusApp":
+									pcsnilai = cmbformatminusapp.selectedIndex;
+									break;
+								case "FormatMinusReport":
+									pcsnilai = cmbformatminusrpt.selectedItem.v;
+									break;
+								case "FormatNominal":
+									pcsnilai = txtformatnominaldg.text+"|"+txtformatnominalpd.text+"|"+txtformatnominaldd.text;
+									break;
+								case "FormatNominalReport":
+									pcsnilai = txtformatnominalreportdg.text+"|"+txtformatnominalreportpd.text+"|"+txtformatnominalreportdd.text;
+									break;
+								case "FormatTanggalApp":
+									pcsnilai = txttglapp.text;
+									break;
+								case "FormatTanggalReport":
+									pcsnilai = txttglreport.text;
+									break;
+								case "FormatWaktuApp":
+									pcsnilai = txtwaktuapp.text;
+									break;
+								case "FormatWaktuReport":
+									pcsnilai = txtwaktureport.text;
+									break;
+								case "IncludeTax":
+									pcsnilai = int(chkincludetax.selected);
+									break;
+								case "LockDeleteItem":
+									pcsnilai = int(chkdeleteitem.selected);
+									break;
+								case "LockDiskonJual":
+									pcsnilai = int(chklockdiskonjual.selected);
+									break;
+								case "LockHargaJual":
+									pcsnilai = int(chklockhargajual.selected);
+									break;
+								case "LockTanggal":
+									pcsnilai = int(chklocktgl.selected);
+									break;
+								case "PaymentRounding":
+									pcsnilai = cmbpaymentrounding.selectedItem.v;
+									break;
+								case "Point":
+									pcsnilai = cmbjenispoin.selectedItem.v
+									break;
+								case "PointKategoriBarang":
+									pcsnilai = int(chkpointkategoribarang.selected)
+									break;
+								case "PointValue":
+									pcsnilai = o.txtnilaipoin;
+									break;
+								case "AdditionalItem":
+									pcsnilai = int(chkbarangtambahan.selected)
+									break;
+								case "BonusItem":
+									pcsnilai = int(chkbarangbonus.selected)
+									break;
+								case "SubstitutionItem":
+									pcsnilai = int(chkbarangpengganti.selected)
+									break;
+							}
+							
+							a = [pcskategori, pcsmodule, pcsgrup, pcskode, pcsnilai];
+							if(i == 0)utama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							else utama += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							
+							
+						}
+					
+						FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M12_Pos_Category_SettingSimpan", parentApplication.userid, isUpdate, utama, "",1,20,p.m[p.idmodcurr].child.f_filterdata(),p.m[p.idmodcurr].child.arr[1]);
+					}
+					
+				
+				
+			}
+			public function f_wsHasil():void
+			{
+				var ws:Object, s:String = parentApplication.subject;
+				FlexGlobals.topLevelApplication.F_configMasterInputHasil()
+				if(parentApplication.wsSuccess == true){
+					switch(s){	
+						case 'simpan':
+							Alert.show(FlexGlobals.topLevelApplication.l('Data berhasil disimpan, silahkan login ulang !'), FlexGlobals.topLevelApplication.l('Informasi'), 0, null, function(e:Object):void{		
+								if(e.detail == Alert.OK){
+									FlexGlobals.topLevelApplication.f_getReloginForm();
+								}
+							});
+							break;
+						case 'txtkode':
+							txtkode.text = FlexGlobals.topLevelApplication.wsArrUtama[0].pckode;
+							FlexGlobals.topLevelApplication.vpVarCurrent = txtkode.text;
+							lblkategoripos.text = FlexGlobals.topLevelApplication.wsArrUtama[0].pcnama;
+							FlexGlobals.topLevelApplication.F_wsGetDataById('tampil', 'M12_Pos_Category_SettingGetdataById', txtkode.text, 0, 0, 'smodule = 0 and sgrup = "app"', 'surutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+							break;
+						case 'tampil':
+							tab.enabled = true;
+							var arrformatjml:Array;
+							var arrformatjmlrpt:Array;
+							var arrformatjmlvolrpt:Array;
+							var arrformatnominal:Array;
+							var arrformatnominalrpt:Array;
+							for(var i:int; i<FlexGlobals.topLevelApplication.wsArrUtama.length; i++){
+								ac.addItem({pcskategori:txtkode.text, 
+									pcsmodule:FlexGlobals.topLevelApplication.wsArrUtama[i].pcsmodule, 
+									pcsgrup:FlexGlobals.topLevelApplication.wsArrUtama[i].pcsgrup, 
+									pcskode:FlexGlobals.topLevelApplication.wsArrUtama[i].pcskode,
+									pcsnilai:FlexGlobals.topLevelApplication.wsArrUtama[i].pcsnilai});
+								with(FlexGlobals.topLevelApplication.wsArrUtama[i]){
+									switch (pcskode){
+										case "Charge":
+											lblcharge.text = snama;
+											txtcharge.text = pcsnilai;
+											break;
+										case "DiskonBarang":
+											chkdiskonbarang.label = snama;
+											if(pcsnilai == 0){chkdiskonbarang.selected = false}
+											else{chkdiskonbarang.selected = true;}
+											break;
+										case "DiskonKategoriBarang":
+											chkdiskonkategoribarang.label = snama;
+											if(pcsnilai == 0){chkdiskonkategoribarang.selected = false}
+											else{chkdiskonkategoribarang.selected = true;}
+											break;
+										
+										case "FormatJml":
+											//format jumlah
+											arrformatjml = pcsnilai.split("|");
+											txtformatjmldg.text = arrformatjml[0];
+											txtformatjmlpd.text = arrformatjml[1];
+											txtformatjmldd.text = arrformatjml[2];
+											break;
+										case "FormatJmlReport":
+											//format jumlah report
+											arrformatjmlrpt = pcsnilai.split("|");
+											txtformatjmlreportdg.text = arrformatjmlrpt[0];
+											txtformatjmlreportpd.text = arrformatjmlrpt[1];
+											txtformatjmlreportdd.text = arrformatjmlrpt[2];
+											break;
+										case "FormatJmlVolumeReport":
+											//format jumlah volume report
+											arrformatjmlvolrpt = pcsnilai.split("|");
+											txtformatjmlvolreportdg.text = arrformatjmlvolrpt[0];
+											txtformatjmlvolreportpd.text = arrformatjmlvolrpt[1];
+											txtformatjmlvolreportdd.text = arrformatjmlvolrpt[2];
+											break;
+										case "FormatMinusApp":
+											//format minus app
+											cmbformatminusapp.selectedIndex = pcsnilai;
+											break;
+										case "FormatMinusReport":
+											//FormatMinusReport
+											if(pcsnilai == "-"){cmbformatminusrpt.selectedIndex = 0}
+											else if(pcsnilai == "()"){cmbformatminusrpt.selectedIndex = 1}
+											break;
+										case "FormatNominal":
+											//format nominal
+											arrformatnominal = pcsnilai.split("|");
+											txtformatnominaldg.text = arrformatnominal[0];
+											txtformatnominalpd.text = arrformatnominal[1];
+											txtformatnominaldd.text = arrformatnominal[2];
+											break;
+										case "FormatNominalReport":
+											//format nominal report
+											arrformatnominalrpt = pcsnilai.split("|");
+											txtformatnominalreportdg.text = arrformatnominalrpt[0];
+											txtformatnominalreportpd.text = arrformatnominalrpt[1];
+											txtformatnominalreportdd.text = arrformatnominalrpt[2];
+											break;
+										case "FormatTanggalApp":
+											txttglapp.text = pcsnilai;
+											break;
+										case "FormatTanggalReport":
+											txttglreport.text = pcsnilai;
+											break;
+										case "FormatWaktuApp":
+											txtwaktuapp.text = pcsnilai;
+											break;
+										case "FormatWaktuReport":
+											txtwaktureport.text = pcsnilai;
+											break;
+										case "IncludeTax":
+											chkincludetax.label = snama;
+											if(pcsnilai == 0){chkincludetax.selected = false}
+											else{chkincludetax.selected = true;}
+											break;
+										case "LockDeleteItem":
+											chkdeleteitem.label = snama;
+											if(pcsnilai == 0){chkdeleteitem.selected = false}
+											else{chkdeleteitem.selected = true;}
+											break;
+										case "LockDiskonJual":
+											chklockdiskonjual.label = snama;
+											if(pcsnilai == 0){chklockdiskonjual.selected = false}
+											else{chklockdiskonjual.selected = true;}
+											break;
+										case "LockHargaJual":
+											chklockhargajual.label = snama;
+											if(pcsnilai == 0){chklockhargajual.selected = false}
+											else{chklockhargajual.selected = true;}
+											break;
+										case "LockTanggal":
+											if(pcsnilai == 0){chklocktgl.selected = false}
+											else{chklocktgl.selected = true}
+											break;
+										case "PaymentRounding":
+											lblpaymentrounding.text = snama;
+											//set payment rounding
+											if(pcsnilai == 100){
+												cmbpaymentrounding.selectedIndex=0;
+											}else if(pcsnilai == 500){
+												cmbpaymentrounding.selectedIndex=1;
+											}else if(pcsnilai == 1000){
+												cmbpaymentrounding.selectedIndex=2;
+											}
+											break;
+										case "Point":
+											lbljenispoin.text = snama;
+											//set poin
+											cmbjenispoin.selectedIndex = pcsnilai;
+											if(cmbjenispoin.selectedIndex == 1){
+												chkpointkategoribarang.enabled = true;
+											}else{
+												chkpointkategoribarang.enabled = false;
+												chkpointkategoribarang.selected = false;
+											}
+											break;
+										case "PointKategoriBarang":
+											if(pcsnilai == 0){
+												chkpointkategoribarang.selected = false;
+											}else{
+												chkpointkategoribarang.selected = true;
+											}
+											break;
+										case "PointValue":
+											lblnilaipoin.text = snama;
+											o.txtnilaipoin = pcsnilai;
+											txtnilaipoin.text = parentApplication.F_formatNominal(o.txtnilaipoin)
+											break;
+										case "AdditionalItem":
+											chkbarangtambahan.label = snama;
+											if(pcsnilai == 0){chkbarangtambahan.selected = false}
+											else{chkbarangtambahan.selected = true;}
+											break;
+										case "BonusItem":
+											chkbarangbonus.label = snama;
+											if(pcsnilai == 0){chkbarangbonus.selected = false}
+											else{chkbarangbonus.selected = true;}
+											break;
+										case "SubstitutionItem":
+											chkbarangpengganti.label = snama;
+											if(pcsnilai == 0){chkbarangpengganti.selected = false}
+											else{chkbarangpengganti.selected = true;}
+											break;
+									}
+								}
+							}
+							
+							break;
+					}
+				}	
+				else{					
+					if(FlexGlobals.topLevelApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txtkode':
+								txtkode.text = "";
+								lblkategoripos.text = "";
+								break
+							
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkode':
+						txtkode.text = "";
+						lblkategoripos.text = "";
+						break
+				}
+			}
+			[Bindable] [Embed(source="assets/tb/save.png")] public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/savenew.png")] public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")] public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<s:Label y="39" text="Kategori POS" left="10"/>
+	<s:Label y="37" left="265" id="lblkategoripos"/>
+	<s:Label y="37" left="86" color="#F80707" text="*"/>
+	<s:TextInput id="txtkode" left="111" top="34"/>
+	<mx:TabNavigator left="10" right="10" bottom="10" top="70" id="tab" tabFocusEnabled="false">
+		<s:NavigatorContent width="100%" height="100%" label="Tanggal">
+			<s:Group y="9" left="10">
+				<s:Label y="4" left="0" text="Format Tanggal App"/>
+				<s:Label left="0" y="24" text="Format Waktu App"/>
+				<s:Label left="0" y="45" text="Format Tanggal Report"/>
+				<s:Label left="0" y="67" text="Format Waktu Report"/>
+				<s:TextInput x="141" y="0" id="txttglapp"/>
+				<s:TextInput x="141" y="21" id="txtwaktuapp"/>
+				<s:TextInput x="141" y="42" id="txttglreport"/>
+				<s:TextInput x="141" y="63" id="txtwaktureport"/>
+				<s:CheckBox x="141" y="89" id="chklocktgl" label="Lock Tanggal"/>
+			</s:Group>
+			
+		</s:NavigatorContent>
+		
+		<s:NavigatorContent width="100%" height="100%" label="Angka">
+			
+			
+			<s:Label y="3" left="11" fontSize="14" fontWeight="bold" text="Format Jumlah (Qty)"/>
+			<s:Group y="21" left="10" height="71">
+				<s:Label y="3" left="0" text="Digit Grup"/>
+				<s:Label left="0" y="24" text="Pemisah Desimal"/>
+				<s:Label left="0" y="45" text="Digit Desimal"/>
+				<s:TextInput x="114" y="0" width="70" id="txtformatjmldg"/>
+				<s:TextInput x="114" y="21" width="70" id="txtformatjmlpd"/>
+				<s:TextInput x="114" y="42" width="70" id="txtformatjmldd" restrict="1234567890"/>
+			</s:Group>
+			
+			<s:Label y="108" left="11" fontSize="14" fontWeight="bold" text="Format Jumlah Report (Qty)"/>
+			<s:Group y="127" left="10" height="71">
+				<s:Label y="3" left="0" text="Digit Grup"/>
+				<s:Label left="0" y="24" text="Pemisah Desimal"/>
+				<s:Label left="0" y="45" text="Digit Desimal"/>
+				<s:TextInput x="114" y="0" width="70"  id="txtformatjmlreportdg"/>
+				<s:TextInput x="114" y="21" width="70"  id="txtformatjmlreportpd"/>
+				<s:TextInput x="114" y="42" width="70"  id="txtformatjmlreportdd" restrict="1234567890"/>
+			</s:Group>
+			
+			<s:Label y="215" left="11" fontSize="14" fontWeight="bold" text="Format Jumlah Volume Report (Qty)"/>
+			<s:Group y="234" left="10" height="71">
+				<s:Label y="3" left="0" text="Digit Grup"/>
+				<s:Label left="0" y="24" text="Pemisah Desimal"/>
+				<s:Label left="0" y="45" text="Digit Desimal"/>
+				<s:TextInput x="114" y="0" width="70" id="txtformatjmlvolreportdg"/>
+				<s:TextInput x="114" y="21" width="70" id="txtformatjmlvolreportpd"/>
+				<s:TextInput x="114" y="42" width="70"  id="txtformatjmlvolreportdd" restrict="1234567890"/>
+			</s:Group>
+			
+			<s:Label y="3" right="156" fontSize="14" fontWeight="bold" text="Format Nominal"/>
+			<s:Group y="22" right="10" width="255" height="71">
+				<s:Label y="3" left="0" text="Digit Grup"/>
+				<s:Label left="0" y="24" text="Pemisah Desimal"/>
+				<s:Label left="0" y="45" text="Digit Desimal"/>
+				<s:TextInput x="123" y="0" width="72" id="txtformatnominaldg"/>
+				<s:TextInput x="123" y="21" width="72"  id="txtformatnominalpd"/>
+				<s:TextInput x="123" y="42" width="72"  id="txtformatnominaldd" restrict="1234567890"/>
+			</s:Group>
+			
+			<s:Label y="108" right="108" fontSize="14" fontWeight="bold" text="Format Nominal Report"/>
+			<s:Group y="126" right="10" width="255" height="71">
+				<s:Label y="3" left="0" text="Digit Grup"/>
+				<s:Label left="0" y="24" text="Pemisah Desimal"/>
+				<s:Label left="0" y="45" text="Digit Desimal"/>
+				<s:TextInput x="123" y="0" width="72" id="txtformatnominalreportdg"/>
+				<s:TextInput x="123" y="21" width="72" id="txtformatnominalreportpd"/>
+				<s:TextInput x="123" y="42" width="72" id="txtformatnominalreportdd" restrict="1234567890"/>
+			</s:Group>
+			
+			<s:Label y="212" right="170" fontSize="14" fontWeight="bold" text="Format Minus"/>
+			<s:Group y="231" right="10" width="255">
+				<s:Label y="3" left="1" text="Format Minus App"/>
+				<s:ComboBox x="122" y="1" width="133" id="cmbformatminusapp"/>
+				<s:Label y="28" left="1" text="Format Minus Report"/>
+				<s:ComboBox x="122" y="23" width="133" id="cmbformatminusrpt"/>
+			</s:Group>
+		</s:NavigatorContent>
+		
+		<s:NavigatorContent width="100%" height="100%" label="POS">
+			<s:Group y="5" left="10" width="322" height="301">
+				<s:Label y="3" left="0" text="Charge" id="lblcharge"/>
+				<s:Label y="5" left="309" text="%"/>
+				<s:Label y="25" left="0" text="Payment Rounding" id="lblpaymentrounding"/>
+				<s:TextInput x="149" y="0" width="157" id="txtcharge"/>
+				<s:ComboBox x="149" y="21" width="175" id="cmbpaymentrounding"/>
+				<s:Label y="47" left="0" text="Jenis Poin" id="lbljenispoin"/>
+				
+				<s:Label y="87" left="0" text="Nilai Poin" id="lblnilaipoin"/>
+				<s:ComboBox x="149" y="43" width="175" id="cmbjenispoin" change="if(cmbjenispoin.selectedIndex == 1){chkpointkategoribarang.enabled = true}else{chkpointkategoribarang.enabled = false; chkpointkategoribarang.selected = false}"/>
+				<s:CheckBox x="149" y="65" label="Berlaku Point Kategori Barang" id="chkpointkategoribarang"/>
+				<s:TextInput x="149" y="84" width="157" id="txtnilaipoin"/>
+				<s:CheckBox x="149" y="109" label="Berlaku Diskon Barang" id="chkdiskonbarang"/>
+				<s:CheckBox x="149" y="127" label="Berlaku Diskon Kategori Barang" id="chkdiskonkategoribarang"/>
+				<s:CheckBox x="149" y="144" label="Berlaku Barang Bonus" id="chkbarangbonus"/>
+				<s:CheckBox x="149" y="162" label="Berlaku Barang Tambahan" id="chkbarangtambahan"/>
+				<s:CheckBox x="149" y="180" label="Berlaku Barang Pengganti" id="chkbarangpengganti"/>
+				<s:CheckBox x="149" y="198" label="Lock Harga Jual" id="chklockhargajual"/>
+				
+				<s:CheckBox x="149" y="217" label="Lock Diskon Jual" id="chklockdiskonjual"/>
+				<s:CheckBox x="149" y="236" label="Lock Delete Item" id="chkdeleteitem"/>
+				<s:CheckBox x="149" y="255" label="Include Tax" id="chkincludetax"/>
+			</s:Group>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+</s:Module>

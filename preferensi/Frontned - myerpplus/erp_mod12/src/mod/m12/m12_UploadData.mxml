@@ -1,0 +1,524 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="472" height="266"
+		  creationComplete="f_persiapan()"
+		  initialize="f_init()">
+	
+	<fx:Script> 
+		<![CDATA[			
+			import flash.sampler.NewObjectSample;
+			
+			import flashx.textLayout.factory.TruncationOptions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.DataGrid;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.NumericStepperEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.InvokeEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.soap.LoadEvent;
+			import mx.rpc.soap.mxml.WebService;
+			
+			import org.hamcrest.mxml.collection.Array;
+			
+			import skins.txtStyle;
+			
+			import spark.components.Image;
+			import spark.components.TitleWindow;
+			
+			protected var img:Image, i:int, jmldata:int, isUpdate:Boolean, vUang:String, vTgl:String, vNotransaksi:String, vDefNotransaksi:String, getNotransaksi:String, no:int;
+			[Bindable] public var idsi:ArrayCollection;
+			[Bindable] public var u:ArrayCollection;
+			[Bindable] public var arrdetail:ArrayCollection;
+			[Bindable] public var arrbatch:ArrayCollection;
+			[Bindable] public var arrserial:ArrayCollection;
+			[Bindable] public var arrpay:ArrayCollection;
+			public var validasi:Boolean, pesanAlert:String, t:TitleWindow, tglDB:String  = FlexGlobals.topLevelApplication.DefaultTanggal, tingkatjual:int;
+			public var o:Object = {}, n:Object = {}, obj:Object = {};
+			public var jmlProgress:int, num:Number, j:int, close:Boolean;
+			protected var arrMenuBar:ArrayCollection;
+			public var tmr:Timer;
+			
+			
+			public function f_init():void
+			{
+				imgconnect.addEventListener(MouseEvent.ROLL_OVER,myMcOver);
+				BtnLogin.addEventListener(MouseEvent.ROLL_OVER,myMcOver);
+				
+				function myMcOver (e:MouseEvent):void {
+					imgconnect.buttonMode = true;
+					imgconnect.useHandCursor = true;
+				}
+			}
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				return new ArrayCollection([]);
+			}
+			
+			// mengeset ketika change pada grid =========================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+			}
+			
+			// set fokus ketika pertama kali form diload ===================================
+			public function f_focusOnMe():void
+			{
+			}
+			
+			// set persiapan form ==========================================================
+			public function f_persiapan():void
+			{
+				BtnLogin.enabled = false;
+				status.source = red;
+				statusnama.text = "Not Connected";
+				progress.visible = false
+				f_kondisiAwal();
+			}
+			
+			public function f_validasi():void
+			{
+			}
+			
+			protected function f_kondisiAwal():void
+			{
+				num = 0;
+				j = 0;
+				close = false;
+			}
+			public var jmlberhasil:Number = 0;
+			public var jmlgagal:Number = 0;
+			public function f_wsHasil():void
+			{
+				var s:String = parentApplication.subject;
+				if(parentApplication.wsSuccess == true){
+					switch(s){
+						case 'GetId':
+							jmlProgress = FlexGlobals.topLevelApplication.wsArrUtama.length;
+							jmldata = 0;
+							//tmr = new Timer(1000, FlexGlobals.topLevelApplication.wsArrUtama.length);
+							idsi = FlexGlobals.topLevelApplication.wsArrUtama;
+							//tmr.start();
+							
+							f_getdata();
+							break;
+						case "GetData":
+							validasi = true;
+							u = FlexGlobals.topLevelApplication.wsArrUtama;
+							arrdetail = FlexGlobals.topLevelApplication.wsArrDetail;
+							arrpay = FlexGlobals.topLevelApplication.f_SplitData(FlexGlobals.topLevelApplication.vNamaKolom[4], FlexGlobals.topLevelApplication.vData[4]);
+							
+							f_simpan();
+							break;
+						case 'simpan':
+							//							3602b0e7c2ee4eab6c473e9fcce80b20★M5_SiUploaded★0△0△△△dd/MM/yyyy△dd/MM/yyyy H:mm:ss★3★0★1△
+							f_Uploaded();
+							//							FlexGlobals.topLevelApplication.F_wsUpdateStatus("Uploaded", 'M5_SiUploaded', FlexGlobals.topLevelApplication.userid, idsi[jmldata].siid, '', false, 0, 0);
+							break;
+						case "Uploaded":
+							jmldata++;
+							jmlberhasil++;
+							if(jmlProgress > jmldata){
+								f_getdata();
+							}else{
+								Alert.show("Upload data selesai : \n "+jmlberhasil+" berhasil \n "+jmlgagal+" gagal", "Informasi");
+								f_sendProgress('Upload Done', true);
+								lblProses.text = "Upload Done";
+								lblPersen.text = "100 %"
+								BtnLogin.enabled = true;
+								BtnLogin0.enabled = true;
+							}
+							break;
+					}
+				}else{					
+					switch(parentApplication.subject){
+						
+						
+						case 'GetId':
+						case "GetData":
+						case "Uploaded":
+							Alert.show(FlexGlobals.topLevelApplication.wsErrmessage, "Informasi");
+							BtnLogin.enabled = true;
+							BtnLogin0.enabled = true;
+							break;
+						case 'simpan':
+							
+							Alert.show(""+FlexGlobals.topLevelApplication.wsErrmessage+". Klik OK untuk melanjutkan proses Upload Data", "Informasi", 0, null, function(e:Object):void{		
+								jmldata++;
+								jmlgagal++;
+								Alert.show(jmldata+" - "+jmlgagal);
+								if(jmlProgress > jmldata){
+									f_getdata();
+								}else{
+									Alert.show("Upload data selesai : \n "+jmlberhasil+" berhasil \n "+jmlgagal+" gagal", "Informasi");
+									f_sendProgress('Upload Done', true);
+									lblProses.text = "Upload Done";
+									lblPersen.text = "100 %"
+									BtnLogin.enabled = true;
+									BtnLogin0.enabled = true;
+								}
+							});
+							break;
+					}
+				}
+			}
+			
+			public function f_getdata():void{
+				//				tmr.addEventListener(TimerEvent.TIMER, function():void
+				//				{
+				//					if(validasi){
+				//						validasi = false;
+				FlexGlobals.topLevelApplication.F_wsGetDataById('GetData', 'M5_SiGetdataById', idsi[jmldata].siid, 0, 0, '', 'urutan ASC', FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'), FlexGlobals.topLevelApplication.getSetting(0, 'company', 'FormatTanggalWS'));
+				//					}
+				//					
+				//				});
+				
+			}
+			
+			public function f_simpan():void{
+				var a:Array, utama:String, detail:String, tgl:String, pay:String="";
+				u.refresh();
+				var noref:String = "";
+				// Set Utama
+				with(u.getItemAt(0)){
+					//					Alert.show(sistatus);
+					if(sistatus == 2 || sistatus == 3 || sistatus == 4 || sistatus == 7){
+						sistatus = 2;
+					}
+					noref = sinoref+"("+sinotransaksi+")"
+					//					a = [0, sicabang, silokasi, sigudang, siasalbarang, siasalbarangkategori, sijenispenjualan, 
+					//						sijenispenjualankategori, sicarabayar, sisumber, siautonotransaksi, sinotransaksi, FlexGlobals.topLevelApplication.F_tglFormatDB(sitgl), sikodepa, 
+					//						sicustomer, sicustomerkontak, si1alamat1, si1alamat2, si1alamat3, si2alamat1, si2alamat2, 
+					//						si2alamat3, sibagianpenjualan, siekspedisi, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglkirim), sitermin, 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sitgljatuhtempo), siuraian, 
+					//						sicatatan, sinoref+"("+sinotransaksi+")", FlexGlobals.topLevelApplication.F_tglFormatDB(sitglnoref), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sitglpenutupan), simatauang, sikurs, sihargatermasukpajak, 
+					//						sitotal, sidiskonpersen, sijmldiskon, sitotalpajak1detail, sitotalpajak2detail, sibiayalainpersen, sibiayalain, 
+					//						sitotaltransaksi, sijmlbayar, sistatuslunas, FlexGlobals.topLevelApplication.F_tglFormatDB(sitgllunas), 
+					//						sinofakturpajak, sisdhbayarpajak, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglbayarpajak), 
+					//						sirekdiskon, sirekpajak1, sirekpajak2, sirekbiayalain, sirekbayar, siidsq, siidso, 
+					//						siidpl, siiddo, siiddr, siidpi, sistatusrnr, sistatussr, sistatus, 
+					//						sistatussebelumnya, sijmlrevisi, sicetakanke, siinputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(siinputtgl), simodifikasiuser, 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(simodifikasitgl), 
+					//						siposting, situtupperiode, siisclose, sicustomtext1, sicustomtext2, sicustomtext3, sicustomtext4, 
+					//						sicustomtext5, sicustomint1, sicustomint2, sicustomint3, sicustomdbl1, sicustomdbl2, sicustomdbl3, 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate1), FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate2), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate3), sijmluangmuka, sirekuangmuka, siidas,
+					//						sibayartunai, sibayarkkredit, sibayarkdebit, sibayarvoucher, sibayarpoin, 
+					//						sibayarjmlpoin, sichargepersen, sicharge, sipoinsebelumnya, sipoindidapat,
+					//						sicustomtext6, sicustomtext7, sicustomtext8, sicustomtext9, sicustomtext10,
+					//						sicustomint4, sicustomint5, sicustomint6, sicustomint7,sicustomint8, sicustomint9, sicustomint10,
+					//						sicustomdbl4, sicustomdbl5, sicustomdbl6, sicustomdbl7,sicustomdbl8, sicustomdbl9, sicustomdbl10,
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate4), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate5), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate6), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate7), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate8), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate9), 
+					//						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate10), sicustomarea, sirekcharge,
+					//						sijmlkembali, sirekkembali];
+					
+					a = [0, sicabang, silokasi, sigudang, siasalbarang, siasalbarangkategori, sijenispenjualan, 
+						sijenispenjualankategori, sicarabayar, sisumber, 1, "Auto", 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sitgl), sikodepa, 
+						sicustomer, sicustomerkontak, si1alamat1, si1alamat2, si1alamat3, si2alamat1, si2alamat2, 
+						si2alamat3, sibagianpenjualan, siekspedisi, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglkirim), 
+						sitermin, FlexGlobals.topLevelApplication.F_tglFormatDB(sitgljatuhtempo), siuraian, 
+						sicatatan, noref, FlexGlobals.topLevelApplication.F_tglFormatDB(sitglnoref), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sitglpenutupan), simatauang, sikurs, sihargatermasukpajak, 
+						sitotal, sidiskonpersen, sijmldiskon, sitotalpajak1detail, sitotalpajak2detail, sibiayalainpersen, sibiayalain, 
+						sitotaltransaksi, sijmlbayar, sistatuslunas, FlexGlobals.topLevelApplication.F_tglFormatDB(sitgllunas), sinofakturpajak, sisdhbayarpajak, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sitglbayarpajak), 
+						sirekdiskon, sirekpajak1, sirekpajak2, sirekbiayalain, sirekbayar, siidsq, siidso, 
+						siidpl, siiddo, siiddr, siidpi, sistatusrnr, sistatussr, sistatus, 
+						sistatussebelumnya, sijmlrevisi, sicetakanke, siinputuser, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(siinputtgl), simodifikasiuser, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(simodifikasitgl), 
+						siposting, situtupperiode, siisclose, sicustomtext1, sicustomtext2, sicustomtext3, sicustomtext4, 
+						sicustomtext5, sicustomint1, sicustomint2, sicustomint3, sicustomdbl1, sicustomdbl2, sicustomdbl3, 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate1), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate2), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate3), sijmluangmuka, sirekuangmuka, siidas,
+						sibayartunai, sibayarkkredit, sibayarkdebit, sibayarvoucher, sibayarpoin, 
+						sibayarjmlpoin, sichargepersen, sicharge, sipoinsebelumnya, sipoindidapat,
+						sicustomtext6, sicustomtext7, sicustomtext8, sicustomtext9, sicustomtext10,
+						sicustomint4, sicustomint5, sicustomint6, sicustomint7,sicustomint8, sicustomint9, sicustomint10,
+						sicustomdbl4, sicustomdbl5, sicustomdbl6, sicustomdbl7,sicustomdbl8, sicustomdbl9, sicustomdbl10,
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate4), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate5), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate6), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate7), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate8), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate9), 
+						FlexGlobals.topLevelApplication.F_tglFormatDB(sicustomdate10), sicustomarea, sirekcharge,
+						sijmlkembali, sirekkembali];
+					utama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+				}
+				
+				
+				// Set Detail
+				for(i=0;i<arrdetail.length;i++)
+					with(arrdetail.getItemAt(i)){
+						a = [0, 0, idbarang, namabarang, tipebarang, jml, satuan, 
+							nilaisatuan, jmlbarang, satuanbarang, matauang, kurs, idhppkhususmasuk, idhppfifomasuk, 
+							harga, hargapricelist, hpp, diskon, jmldiskon, pajak1, jmlpajak1, 
+							pajak2, jmlpajak2, cabang, lokasi, gudangasal, gudangtransit, gudangtujuan, 
+							rekpersediaan, rekhargapokok, rekdiskonpenjualan, rekpenjualan, costcenter, divisi, subdivisi, 
+							proyek, catatan, urutan, idsqdetail, idsodetail, idpldetail, iddodetail, 
+							iddrdetail, idpidetail, jmlrnr, statusrnr, jmlsr, statussr, isclose, 
+							customtext1, customtext2, customtext3, customdbl1, customdbl2, customdbl3, 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(customdate1), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(customdate2), 
+							FlexGlobals.topLevelApplication.F_tglFormatDB(customdate3), isbonus, isbonusfrom];
+						if(i == 0)detail = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+						else detail += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+					}
+				
+				//insert jika bayar dengan kartu debit, kredit dan voucher
+				if(arrpay.length > 0){
+					for(i=0;i<arrpay.length; i++){
+						with(arrpay.getItemAt(i)){
+							a = [0, 0, carabayar, matauang, kurs, jumlah, jumlahvalas, 
+								nogiro, FlexGlobals.topLevelApplication.F_tglFormatDB(tgljt), bank, noacbank, rekbank, rekgiro, catatan, 
+								i+1, isclose];
+							if(i == 0){pay = FlexGlobals.topLevelApplication.F_splitArrayToString(a);}
+							else {pay += "▲"+FlexGlobals.topLevelApplication.F_splitArrayToString(a);}
+						}
+					}
+				}
+				//		
+				parentApplication.subject = 'simpan';
+				f_sendProgress('No Transaksi : '+u[0].sinotransaksi, true);
+				myWs.Ws(parentApplication.WebAccessKey+"★M5_SiSimpan★0△0△"+noref+"△△dd/MM/yyyy△dd/MM/yyyy H:mm:ss★"+FlexGlobals.topLevelApplication.userid+"★0★"+utama+"△"+detail+"△△△"+pay+"△");
+				//				parentApplication.F_wsSimpan("simpan", "M5_SiSimpan", parentApplication.userid, isUpdate, utama, detail+"△△△"+pay);
+				
+			}
+			public function f_Uploaded():void{
+				var wsParam:String = "";
+				wsParam =  FlexGlobals.topLevelApplication.WebAccessKey + FlexGlobals.topLevelApplication.sptParam + "M5_SiUploaded" + FlexGlobals.topLevelApplication.sptParam + "0" + FlexGlobals.topLevelApplication.sptParam + FlexGlobals.topLevelApplication.userid + FlexGlobals.topLevelApplication.sptParam + "0" + FlexGlobals.topLevelApplication.sptParam + idsi[jmldata].siid;
+				FlexGlobals.topLevelApplication.subject = "Uploaded"
+				FlexGlobals.topLevelApplication.m.myWs.Ws(wsParam);
+			}
+			public var vUrlWS:String, myWs:WebService;
+			public function f_ConnectWS():void
+			{
+				if(BtnLogin0.enabled)
+				{
+					vUrlWS = parentApplication.getSetting(0, 'company', 'UrlWS');
+					myWs = new WebService;
+					myWs.addEventListener(ResultEvent.RESULT, F_wsOperation_result);
+					myWs.addEventListener(FaultEvent.FAULT, F_wsOperation_fault);
+					myWs.addEventListener(LoadEvent.LOAD, F_wsOperation_load);
+					myWs.addEventListener(InvokeEvent.INVOKE, F_wsOperation_invoke);
+					myWs.wsdl = vUrlWS+"/ws/myerpplus.asmx?wsdl";
+					myWs.showBusyCursor = true;
+					myWs.loadWSDL();
+					status.source = yellow;
+					statusnama.text = "Authenticating...";
+					
+				}
+			}
+			
+			public function f_Upload():void
+			{
+				jmlberhasil = 0;
+				jmlgagal = 0;
+				jmldata = 0;
+				if(BtnLogin.enabled)
+				{
+					progress.visible = true;
+					//					parentApplication.subject = 'GetId';\
+					//					wsParam =  WebAccessKey + sptParam + _Operations + sptParam + _paging + sptParam + _userId + sptParam + int(_IsUpdate) + sptParam + _data;
+					//					
+					//					m.myWs.Ws(wsParam);
+					//					F_callWS(Subject, paket, pageNumber+sptSubParam+itemLimit+sptSubParam+strFilter+sptSubParam+strSort+sptSubParam+formatTgl+sptSubParam+formatTglWaktu, String(userId), true, kode);
+					//					FlexGlobals.topLevelApplication.F_wsSearch("GetId", "M5_SiGetUpload", 0,0,"siuploaded = 0 AND sistatus = 2 ", "siid ASC");
+					//					jmlProgress = 4;
+					FlexGlobals.topLevelApplication.subject = "hapus";
+					myWs.Ws(parentApplication.WebAccessKey+"★M5_HapusStokKurang★0△0△△△dd/MM/yyyy△dd/MM/yyyy H:mm:ss★"+FlexGlobals.topLevelApplication.userid+"★1★");
+				}
+				BtnLogin.enabled = false;
+				BtnLogin0.enabled = false;
+			}
+			
+			[Bindable] [Embed(source="assets/tb/connect.png")]  public var connect:Class;
+			[Bindable] [Embed(source="assets/logo/Logo_login.png")]  public var headerlogo:Class;
+			[Bindable] [Embed(source="assets/tb/grn.jpg")]  public var grn:Class;
+			[Bindable] [Embed(source="assets/tb/red.jpg")]  public var red:Class;
+			[Bindable] [Embed(source="assets/tb/yellow.jpg")]  public var yellow:Class;
+			[Bindable] [Embed(source="assets/tb/back.png")]  public var button:Class;
+			[Bindable] [Embed(source="assets/tb/uploaddata.png")]  public var upload:Class;
+			
+			// Fungsi result myWs
+			public function F_wsOperation_result(event:ResultEvent):void
+			{
+				try
+				{
+					
+					parentApplication.ob_resultWs = String(event.result);
+					// Set Result Web Service
+					FlexGlobals.topLevelApplication.f_setVariableWS();
+					//					parentApplication.subject = "Upload";
+					if(FlexGlobals.topLevelApplication.wsSuccess == true){
+						if(FlexGlobals.topLevelApplication.subject == "simpan"){
+							f_Uploaded();
+						}else if(FlexGlobals.topLevelApplication.subject == "hapus"){
+							FlexGlobals.topLevelApplication.F_wsSearch("GetId", "M5_SiGetUpload", 0,0,"siuploaded = 0 AND sistatus = 2 ", "siid ASC");
+						}
+						
+					}else{
+						//Alert.show("No Transaksi : "+u[0].sinotransaksi+" gagal diupload", "Informasi");
+						if(FlexGlobals.topLevelApplication.subject == "simpan"){
+							jmldata++;
+							jmlgagal++;
+							if(jmlProgress > jmldata){
+								f_getdata();
+							}else{
+								Alert.show("Upload data selesai : \n "+jmlberhasil+" berhasil \n "+jmlgagal+" gagal", "Informasi");
+								f_sendProgress('Upload Done', true);
+								lblProses.text = "Upload Done";
+								lblPersen.text = "100 %"
+								BtnLogin.enabled = true;
+								BtnLogin0.enabled = true;
+							}
+						}else if(FlexGlobals.topLevelApplication.subject == "hapus"){
+							Alert.show("Gagal Hapus Data gagal Upload sebelumnya", "Informasi");
+						}
+						
+						//						Alert.show(""+FlexGlobals.topLevelApplication.wsErrmessage+". Klik OK untuk melanjutkan proses Upload Data", "Informasi", 0, null, function(e:Object):void{		
+						//							jmldata++;
+						//							jmlgagal++;
+						//							if(jmlProgress > jmldata){
+						//								f_getdata();
+						//							}else{
+						//								Alert.show("Upload data selesai : \n "+jmlberhasil+" berhasil \n "+jmlgagal+" gagal", "Informasi");
+						//								lblProses.text = "Upload Done";
+						//								lblPersen.text = "100 %"
+						//								BtnLogin.enabled = true;
+						//								BtnLogin0.enabled = true;
+						//							}
+						//						});
+						
+						//						Alert.show(""+FlexGlobals.topLevelApplication.wsErrmessage+". Klik OK untuk melanjutkan Upload Data", "Informasi", 0, null, function(e:Object):void{		
+						//							jmldata++;
+						//							if(jmlProgress > jmldata){
+						//								f_getdata();
+						//							}
+						//						});
+					}
+					
+				} 
+				catch(error:Error) 
+				{
+					Alert.show(error.getStackTrace(), parentApplication.l('Informasi'));
+				}
+			}
+			
+			// Fungsi fault myWs
+			public function F_wsOperation_fault(event:FaultEvent):void
+			{
+				try
+				{
+					// Set okLabel jadi Reload
+					//					Alert.okLabel = parentApplication.l('Load Ulang');
+					
+					BtnLogin.enabled = false;
+					status.source = red;
+					statusnama.text = "Failed to connect"
+					// Muncul Konfirmasi Alert Saat Web Service mengalami error atau gangguan
+					Alert.show(parentApplication.l('MyERP Plus tidak terkoneksi dengan server !'), parentApplication.l('Konfirmasi'), 4, null);
+					
+					// Set default okLabel jadi Ok
+					//					Alert.okLabel = 'Ok'; 	
+				} 
+				catch(error:Error) 
+				{
+					Alert.show(error.getStackTrace(), parentApplication.l('Informasi'));
+				}
+				
+			}
+			
+			// Fungsi load myWs
+			public function F_wsOperation_load(event:LoadEvent):void
+			{
+				try
+				{
+					BtnLogin.enabled = true;
+					status.source = grn;
+					statusnama.text = "Connected";
+					// Inisialisasi parent
+					//					f_persiapanInduk();
+				} 
+				catch(error:Error) 
+				{
+					Alert.show(error.getStackTrace(), parentApplication.l('Informasi'));
+				}
+			}
+			
+			// Fungsi invoke myWs
+			public function F_wsOperation_invoke(event:InvokeEvent):void
+			{
+				try
+				{
+				} 
+				catch(error:Error) 
+				{
+					Alert.show(error.getStackTrace(), parentApplication.l('Informasi'));
+				}
+			}
+			
+			
+			
+			public function f_sendProgress(data:String, status:Boolean):void
+			{
+				j++;
+				if(status == true){
+					if(j > jmlProgress){
+						close = true;
+						return;
+					}
+					lblProses.text = data;
+				}else{
+					lblProses.text = parentApplication.l("Upload failed")+" "+data;
+					close = true;
+					return;
+				}
+				num += 100/jmlProgress;
+				pb.setProgress(num, 100);
+				lblPersen.text = String(uint(num))+" %";
+			}
+		]]>
+	</fx:Script>
+	<s:Rect id="ImgHeader" height="49" left="0" right="2" y="0">
+		<s:fill>
+			<s:LinearGradient rotation="90">
+				<s:GradientEntry color="#ADEFFF" />
+				<s:GradientEntry color="#81CBED" />
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+	<s:Image id="logo" x="272" y="11" source="{headerlogo}"/>
+	<s:Image id="imgconnect" left="6" top="6" source="{button}" click="f_ConnectWS()" toolTip="Connect to server" useHandCursor="true"/>
+	
+	<s:Label id="judul" left="10" top="64" fontFamily="Arial Narrow" fontSize="20" color="#3992b1" text="Upload Data"/>
+	<s:Label id="penjelasan1" left="10" right="10" top="90" text="Form ini digunakan untuk upload data ke pusat dari tiap-tiap cabang yang sudah ada. Form akan mengupload data dari pusat beberapa saat hingga semua selesai. Klik Tombol Connect, kemudian klik tombol Upload"/>
+	<s:Label id="penjelasan2" left="10" right="10" top="135" text="Agar proses upload berjalan baik, ketika proses berjalan dimohon untuk tidak menutup form ini."/>
+	<s:Button id="BtnLogin" right="10" top="216" width="140" height="40" label="   Upload" fontFamily="Arial" fontSize="12" fontWeight="bold" icon="{upload}" tabIndex="3" click="progress.visible = true; f_kondisiAwal(); f_Upload()" useHandCursor="true"/>
+	<s:Button id="BtnLogin0" right="322" top="216" width="140" height="40" label="   Connect" fontFamily="Arial" fontSize="12" fontWeight="bold" icon="{connect}" styleName="parent" tabIndex="3" click="f_ConnectWS()" visible="false"/>
+	
+	<s:Group id="progress" left="10" right="10" top="173" visible="false">
+		<mx:ProgressBar id="pb" left="0" right="0" top="0" label=" " direction="right" labelPlacement="center" mode="manual" barSkin="skins.progressBar"/>
+		<s:Label id="lblPersen" right="2" top="22" fontWeight="bold" text="0 %"/>
+		
+		<s:Label id="lblProses" left="2" top="22" fontWeight="bold" text=" "/>
+	</s:Group>
+	
+	<s:Image id="status" left="12" top="232" visible="true"/>
+	<s:Label id="statusnama" left="23" top="239" visible="true"/>
+</s:Module>

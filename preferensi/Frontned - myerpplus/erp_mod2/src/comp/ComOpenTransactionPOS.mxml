@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   height="415" width="700" close="f_batal()" creationComplete="f_persiapan()" title="Buka Transaksi">
+	<fx:Script>
+		<![CDATA[
+			import flashx.textLayout.elements.BreakElement;
+			
+			import itemRenderer.ir_checkBox;
+			import itemRenderer.ir_checkBoxHeader;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			import script.r_gridHeaderRenderer;
+			import script.r_gridItemRenderer;
+			
+			import spark.events.GridEvent; 
+			
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class; //First
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class; //Previous
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class; //Next
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class; //Last
+			[Bindable] public var arr:ArrayCollection = new ArrayCollection;
+			public var vID:String = '', i:int, vFilterDefault:String='', vTarget:String, vFocus:Boolean = false, o:Object, sumber:String='', mod:int;
+			protected var validasi:Boolean, judul:String, filterDefault:String = '';
+			
+			public function f_persiapan():void
+			{
+				// Config Paging
+				this.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_KEY_DOWN);
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign","center");
+				txtpaging.text = '0';
+				txtpaging.maxChars = 4;
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				dgbuka.addEventListener(flash.events.MouseEvent.DOUBLE_CLICK, f_dgDOUBLE_CLICK);
+				dgbuka.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_dgKEY_DOWN);
+				btnbatal.addEventListener(MouseEvent.CLICK, f_batalCLICK);
+				btnpilih.addEventListener(MouseEvent.CLICK, f_pilihCLICK);
+				
+				cmbField.dataProvider = new ArrayCollection([{l:"No Transaksi", v:"notransaksi"},{l:"Tanggal", v:"tgl"},{l:"Pelanggan", v:"customer"},{l:"Karyawan", v:"inputuser"}]);
+				cmbFilter.dataProvider = new ArrayCollection([{l:"Berisi"},{l:"="},{l:"<>"},{l:">"},{l:"<"},{l:">="},{l:"<="},{l:"Diawali"},{l:"Diakhiri"}]);
+				parentApplication.F_TranslateLabel([]);
+				parentApplication.F_RequiredLabel([]);
+				parentApplication.F_txtpencarian([]);
+				parentApplication.F_ComboBoxStandard([cmbField, cmbFilter]);
+				FlexGlobals.topLevelApplication.F_RegGrid(12, 8, [dgbuka], 'data')
+				
+				cmbField.selectedIndex = 2;
+				f_setData();
+				function f_KEY_DOWN(e:KeyboardEvent):void
+				{
+					switch(e.keyCode){
+						case Keyboard.HOME:
+							f_firstCLICK();
+							break;
+						case Keyboard.PAGE_UP:
+							f_previousCLICK();
+							break;
+						case Keyboard.PAGE_DOWN:
+							f_nextCLICK();
+							break;
+						case Keyboard.END:
+							f_lastCLICK();
+							break;
+						case Keyboard.ESCAPE:
+							f_batal();
+							break;
+					}
+				}
+				
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ENTER)
+						if (int(txtpaging.text)>0 && int(txtpaging.text)<=int(txtpaging.text))
+							f_tampilkanData(int(txtpaging.text));
+				}
+				
+				function f_dgDOUBLE_CLICK():void
+				{
+					f_pilih();
+				}
+				
+				function f_dgKEY_DOWN(e:KeyboardEvent):void
+				{
+					switch(e.keyCode){
+						case Keyboard.UP:
+							if(dgbuka.selectedCell.rowIndex == 0 && vFocus)txtfilter.setFocus();
+							else if(dgbuka.selectedCell.rowIndex == 0)vFocus = true;
+							break;
+						case Keyboard.DOWN:
+							vFocus = false;
+							break;
+						case Keyboard.ENTER:
+							f_pilihCLICK();
+							break;
+					}
+				}
+				
+				function f_txtpagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					switch(e.keyCode){
+						case Keyboard.ENTER:
+							f_tampilkanData(int(txtpaging.text));
+							break;
+					}
+				}
+				
+				function f_firstCLICK():void
+				{
+					if(imgfirst.enabled)
+						f_tampilkanData();
+				}
+				
+				function f_previousCLICK():void
+				{
+					if(imgprevious.enabled)
+						f_tampilkanData(int(txtpaging.text)-1);
+				}
+				
+				function f_nextCLICK():void
+				{
+					if(imgnext.enabled)
+						f_tampilkanData(int(txtpaging.text)+1);
+				}
+				
+				function f_lastCLICK():void
+				{
+					if(imglast.enabled)
+						f_tampilkanData(-1);
+				}
+				
+				function f_batalCLICK():void
+				{
+					f_batal();
+				}
+				
+				function f_pilihCLICK():void
+				{
+					f_pilih();
+				}
+			}
+			
+			public function f_kondisiAwal():void
+			{
+				txtpaging.text="1";
+				dgbuka.columns.removeAll();
+				dgbuka.doubleClickEnabled = true; 
+				arr.removeAll();
+				cmbFilter.dataProvider.removeAll();
+				cmbFilter.selectedIndex = 1;
+				validasi = false;
+				dgbuka.dataProvider.removeAll();
+				txtfilter.text = '';
+				cmbFilter.selectedIndex = 0;
+				//				parentApplication.F_wsSearch("★bukadatatransaksi", 'Diisi paketnya', 1, 10, joinFilter(vFilterDefault), sumber.toLowerCase()+'inputtgl desc');
+			}
+			
+			public function f_tampilkanData(page:int=1):void
+			{
+				vFilterDefault = sumber.toLowerCase()+"cabang = '"+FlexGlobals.topLevelApplication.ucabang+"' AND "+sumber.toLowerCase()+"lokasi = '"+FlexGlobals.topLevelApplication.ulokasi+"'";
+				parentApplication.vpFocusEvent = true;
+				if(txtfilter.text != ''){
+					if(cmbField.selectedItem.v == 'tgl'){
+						switch(cmbFilter.selectedIndex){
+							case 0:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '%"+parentApplication.F_tglFormatDB(txtfilter.text)+"%'";break;
+							case 1:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" ='"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 2:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" <> '"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 3:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" > '"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 4:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" < '"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 5:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" >= '"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 6:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" <= '"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+							case 7:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '"+parentApplication.F_tglFormatDB(txtfilter.text)+"%'";break;
+							case 8:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '%"+parentApplication.F_tglFormatDB(txtfilter.text)+"'";break;
+						}
+					}else{
+						switch(cmbFilter.selectedIndex){
+							case 0:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '%"+txtfilter.text+"%'"; break;
+							case 1:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" ='"+txtfilter.text+"'"; break;
+							case 2:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" <> '"+txtfilter.text+"'";	break;
+							case 3:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" > '"+txtfilter.text+"'";	break;
+							case 4:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" < '"+txtfilter.text+"'"; break;
+							case 5:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" >= '"+txtfilter.text+"'";	break;
+							case 6:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" <= '"+txtfilter.text+"'"; break;
+							case 7:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '"+txtfilter.text+"%'"; break;
+							case 8:vFilterDefault+=" "+sumber.toLowerCase()+cmbField.selectedItem.v+" like '%"+txtfilter.text+"'";	break;
+						}
+					}
+				}
+				parentApplication.F_wsSearch('★caridatatransaksi', 'M'+mod+'_'+sumber+'Search', page, 10, vFilterDefault, sumber.toLowerCase()+'inputtgl desc'); 
+			}
+			
+			public function f_setData():void
+			{
+				dgbuka.dataProvider.removeAll();
+				if(parentApplication.wsSuccess){
+					for(i=0;i<parentApplication.wsArrUtama.length;i++){
+						o = parentApplication.wsArrUtama[i];
+						dgbuka.dataProvider.addItem({
+							notransaksi : o[sumber.toLowerCase()+'notransaksi'],
+							tgl : o[sumber.toLowerCase()+'tgl'],
+							pelanggan : o[sumber.toLowerCase()+'customernama'],
+							karyawan : o[sumber.toLowerCase()+'bagianpenjualannama'],
+							totaltransaksi : o[sumber.toLowerCase()+'totaltransaksi'],
+							id : o[sumber.toLowerCase()+'id'],
+							inputtgl : o[sumber.toLowerCase()+'inputtgl']
+						});
+					}
+				}
+				imgfirst.enabled = parentApplication.wsIsPrev;
+				imgprevious.enabled = parentApplication.wsIsPrev;
+				imgnext.enabled = parentApplication.wsIsNext;
+				imglast.enabled = parentApplication.wsIsNext;
+				txtpaging.text = parentApplication.wsCurPage;
+				if(dgbuka.dataProvider.length >= 0){
+					dgbuka.setFocus();
+					dgbuka.setSelectedCell(0,0);
+					txtfilter.setFocus();
+				}
+				validasi = true;
+			}
+			
+			public function f_select(b:Boolean, idx:int):void
+			{
+				var ob:Object = dgbuka.dataProvider.getItemAt(idx), j:int;
+				if(b){
+					arr.addItem({});
+					for(j=0;j<parentApplication.vKolomLength;j++)
+						arr.setItemAt(ob, arr.length-1);
+					ob.cb = true;
+				}else{
+					ob.cb = false;
+					for(i=0;i<arr.length;i++){
+						o = arr.getItemAt(i);
+						if(o[vID] == ob[vID]){
+							arr.removeItemAt(i);
+							break;
+						}
+					}
+				}
+				arr.refresh();
+				parentApplication.F_dgRefresh(dgbuka);
+			}
+			
+			protected function f_filter(event:MouseEvent):void
+			{
+				f_tampilkanData();
+			}
+			
+			protected function f_txtFilterKeyDown(event:KeyboardEvent):void
+			{
+				if(event.keyCode==Keyboard.ENTER){
+					if(txtfilter.text.length > 0){
+						f_tampilkanData();
+					}else{
+						dgbuka.setFocus(); dgbuka.setSelectedCell(0,0);
+					}
+				}else if(event.keyCode==Keyboard.DOWN){
+					dgbuka.setFocus(); dgbuka.setSelectedCell(0,0);
+				}
+			}
+			
+			protected function f_pilih():void
+			{
+				if(validasi == true && dgbuka.selectedCell.rowIndex >= 0){
+					parentApplication.FormFilter = dgbuka.dataProvider.getItemAt(dgbuka.selectedCell.rowIndex).id;
+					parentApplication.m[parentApplication.idmod].child.f_validasi();
+					PopUpManager.removePopUp(this);
+				}
+			} 
+			
+			protected function f_batal():void
+			{
+				if(validasi){
+//					parentApplication.FormFilter = dgbuka.dataProvider.getItemAt(dgbuka.selectedCell.rowIndex).id;
+					parentApplication.m[parentApplication.idmod].child.f_validasi();
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Group left="10" top="10">
+		<s:Label left="0" top="7" text="Filter"/>
+		<s:ComboBox id="cmbField" left="39" top="0" width="108" height="25"/>
+		<s:ComboBox id="cmbFilter" left="154" top="0" width="65" height="25"/>
+		<s:TextInput id="txtfilter" left="226" top="0" height="25" width="315" keyDown="f_txtFilterKeyDown(event)"/>
+		<s:Button id="btnFilter" width="90" height="25" left="548" top="0" label="Filter" click="f_filter(event)"/>
+	</s:Group>
+	<s:DataGrid id="dgbuka" left="10" right="10" top="42" bottom="40" editable="false" doubleClickEnabled="true"/>
+	<s:Group left="10" bottom="10">
+		<s:Image id="imgfirst" left="0" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="17" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="34" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="77" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="95" bottom="3" source="{navl}"/>
+	</s:Group>
+	<s:Group right="10" bottom="10">
+		<s:Button id="btnpilih" width="100" height="25" right="107" bottom="-2" label="Pilih"/>
+		<s:Button id="btnbatal" width="100" height="25" right="0" bottom="-2" label="Batal"/>
+	</s:Group>
+</s:TitleWindow>

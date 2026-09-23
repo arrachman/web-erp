@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			
+			public var vUserId:int, vUserIdEdit:int=0, vDefDt:String, rid:int=0, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String;
+			public var vKeyOut:Boolean = true, p:Object, o:Object = {}, dg:DataGrid;
+			
+			private function f_persiapan():void{
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				txtkecamatan.setFocus();
+				chkaktif.label = FlexGlobals.topLevelApplication.l(chkaktif.label);
+				parentApplication.F_TranslateLabel([tkode, tnama, tcatatan, tnegara, tpropinsi, tkabkota, tkecamatan]);
+				parentApplication.F_RequiredLabel([tkode, tnama, tnegara, tpropinsi, tkabkota, tkecamatan]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtkecamatan, txtkabkota, txtpropinsi,txtnegara]);
+				parentApplication.F_txtInOut(txtkode,'','M1_VillageCekId');
+				parentApplication.F_configMasterInput();
+				parentApplication.F_SetNavigasiKeyboard([txtkode, txtnama, txtcatatan]);
+				if(p.FormFilter != ''){
+					isUpdate = true;
+					txtnegara.text = dg.dataProvider[dg.selectedCell.rowIndex].vnegara;
+					txtpropinsi.text = dg.dataProvider[dg.selectedCell.rowIndex].vprov;
+					txtkabkota.text = dg.dataProvider[dg.selectedCell.rowIndex].vkab;
+					txtkecamatan.text = dg.dataProvider[dg.selectedCell.rowIndex].vkec;
+					txtkode.enabled = false;
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].vkode;
+					txtnama.text = dg.dataProvider[dg.selectedCell.rowIndex].vnama;
+					txtcatatan.text = dg.dataProvider[dg.selectedCell.rowIndex].vcatatan;
+					lblNamaNegara.text = dg.dataProvider[dg.selectedCell.rowIndex].vnegaranama;
+					lblNamaPropinsi.text = dg.dataProvider[dg.selectedCell.rowIndex].vprovnama;
+					lblNamaKabKota.text = dg.dataProvider[dg.selectedCell.rowIndex].vkabnama;
+					lblNamaKecamatan.text = dg.dataProvider[dg.selectedCell.rowIndex].vkecnama;
+					rid = dg.dataProvider[dg.selectedCell.rowIndex].vid;
+					vUserIdEdit = parentApplication.userid;
+					if (dg.dataProvider[dg.selectedCell.rowIndex].vaktif=="0"){chkaktif.selected = false;}else {chkaktif.selected = true;}
+					if(parentApplication.m.ArrFilter != null){
+						mb.menuBarItems[0].enabled = false;
+						mb.menuBarItems[1].enabled = false;
+					}
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				txtnegara.text = FlexGlobals.topLevelApplication.getSetting(0,"company","Country");
+				lblNamaNegara.text = FlexGlobals.topLevelApplication.getSetting(0,"company","CountryName");
+				txtpropinsi.text = FlexGlobals.topLevelApplication.getSetting(0,"company","Province");
+				lblNamaPropinsi.text = FlexGlobals.topLevelApplication.getSetting(0,"company","ProvinceName");
+				txtkabkota.text = FlexGlobals.topLevelApplication.getSetting(0,"company","City");
+				lblNamaKabKota.text = FlexGlobals.topLevelApplication.getSetting(0,"company","CityName");
+				parentApplication.F_KosongkanText([txtkode,txtnama,txtcatatan,txtkecamatan, lblNamaKecamatan]);
+				chkaktif.selected = true;
+			}
+			
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtnegara, n:'Negara', e:'Country'}, {t:txtpropinsi, n:'Propinsi', e:'Province'},{t:txtkabkota, n:'Kab/Kota', e:'District/City'}, {t:txtkecamatan, n:'Kecamatan', e:'Subdistrict'},
+					{t:txtkode, n:'Kode', e:'Code'}, {t:txtnama, n:'Nama', e:'Name'}]) == true){
+					//akode, anama, acatatan, aaktif, ainputuser, ainputtgl, amodifikasiuser, amodifikasitgl
+					arr = [txtkode.text,txtnama.text,txtcatatan.text,int(chkaktif.selected),vUserId,vDefDt,vUserIdEdit,vDefDt,txtnegara.text,txtpropinsi.text,txtkabkota.text,txtkecamatan.text];
+					utama = parentApplication.F_splitArrayToString(arr);
+					parentApplication.F_MasterSimpan(baru, 'M1_VillageSimpan', utama, 'vkode');
+					vUserIdEdit = 0;
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkecamatan':
+						paket = 'CdM1_Subdistrict';
+						wsfilter = '(sdaktif = 1) AND sdkode ="'+txtkecamatan.text.split('"').join('\\"')+'"';
+						csfilter = '(sdaktif = 1)';
+						if(txtkabkota.text != ""){
+							wsfilter = wsfilter + ' AND sdkab = "'+txtkabkota.text+'"';
+							csfilter = csfilter + ' AND sdkab = "'+txtkabkota.text+'"';
+						}
+						if(txtpropinsi.text != ""){
+							wsfilter = wsfilter + ' AND sdprov = "'+txtpropinsi.text+'"';
+							csfilter = csfilter + ' AND sdprov = "'+txtpropinsi.text+'"';
+						}
+						if(txtnegara.text != ""){
+							wsfilter = wsfilter + ' AND sdnegara = "'+txtnegara.text+'"';
+							csfilter = csfilter + ' AND sdnegara = "'+txtnegara.text+'"';
+						}
+						csfield = 2;
+						sort = 'sdkode asc';
+						break;
+					case 'txtpropinsi':
+						txtkabkota.text = "";
+						lblNamaKabKota.text = "";
+						txtkecamatan.text = "";
+						lblNamaKecamatan.text = "";
+						paket = 'CdM1_Province';
+						wsfilter = '(paktif = 1) AND pkode ="'+txtpropinsi.text.split('"').join('\\"')+'"';
+						csfilter = '(paktif = 1)';
+						if(txtnegara.text != ""){
+							wsfilter = wsfilter + ' AND pnegara = "'+txtnegara.text+'"';
+							csfilter = csfilter + ' AND pnegara = "'+txtnegara.text+'"';
+						}
+						csfield = 2;
+						sort = 'pkode asc';
+						break;
+					case 'txtkabkota':
+						txtkecamatan.text = "";
+						lblNamaKecamatan.text = "";
+						paket = 'CdM1_City';
+						wsfilter = '(caktif = 1) AND ckode ="'+txtkabkota.text.split('"').join('\\"')+'"';
+						csfilter = '(caktif = 1)';
+						if(txtpropinsi.text != ""){
+							wsfilter = wsfilter + ' AND cprov = "'+txtpropinsi.text+'"';
+							csfilter = csfilter + ' AND cprov = "'+txtpropinsi.text+'"';
+						}
+						if(txtnegara.text != ""){
+							wsfilter = wsfilter + ' AND cnegara = "'+txtnegara.text+'"';
+							csfilter = csfilter + ' AND cnegara = "'+txtnegara.text+'"';
+						}
+						csfield = 2;
+						sort = 'ckode asc';
+						break;
+					case 'txtnegara':
+						txtpropinsi.text = ""; 
+						lblNamaPropinsi.text = "";
+						txtkabkota.text = "";
+						lblNamaKabKota.text = "";
+						txtkecamatan.text = "";
+						lblNamaKecamatan.text = "";
+						paket = 'CdM1_Country';
+						wsfilter = '(caktif = 1) AND ckode ="'+txtnegara.text.split('"').join('\\"')+'"';
+						csfilter = '(caktif = 1)';
+						csfield = 2;
+						sort = 'ckode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = parentApplication.subject;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){			
+						case 'txtkecamatan':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtkecamatan.text = o.sdkode;
+							lblNamaKecamatan.text = o.sdnama;
+							txtkabkota.text = o.sdkab; 
+							lblNamaKabKota.text = o.sdkabnama;
+							txtpropinsi.text = o.sdprov; 
+							lblNamaPropinsi.text = o.sdprovnama;
+							txtnegara.text = o.sdnegara;
+							lblNamaNegara.text = o.sdnegaranama;
+							break;
+						case 'txtkabkota':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtkabkota.text = o.ckode; 
+							lblNamaKabKota.text = o.cnama;
+							txtpropinsi.text = o.cpropinsi; 
+							lblNamaPropinsi.text = o.cpropinsi;
+							txtnegara.text = o.cnegara;
+							lblNamaNegara.text = o.cnegaranama;
+							break;
+						case 'txtnegara':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtnegara.text = o.ckode; 
+							lblNamaNegara.text = o.cnama;
+							break;
+						case 'txtpropinsi':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtpropinsi.text = o.pkode; 
+							lblNamaPropinsi.text = o.pnama;
+							break;
+					}
+				}else{					
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							// 9.2.1 Result untuk WS False apa saja
+							case 'txtkecamatan':parentApplication.F_KosongkanText([txtkecamatan, lblNamaKecamatan]);break;
+							case 'txtkabkota':parentApplication.F_KosongkanText([txtkabkota, lblNamaKabKota]);break;
+							case 'txtnegara':parentApplication.F_KosongkanText([txtnegara, lblNamaNegara]);break;
+							case 'txtpropinsi':parentApplication.F_KosongkanText([txtpropinsi, lblNamaPropinsi]);break;
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkecamatan':parentApplication.F_KosongkanText([txtkecamatan, lblNamaKecamatan]);break;
+					case 'txtkabkota':parentApplication.F_KosongkanText([txtkabkota, lblNamaKabKota]);break;
+					case 'txtnegara':parentApplication.F_KosongkanText([txtnegara, lblNamaNegara]);break;
+					case 'txtpropinsi':parentApplication.F_KosongkanText([txtpropinsi, lblNamaPropinsi]);break;
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/savenew.png")]  public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<s:Label id="tkode" left="10" top="128" text="Kode"/>
+	<s:Label id="tnama" left="10" top="149" text="Nama"/>
+	<s:Label id="tcatatan" left="10" top="169" text="Catatan"/>
+	<s:TextInput id="txtnegara" left="84" top="40" width="129" maxChars="25"/>
+	<s:TextInput id="txtpropinsi" left="84" top="61" width="129" maxChars="25"/>
+	<s:TextInput id="txtkabkota" left="84" top="82" width="129" maxChars="25"/>
+	<s:TextInput id="txtkecamatan" left="84" top="103" width="129" maxChars="25"/>
+	<s:TextInput id="txtkode" y="124" left="84" width="129" maxChars="25"/>
+	<s:TextInput id="txtnama" left="84" right="10" top="145" maxChars="100" />
+	<s:TextArea id="txtcatatan" left="84" right="10" top="166" bottom="10" maxChars="250"/>	
+	<s:CheckBox id="chkaktif" x="216" y="125" label="Aktif" selected="true"/>
+	<s:Label id="tkecamatan" left="10" top="107" text="Kecamatan"/>
+	<s:Label id="tkabkota" left="10" top="87" text="Kab/Kota"/>
+	<s:Label id="tpropinsi" left="10" top="66" text="Propinsi"/>
+	<s:Label id="tnegara" left="10" top="45" text="Negara"/>
+	<s:Label id="lblNamaKecamatan" left="241" top="107" width="421"/>
+	<s:Label id="lblNamaKabKota" left="241" top="87" width="421"/>
+	<s:Label id="lblNamaPropinsi" left="241" top="66" width="421"/>
+	<s:Label id="lblNamaNegara" left="241" top="45" width="421"/>
+</s:Module>

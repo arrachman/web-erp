@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()" initialize="p = parentApplication">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			public var a:Array = new Array;
+			public var arr:Array, arrColumn:Array;
+			public var p :Object;
+			public var o:Object = {};
+			
+			// fokus ke no txtnotransaksi saat form pertama dibuka ======================================
+			public function f_focusOnMe():void
+			{
+				txtnotransaksi1.setFocus();
+			}
+			
+			// persiapan persiapan ======================================================================	
+			public function f_persiapan():void
+			{
+				p=parentApplication;
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tnotransaksi, ttanggal, tcustomer, turaian, tcatatan, tjenislaporan, tsalesman, tuser, tlokasi, tcabang, tstatus, tuang]);
+				cmbjenislaporan.dataProvider = FlexGlobals.topLevelApplication.getReportItem(5, 10);			//(ambil report dari database)
+				a = [5, 10, 23, 'Si', false];
+				FlexGlobals.topLevelApplication.F_persiapanFormData(this);
+				p.F_DateFieldStandard([dttgl1, dttgl2]);														// daftarkan fungsi-fungsi datefield
+				p.F_ComboBoxStandard([cmbjenislaporan,  cmbstatus,cmbstatusupload]);											// daftarkan fungsi-fungsi combobox
+				p.F_txtpencarian([txtcustomer1, txtlokasi, txtuser, txtsalesman, txtcabang, txtuang]);		// daftarkan fungsi-fungsi text input yang pencarian
+				p.F_SetNavigasiKeyboard([txtnotransaksi1, txtnotransaksi2, txturaian, txtcatatan]);				// daftarkan fungsi-fungsi text input
+				//				txtnotransaksi1.addEventListener(spark.events.TextOperationEvent.CHANGE, f_change);				// digunakan untuk pengisian text input lain ketika fokus out
+				//				dttgl1.addEventListener(spark.events.TextOperationEvent.CHANGE, f_changedate);					// digunakan untuk pengisian datefield lain ketika fokus out
+				if(FlexGlobals.topLevelApplication.getSetting(0, "company", "IsServer") == 0){
+					grpstausupload.visible = true;
+				}else{
+					grpstausupload.visible = false;
+				}
+				function f_change():void{
+					txtnotransaksi2.text = txtnotransaksi1.text;
+				}
+				function f_changedate():void{
+					dttgl2.text = dttgl1.text;
+				}
+				gridtt.addEventListener(KeyboardEvent.KEY_DOWN, f_GRID_KEY_DOWN);
+				function f_GRID_KEY_DOWN(e:KeyboardEvent):void
+				{
+					switch(e.keyCode){
+						case Keyboard.C:
+							flash.system.System.setClipboard(gridtt.dataProvider.getItemAt(gridtt.selectedCell.rowIndex)[gridtt.columns.getItemAt(gridtt.selectedCell.columnIndex).dataField]);
+							break;
+					}
+				}
+				//				dg1.columns.getItemAt(j).dataField
+				
+				//					
+				f_kondisiAwal();
+			}
+			
+			// set kondisi awal ketika form dibuka ======================================
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+				
+				cmbstatus.validateNow();
+				cmbstatusupload.validateNow();
+				txturaian.text = p.getNomor("SI");
+				txtlokasi.text = p.ulokasi;
+				txtcabang.text = p.ucabang;
+				txtuser.text = p.userid;
+				p.F_SetNilaiText([dttgl1, dttgl2], p.DefaultTanggal);
+				p.F_KosongkanText([txtnotransaksi1, txtnotransaksi2, txtcustomer1, txturaian, txtcatatan, txtsalesman, txtuser, txtuang]);
+				dg.dataProvider.removeAll();
+				
+				cmbstatusupload.dataProvider = new ArrayCollection([{l:'Belum Upload', v:0}, {l:'Sudah Upload', v:1}, {l:'Semua', v:-1}]);
+				cmbstatusupload.selectedIndex = 2;
+				
+				if(parentApplication.getHakAksesCustom(5, 2))
+				{
+					dg.columns.getItemAt(4).visible = true;
+				}
+				else
+				{
+					dg.columns.getItemAt(4).visible = false;
+				}
+				cmbstatus.selectedIndex = o.DefaultStatus;
+			}
+			
+			// digunakan untuk duka form transaksi ======================================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				if(parentApplication.apaBisaAkses(a[0], a[2], 4) && parentApplication.getHakAksesCustom(5, 3))
+				{
+					FlexGlobals.topLevelApplication.openForm(a[0], a[1], dg.dataProvider.getItemAt(dg.selectedCell.rowIndex)[a[3].toLowerCase()+'id']);
+				}
+			}
+			
+			// set kondisi untuk filter =============================================
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case "txtcustomer1":
+						paket = 'CdM1_Contact';
+						wsfilter = '(kaktif=1 AND kkategori="C") AND kkode ="'+txtcustomer1.text.split('"').join('\\"')+'"';			// dipakai ketika validasi dari textinput
+						csfilter = '(kaktif=1 AND kkategori="C")';																	// dipakai ketika buka form komponen pencarian
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case "txtcustomer2":
+						paket = 'CdM1_Contact';
+						//						wsfilter = '(kaktif=1 AND kkategori="C") AND kkode ="'+txtcustomer2.text.split('"').join('\\"')+'"';
+						csfilter = '(kaktif=1 AND kkategori="C")';
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case "txtuser":
+						paket = 'CdM0_User';
+						csfilter = 'uaktif=1';
+						wsfilter = 'uaktif=1 AND ukode ="'+txtuser.text.split('"').join('\\"')+'"';
+						sort = 'ukode asc';
+						break;
+					case "txtsalesman":
+						paket = 'CdM1_Contact';
+						wsfilter = '(kaktif=1 AND kkategori="M") AND kkode ="'+txtsalesman.text.split('"').join('\\"')+'"';
+						csfilter = '(kaktif=1 AND kkategori="M")';
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case "txtcabang":
+						paket = 'CdM1_Branch';
+						csfilter = 'baktif=1';
+						wsfilter = 'baktif=1 AND bkode ="'+txtcabang.text+'"';
+						sort = 'bkode asc';
+						break;
+					case "txtlokasi":
+						paket = 'CdM1_Location';
+						csfilter = 'laktif=1';
+						wsfilter = 'laktif=1 AND lkode ="'+txtlokasi.text.split('"').join('\\"')+'"';
+						sort = 'lkode asc';
+						break;
+					case "txtuang":
+						paket = 'CdM1_Currency';
+						csfilter = "caktif=1";
+						wsfilter = "caktif=1 AND ckode ='"+txtuang.text+"'";
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			// set kondisi saat set ketika selesai pencarian ==================================
+			// set ketika benar ====================================
+			public var customer1:String, customer2:String, salesman:String, inputuser:String;
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = p.subject, i:int;
+				if(p.wsSuccess){
+					if(FlexGlobals.topLevelApplication.wsArrUtama.getItemAt.length >= 0)o = FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0)
+					switch(s){
+						case "txtcustomer1":
+							txtcustomer1.text = o.kkode;
+							customer1 = o.kid;
+						case "txtcustomer2":
+							//							txtcustomer2.text = o.kkode;
+							customer2 = o.kid;
+							break;
+						case "txtlokasi":
+							txtlokasi.text = o.lkode;
+							break;
+						case "txtuser":
+							txtuser.text = o.ukode;
+							inputuser = o.userid;
+							break;
+						case "txtsalesman":
+							txtsalesman.text = o.kkode;
+							salesman = o.kid;
+							break;
+						case "txtcabang":
+							txtcabang.text = o.bkode;
+							break;
+						case "txtuang":
+							txtuang.text = o.ckode;
+							break;
+					}
+				}else{			
+					// set ketika salah ====================================		
+					if(p.F_validasiFalse(s))
+						switch(s){
+							case "txtcustomer1":txtcustomer1.text = ""; customer1 = "0"; break;
+							case "txtlokasi":txtlokasi.text = ""; break;
+							case "txtuser":txtuser.text = ""; inputuser = "0"; break;
+							case "txtsalesman":txtsalesman.text = ""; salesman = "0"; break;
+							case "txtcabang":txtcabang.text = ""; break;
+						}
+				}
+			}
+			
+			// pengosongan textinput ketika pencarian tidak ditemukan ================================
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case "txtcustomer1":p.F_KosongkanText([txtcustomer1]);customer1 = '';break;
+					//					case "txtcustomer2":p.F_KosongkanText([txtcustomer2]);customer2 = '';break;
+					case "txtlokasi":p.F_KosongkanText([txtlokasi]);break;
+					case "txtuser":p.F_KosongkanText([txtuser]);inputuser = '';break;
+					case "txtsalesman":p.F_KosongkanText([txtsalesman]);salesman = '';break;
+					case "txtcabang":p.F_KosongkanText([txtcabang]);break;
+					case "txtuang":p.F_KosongkanText([txtuang]);break;
+				}
+			}
+			
+			// pengisian filter untuk report =========================================================
+			public function f_filterdata():String{
+				var f:String="";
+				f = FlexGlobals.topLevelApplication.F_standartFilter();
+				f = p.TambahFilter(f,'sisaldoawal = 0');
+				if(txtcustomer1.text!='')
+					f = p.TambahFilter(f,'sicustomer ='+customer1+'');
+				if(txtsalesman.text!='')
+					f = p.TambahFilter(f,'sibagianpenjualan ='+salesman);
+				if(txtuser.text!='')
+					f = p.TambahFilter(f,'siinputuser ='+inputuser);
+				if(txtuang.text!='')
+					f = p.TambahFilter(f,'simatauang ="'+txtuang.text+'"');
+				//				if(cmbstatusupload.selectedIndex > -1)
+				//					f = p.TambahFilter(f,'siuploaded ="'+cmbstatusupload.selectedIndex+'"');
+				if(FlexGlobals.topLevelApplication.getSetting(0, "company", "IsServer") == 0){
+					if(cmbstatusupload.selectedItem.v > -1)
+						f = p.TambahFilter(f,'siuploaded ="'+cmbstatusupload.selectedItem.v+'"');
+				}
+				return f;
+			}
+			
+			// set untuk icon-icon ======================================================================
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class;
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")]  public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/related.png")]  public var tbrelated:Class;
+			[Bindable] [Embed(source="assets/tb/jurnal.png")]  public var tbjurnal:Class;
+			[Bindable] [Embed(source="assets/tb/close_unclose.png")]  public var tbclose_unclose:Class;
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/draft.png")] public var tbdraft:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")] public var tbexport:Class;
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	<mx:DividedBox top="30" width="100%" height="100%">
+		<mx:Canvas width="100%" height="195" minHeight="168" maxHeight="168">
+			<s:Group left="10" top="10">
+				<s:Label id="tnotransaksi" left="0" top="7" width="78" text="No Transaksi"/>
+				<s:Label id="ttanggal" left="0" top="29" width="78" text="Tanggal"/>
+				<s:Label id="turaian" left="0" top="49" width="78" text="Uraian"/>
+				<s:Label id="tcatatan" left="0" top="70" width="78" text="Catatan"/>
+				<s:Label id="tjenislaporan" left="0" top="93" width="80" text="Jenis Laporan"/>
+				<s:TextInput id="txtnotransaksi1" left="91" top="0"/>
+				<s:TextInput id="txtnotransaksi2" left="271" top="0" focusIn="txtnotransaksi2.text = txtnotransaksi1.text"/>
+				<mx:DateField id="dttgl1" left="91" top="21" width="153"/>
+				<mx:DateField id="dttgl2" left="271" top="21" width="153" focusIn="dttgl2.text = dttgl1.text"/>
+				<s:TextInput id="txturaian" left="91" top="43" width="308"/>
+				<s:TextInput id="txtcatatan" left="91" top="64" width="308"/>
+				<s:ComboBox id="cmbjenislaporan" left="91" top="85" width="308"/>
+				
+				<s:Label x="246" y="29" text="s/d"/>
+				<s:Label x="246" y="8" text="s/d"/>
+			</s:Group>
+			<s:Group right="10" top="10">
+				<s:Label id="tcabang" left="0" top="5" width="78" text="Cabang"/>
+				<s:Label id="tlokasi" left="0" top="26" width="78" text="Lokasi"/>
+				<s:Label id="tuser" left="0" top="47" width="78" text="User"/>
+				<s:Label id="tstatus" left="0" top="69" width="78" text="Status"/>
+				<s:Label id="tcustomer" left="0" top="90" width="78" text="Customer"/>
+				<s:Label id="tsalesman" left="0" top="111" width="78" text="Salesman"/>
+				<s:Label id="tuang" left="0" top="133" width="78" text="Uang"/>
+				
+				<s:TextInput id="txtcabang" left="87" top="0"/>
+				<s:TextInput id="txtlokasi" left="87" top="21"/>
+				<s:TextInput id="txtuser" left="87" top="42"/>
+				<s:ComboBox id="cmbstatus" left="87" top="63"/>
+				<s:TextInput id="txtcustomer1" left="87" top="85"/>
+				<s:TextInput id="txtsalesman" left="87" top="106"/>
+				<s:TextInput id="txtuang" left="87" top="127"/>
+				<s:Group id="grpstausupload">
+					<s:Label id="tstatusupload" left="0" top="154" width="98" text="Status Upload" />
+					<s:ComboBox id="cmbstatusupload" left="87" top="148" width="146"/>
+				</s:Group>
+			</s:Group>
+		</mx:Canvas>
+		<mx:Canvas width="100%" height="300">
+			<s:DataGrid id="dg" left="0" right="0" top="0" bottom="0" alternatingRowColors="[#FFFFFF, #EFF3FA]"/>
+		</mx:Canvas>
+	</mx:DividedBox>
+	<s:Group id="grppopup" left="0" right="0" top="0" bottom="0" visible="false">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="white" alpha="0.5" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   left="50" right="50" top="150" bottom="150"
+					   id="ttwpopup">
+			<s:DataGrid id="gridjv" left="0" right="0" top="0" bottom="0" alternatingRowColors="[#FFFFFF, #EFF3FA]" visible="false" sortableColumns="false" selectionMode="singleCell">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn width="112" dataField="tnotransaksi" headerText="No Transaksi"/>
+						<s:GridColumn width="133" dataField="tnorek" headerText="No Akun"/>
+						<s:GridColumn width="270" dataField="tnoreknama" headerText="Nama Akun"/>
+						<s:GridColumn width="120" dataField="tdebit" headerText="Debit" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tkredit" headerText="Kredit" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="50" dataField="tmatauang" headerText="Uang"/>
+						<s:GridColumn width="90" dataField="tkurs" headerText="Kurs" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tdebitvalas" headerText="Debit Valas" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tkreditvalas" headerText="Kredit Valas" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+			<s:Group id="gridterkait" top="0" bottom="0" width="475" visible="false">
+				<s:Label left="12" top="6" fontWeight="bold" fontSize="12" text="Sebelumnya :"/>
+				<s:Label right="153" top="6" fontWeight="bold" fontSize="12" text="Sesudahnya :"/>
+				<s:DataGrid id="gridtts" width="222" left="10" top="20" bottom="10" alternatingRowColors="[#FFFFFF, #EFF3FA]" sortableColumns="false" selectionMode="singleCell">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn width="120" dataField="noterkait" headerText="No Transaksi" />
+							<s:GridColumn width="100" dataField="tglterkait" headerText="Tanggal"/>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+				<s:DataGrid id="gridtt" width="222" right="10" top="20" bottom="10" alternatingRowColors="[#FFFFFF, #EFF3FA]" sortableColumns="false" selectionMode="singleCell">
+					<s:columns>
+						<s:ArrayList>
+							<s:GridColumn width="120" dataField="noterkait" headerText="No Transaksi" />
+							<s:GridColumn width="100" dataField="tglterkait" headerText="Tanggal"/>
+						</s:ArrayList>
+					</s:columns>
+				</s:DataGrid>
+			</s:Group>
+		</s:TitleWindow>
+	</s:Group>
+</s:Module>

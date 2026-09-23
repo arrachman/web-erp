@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	<fx:Script>
+		<![CDATA[
+			import MyClass.CopyTransaksi;
+			
+			import mx.collections.ArrayCollection; 
+			import mx.containers.TitleWindow;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.FlexTextField;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			public var arr:Array, arrColumn:Array;
+			public var a:Array = new Array;
+			private var p:Object,v_userid:int=0;
+			public var vfileextention:int=0;
+			public var o:Object = {};
+			
+// fokus ke no txtnotransaksi saat form pertama dibuka ======================================
+			public function f_focusOnMe():void
+			{
+				txtnotransaksi1.setFocus();
+			}
+			
+// persiapan persiapan ======================================================================	
+			public function f_persiapan():void
+			{
+				p=parentApplication;
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tnotransaksi, ttanggal, tpembuat, turaian, tcatatan, tjenislaporan, tuser, tlokasi, tcabang, tstatus]);
+				cmbjenislaporan.dataProvider = FlexGlobals.topLevelApplication.getReportItem(6, 3);			//(ambil report dari database)
+				a = [6, 3, 10, 'Bom', false];																// module, menu transaksi, menu, sumber, approvell, Sort, Group
+				p.F_persiapanFormData(this);
+				
+				var  ct:CopyTransaksi =  new  CopyTransaksi; 
+				ct.f_copyTransaksi(dg,6,3);
+				
+				// Daftarkan fungsi-fungsi text input
+				p.F_DateFieldStandard([dttgl1, dttgl2]);													// daftarkan fungsi-fungsi datefield
+				p.F_ComboBoxStandard([cmbjenislaporan,cmbstatus]);											// daftarkan fungsi-fungsi combobox
+				p.F_txtpencarian([txtpembuat1, txtlokasi, txtcabang, txtuser]);				// daftarkan fungsi-fungsi text input yang pencarian
+				p.F_SetNavigasiKeyboard([txtnotransaksi1, txtnotransaksi2, txturaian, txtcatatan]);			// daftarkan fungsi-fungsi text input
+//				txtnotransaksi1.addEventListener(spark.events.TextOperationEvent.CHANGE, f_change);			// digunakan untuk pengisian text input lain ketika fokus out
+//				dttgl1.addEventListener(spark.events.TextOperationEvent.CHANGE, f_changedate);				// digunakan untuk pengisian datefield lain ketika fokus out
+				function f_change():void{
+					txtnotransaksi2.text = txtnotransaksi1.text;
+				}
+				function f_changedate():void{
+					dttgl2.text = dttgl1.text;
+				}
+				f_kondisiAwal();
+			}
+			
+// set kondisi awal ketika form dibuka ======================================
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+				txtuser.text = p.userid;
+				txtcabang.text = p.ucabang;
+				p.F_SetNilaiText([dttgl1, dttgl2], p.DefaultTanggal);
+				p.F_KosongkanText([txtnotransaksi1, txtnotransaksi2, txtpembuat1, txturaian, txtuser,txturaian,txtcatatan]);
+				dg.dataProvider.removeAll();
+				cmbstatus.selectedIndex = o.DefaultStatus;
+			}
+			
+// digunakan untuk duka form transaksi ======================================================
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				if(parentApplication.apaBisaAkses(a[0], a[2], 4) == true){
+					FlexGlobals.topLevelApplication.openForm(a[0], a[1], dg.dataProvider.getItemAt(dg.selectedCell.rowIndex)[a[3].toLowerCase()+'id']);
+				}
+			}
+			
+// set kondisi untuk filter =============================================
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtpembuat1':
+						paket = 'CdM1_Contact';
+						wsfilter = '(kaktif=1 AND kkategori="K") AND kkode ="'+txtpembuat1.text.split('"').join('\\"')+'"';
+						csfilter = '(kaktif=1 AND kkategori="K")';
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case 'txtpembuat2':
+						paket = 'CdM1_Contact';
+//						wsfilter = '(kaktif=1 AND kkategori="K") AND kkode ="'+txtpembuat2.text.split('"').join('\\"')+'"';
+						csfilter = '(kaktif=1 AND kkategori="K")';
+						csfield = 2;
+						sort = 'kkode asc';
+						break;
+					case 'txtlokasi':
+						paket = 'CdM1_Location';
+						csfilter = 'laktif=1';
+						wsfilter = 'laktif=1 AND lkode ="'+txtlokasi.text.split('"').join('\\"')+'"';
+						sort = 'lkode asc';
+						break;
+					case 'txtcabang':
+						paket = 'CdM1_Branch';
+						csfilter = 'baktif=1';
+						wsfilter = 'baktif=1 AND bkode ="'+txtcabang.text.split('"').join('\\"')+'"';
+						sort = 'bkode asc';
+						break;
+					case 'txtuser':
+						paket = 'CdM0_User';
+						csfilter = 'uaktif=1';
+						wsfilter = 'uaktif=1 AND ukode ="'+txtuser.text.split('"').join('\\"')+'"';
+						sort = 'ukode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+// set kondisi saat set ketika selesai pencarian ==================================
+			// set ketika benar ====================================			
+			public var pembuat1:String, pembuat2:String;
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = p.subject, i:int;
+				if(p.wsSuccess == true){
+					if(p.wsArrUtama.getItemAt.length >= 0)o = p.wsArrUtama.getItemAt(0)
+					switch(s){
+						case 'txtpembuat1':
+							txtpembuat1.text = o.kkode; pembuat1 = o.kid;
+						case 'txtpembuat2':
+//							txtpembuat2.text = o.kkode; pembuat2 = o.kid; 
+							break;
+						case 'txtlokasi':
+							txtlokasi.text = o.lkode;
+							break;
+						case 'txtcabang':
+							txtcabang.text = o.bkode;
+							break;
+						case 'txtuser':
+							txtuser.text = o.ukode;
+							v_userid = o.userid;
+							break;
+					}
+				}else{
+				// set ketika salah ====================================	
+					if(p.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txtpembuat1':txtpembuat1.text = ""; pembuat1 = "0"; break;
+							case 'txtlokasi':txtlokasi.text = ""; break;
+							case 'txtcabang':txtcabang.text = ""; break;
+							case 'txtuser':txtuser.text = ""; v_userid = 0; break;
+						}
+				}
+			}
+			
+// pengosongan textinput ketika pencarian tidak ditemukan ================================
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtpembuat1':p.F_KosongkanText([txtpembuat1]);break;
+//					case 'txtpembuat2':p.F_KosongkanText([txtpembuat2]);break;
+					case 'txtlokasi':p.F_KosongkanText([txtlokasi]);break;
+					case 'txtcabang':p.F_KosongkanText([txtcabang]);break;
+					case 'txtuser':p.F_KosongkanText([txtuser]);break;
+				}
+			}
+			
+// pengisian filter untuk report =========================================================
+			public function f_filterdata():String{
+				var f:String="";
+				f = p.F_standartFilter();
+				if(txtpembuat1.text!='')
+					f = p.TambahFilter(f,'bompembuat ='+pembuat1+'');
+				if(txtuser.text!='')
+					f = p.TambahFilter(f,'bominputuser = "'+v_userid+'"');
+				return f;
+			}
+			
+// set untuk icon-icon ======================================================================	
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class;
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")]  public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/related.png")]  public var tbrelated:Class;
+			[Bindable] [Embed(source="assets/tb/jurnal.png")]  public var tbjurnal:Class;
+			[Bindable] [Embed(source="assets/tb/close_unclose.png")]  public var tbclose_unclose:Class;
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/draft.png")] public var tbdraft:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")]  public var tbexport:Class;
+			
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	<mx:DividedBox top="30" width="100%" height="100%">
+		<mx:Canvas width="100%" height="128" minHeight="145" maxHeight="145">
+			<s:Group left="10" top="10">
+				<s:Label id="tnotransaksi" left="0" top="7" width="78" text="No Transaksi"/>
+				<s:Label id="ttanggal" left="0" top="29" width="78" text="Tanggal"/>
+				<s:Label id="turaian" left="0" top="49" width="78" text="Uraian"/>
+				<s:Label id="tcatatan" left="0" top="70" width="78" text="Catatan"/>
+				<s:Label id="tjenislaporan" left="0" top="91" width="80" text="Jenis Laporan"/>
+				<s:TextInput id="txtnotransaksi1" left="91" top="0"/>
+				<s:TextInput id="txtnotransaksi2" left="271" top="0" focusIn="txtnotransaksi2.text = txtnotransaksi1.text"/>
+				<mx:DateField id="dttgl1" left="91" top="21" width="153"/>
+				<mx:DateField id="dttgl2" left="271" top="21" width="153" focusIn="dttgl2.text = dttgl1.text"/>
+				<s:TextInput id="txturaian" left="91" top="43" width="308"/>
+				<s:TextInput id="txtcatatan" left="91" top="64" width="308"/>
+				<s:ComboBox id="cmbjenislaporan" left="91" top="85" width="308"/>
+				<s:Label x="246" y="29" text="s/d"/>
+				<s:Label x="246" y="8" text="s/d"/>
+			</s:Group>
+			<s:Group right="10" top="10">
+				<s:Label id="tcabang" left="0" top="5" width="78" text="Cabang"/>
+				<s:Label id="tlokasi" left="0" top="26" width="78" text="Lokasi"/>
+				<s:Label id="tuser" left="0" top="47" width="78" text="User"/>
+				<s:Label id="tstatus" left="0" top="69" width="78" text="Status"/>
+				<s:Label id="tpembuat" left="0" top="90" width="78" text="Pembuat"/>
+				<s:TextInput id="txtcabang" left="75" top="0"/>
+				<s:TextInput id="txtlokasi" left="75" top="21"/>
+				<s:TextInput id="txtuser" left="75" top="42"/>
+				<s:ComboBox id="cmbstatus" left="75" top="63"/>
+				<s:TextInput id="txtpembuat1" left="75" top="85"/>
+			</s:Group>
+		</mx:Canvas>
+		<mx:Canvas width="100%" height="95%">
+			<s:DataGrid left="0" right="0" bottom="0" top="0" id="dg"/>
+		</mx:Canvas>
+	</mx:DividedBox>
+	<s:Group id="grppopup" left="0" right="0" top="0" bottom="0" visible="false">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="white" alpha="0.5" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   left="50" right="50" top="150" bottom="150"
+					   id="ttwpopup">
+			<s:DataGrid id="gridjv" left="0" right="0" top="0" bottom="0" alternatingRowColors="[#FFFFFF, #EFF3FA]" visible="true" sortableColumns="false" selectionMode="singleCell">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn width="112" dataField="tnotransaksi" headerText="No Transaksi"/>
+						<s:GridColumn width="133" dataField="tnorek" headerText="No Akun"/>
+						<s:GridColumn width="270" dataField="tnoreknama" headerText="Nama Akun"/>
+						<s:GridColumn width="120" dataField="tdebit" headerText="Debit" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tkredit" headerText="Kredit" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="50" dataField="tmatauang" headerText="Uang"/>
+						<s:GridColumn width="90" dataField="tkurs" headerText="Kurs" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tdebitvalas" headerText="Debit Valas" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+						<s:GridColumn width="120" dataField="tkreditvalas" headerText="Kredit Valas" labelFunction="{parentApplication.F_formatCurreny}" headerRenderer="{parentApplication.vRightHeader}" itemRenderer="{parentApplication.vRightItem}"/>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+			<s:DataGrid id="gridtt" left="0" right="0" top="0" bottom="0" alternatingRowColors="[#FFFFFF, #EFF3FA]" visible="false" sortableColumns="false" selectionMode="singleCell">
+				<s:columns>
+					<s:ArrayList>
+						<s:GridColumn width="120" dataField="noterkait" headerText="Notransaksi" />
+						<s:GridColumn width="100" dataField="tglterkait" headerText="Tanggal"/>
+					</s:ArrayList>
+				</s:columns>
+			</s:DataGrid>
+		</s:TitleWindow>
+	</s:Group>
+</s:Module>

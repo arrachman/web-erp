@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:net="flash.net.*" initialize="p=parentApplication"
+		  width="100%" height="100%"
+		  creationComplete="f_persiapan()">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.MenuEvent;
+			import mx.formatters.DateFormatter;
+			//Toolbar
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/cancel.png")]  public var tbcancel:Class;
+			[Bindable] [Embed(source="assets/main/password.png")]  public var mainpassword:Class;
+			[Bindable] [Embed(source="assets/main/photo.png")]  public var tbphoto:Class; //Photo
+			[Bindable] [Embed(source="assets/main/addphoto.png")]  public var tbaddphoto:Class; //Add Photo
+			[Bindable] [Embed(source="assets/main/webcam.png")]  public var tbwebcam:Class; //Web Camera
+			[Bindable] [Embed(source="assets/main/nopict.jpg")]  public var nopic:Class;
+			
+			public var o:Object = {};
+			protected var p:Object, validasi:Boolean,	vMsg:String, u:ArrayCollection, isUpdate:Boolean, i:int, isUpload:Boolean = false;
+			
+			public function f_focusOnMe():void
+			{
+				txtkode.setFocus();
+			}
+			protected function f_persiapan():void
+			{
+				p.F_txtpencarian([txtkontak, txtlokasi, txtcabang, txtgudang, txtbahasa]);
+				p.F_SetNavigasiKeyboard([txtkode, txtnama, txtkota, txtpassword]);
+				FlexGlobals.topLevelApplication.F_tabvalidatenow(tab);
+				p.F_DateFieldStandard([dtexpired]);
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 4, [dgrole], 'transaksi');
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tkode, tnama, tpassword, tkontak, tcabang, tlokasi, tgudang, tkota, tbahasa, tberakhir]);
+				FlexGlobals.topLevelApplication.F_RequiredLabel([tkode, tnama, tkontak, tcabang, tlokasi, tgudang, tkota, tbahasa, tberakhir]);
+				chkaktif.label = p.l(chkaktif.label);
+				if(p.FormFilter == '@'){
+					FlexGlobals.topLevelApplication.F_RequiredLabel([tpassword], 'blue')
+					o = p.m[p.idmodcurr].child.dg.dataProvider.getItemAt(p.m[p.idmodcurr].child.dg.selectedIndex);
+					FlexGlobals.topLevelApplication.F_wsGetDataById('getData', 'M0_UserGetdataById', o.userid);
+				}else{
+					FlexGlobals.topLevelApplication.F_RequiredLabel([tpassword])
+					f_kondisiAwal();
+				}
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbsimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_batal);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_gantiPassword);
+				mb.addEventListener(mx.events.MenuEvent.ITEM_CLICK, f_mbItemClick); 
+				mb.menuBarItems[2].enabled = false;
+				this.addEventListener(KeyboardEvent.KEY_DOWN, f_keydown);
+				chkaktif.label = FlexGlobals.topLevelApplication.l(chkaktif.label);
+				function f_mbItemClick(e:MenuEvent):void
+				{
+					switch(e.label){
+						case 'Browse File':
+							f_browseFile();
+							break;
+						case 'Via Web Camera':
+							p.f_takePhoto();
+							break;
+					}
+				}0
+				
+				function f_keydown(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ESCAPE)
+						p.closeFormPopUp();
+				}
+				
+				function f_mbsimpan():void
+				{
+					f_simpan();
+				}
+				
+				function f_batal():void
+				{
+					p.closeFormPopUp();
+				}
+				
+				function f_gantiPassword():void
+				{
+					if(isUpdate == true)
+						FlexGlobals.topLevelApplication.openFormX("Ganti Password", 1, "mod/m0/m0_AdministrasiUserGantiPassword.swf", 115, 285, "t1", u.getItemAt(0).userid, null, 2);
+				}
+			}
+			
+			protected function f_kondisiAwal():void
+			{
+				var dtt:Date = new Date(), dtf:DateFormatter = new DateFormatter();
+				u = new ArrayCollection([{
+					userid:0, ugambar:'', ulevel:0, udefaultview:0, ukontak:0
+				}]);
+				isUpdate = false;
+				u.getItemAt(0).ukontak = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Kontak');
+				txtkontak.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'KontakKode');
+				lblkontak.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'KontakNama');
+				txtcabang.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Cabang');
+				lblcabang.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'CabangNama');
+				txtlokasi.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Lokasi');
+				lbllokasi.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'LokasiNama');
+				txtgudang.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Gudang');
+				lblgudang.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'GudangNama');
+				txtkota.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Kota');
+				txtbahasa.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'Bahasa');
+				lblbahasa.text = FlexGlobals.topLevelApplication. getSetting(0, 'company', 'BahasaNama');
+				chkaktif.selected = true;
+				dtt.date += 30;
+				dtexpired.text = dtf.format(dtt);
+				f_focusOnMe();
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkontak':
+						paket = 'CdM1_Contact';
+						wsfilter = "kkode ='"+txtkontak.text+"'";
+						break;
+					case 'txtlokasi':
+						paket = 'CdM1_Location';
+						wsfilter = "lkode ='"+txtlokasi.text+"'";
+						break;
+					case 'txtbahasa':
+						paket = 'M0_LanguageSearch';
+						wsfilter = "lkode ='"+txtbahasa.text+"'";
+						break;
+					case 'txtcabang':
+						paket = 'CdM1_Branch';
+						wsfilter = "bkode ='"+txtcabang.text+"'";
+						break;
+					case 'txtgudang':
+						paket = 'CdM1_Warehouse';
+						wsfilter = "wkode ='"+txtgudang.text+"'";
+						break;
+					case 'rkode':
+						paket = 'M0_RoleSearch';
+						wsfilter = "rkode ='"+dgrole.dataProvider.getItemAt(p.rowIndex).rkode+"'";
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				if(p.wsSuccess == true){
+					o = p.wsArrUtama.getItemAt(0);
+					switch(p.subject){
+						case 'txtkontak':
+							u.getItemAt(0).ukontak = o.kkid;
+							txtkontak.text = o.kkode;
+							lblkontak.text = o.knama;
+							break;
+						case 'txtlokasi':
+							txtlokasi.text = o.lkode;
+							lbllokasi.text = o.lnama;
+							break;
+						case 'txtbahasa':
+							txtbahasa.text = o.lkode;
+							lblbahasa.text = o.lnama;
+							break;
+						case 'txtcabang':
+							txtcabang.text = o.bkode;
+							lblcabang.text = o.bnama;
+							break;
+						case 'txtgudang':
+							txtgudang.text = o.wkode;
+							lblgudang.text = o.wnama;
+							break;
+						case 'rkode':
+							dgrole.dataProvider.getItemAt(p.rowIndex).rkode = o.rkode;
+							dgrole.dataProvider.getItemAt(p.rowIndex).rnama = o.rnama;
+							dgrole.dataProvider.setItemAt(dgrole.dataProvider.getItemAt(p.rowIndex), p.rowIndex);
+							break;
+						case 'getData':
+							u = new ArrayCollection([{userid:o.userid, upassword:o.upassword, ugambar:o.ugambar, ukontak:o.ukontak, ulevel:o.ulevel, udefaultview:o.udefaultview}]);
+							txtkode.enabled = false;
+							txtkode.text = o.ukode;
+							txtnama.text = o.unama;
+							txtpassword.text = '';
+							txtkontak.text = o.ukontakkode;
+							lblkontak.text = o.ukontaknama;
+							txtcabang.text = o.ucabang;
+							lblcabang.text = o.ucabangnama;
+							txtlokasi.text = o.ulokasi;
+							lbllokasi.text = o.ulokasinama;
+							txtgudang.text = o.ugudang;
+							lblgudang.text = o.ugudangnama;
+							txtkota.text = o.ukota;
+							txtbahasa.text = o.ubahasa;
+							lblbahasa.text = o.ubahasanama;
+							dtexpired.text = o.utglexpired;
+							txtpassword.enabled = false;
+							isUpdate = true;
+							chkaktif.selected = Boolean(o.uaktif);
+							mb.menuBarItems[2].enabled = true;
+							if(o.ugambar != '')
+								if(o.ugambar == 'm0_user-0.jpg')imgUser.source = "../../files/f0/user/m0_user-"+o.userid+".jpg";
+								else imgUser.source = "../../files/f0/user/"+o.ugambar;
+							o = p.wsArrDetail;
+							for(i=0;i<o.length;i++){
+								if(i==0)dgrole.dataProvider.removeAll();
+								dgrole.dataProvider.addItem({no:(i+1), rkode:o.getItemAt(i).role, rnama:o.getItemAt(i).rolenama});
+							}
+							break;
+						case 'setUpload':
+							p.closeFormPopUp();
+							break;
+						case 'getPhoto':
+							imgUser.source = p.wsFile;
+							break;
+						case 'simpan':
+							p.subject = 'tampil';
+							p.m[p.idmodcurr].child.f_wsHasil();
+							if(isUpload == true){
+								if(isUpdate == false)
+									for(i=0;i<p.wsArrUtama.length;i++)
+										if(txtkode.text == p.wsArrUtama.getItemAt(i).ukode){
+											u.getItemAt(0).userid = p.wsArrUtama.getItemAt(i).userid;
+											break;
+										}
+								FlexGlobals.topLevelApplication.F_wsUpload('setUpload', 'uploadFile', u.getItemAt(0).userid, 'm0_user', 'jpg', imgUser.source, 0, '@', '', '@', FlexGlobals.topLevelApplication.DefaultTanggalforDB);
+							}else
+								p.closeFormPopUp();
+							break;
+					}
+				}else{
+					if(p.F_validasiFalse(p.subject) == true)
+						switch(p.subject){
+							case 'rkode':
+								dgrole.dataProvider.getItemAt(p.rowIndex).rkode = '';
+								dgrole.dataProvider.getItemAt(p.rowIndex).rnama = '';
+								dgrole.dataProvider.setItemAt(dgrole.dataProvider.getItemAt(p.rowIndex), p.rowIndex);
+								break;
+							case 'txtkontak':
+								u.getItemAt(0).ukontak = '';
+								lblkontak.text = '';
+								break;
+							case 'txtlokasi':
+								lbllokasi.text = '';
+								break;
+							case 'txtbahasa':
+								lblbahasa.text = '';
+								break;
+							case 'txtcabang':
+								lblcabang.text = '';
+								break;
+							case 'txtgudang':
+								lblgudang.text = '';
+								break;
+							case 'simpan':
+								Alert.show(p.wsErrmessage);
+								break;
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkontak':p.F_KosongkanText([txtkontak, lblkontak]);break;
+					case 'txtlokasi':p.F_KosongkanText([txtlokasi, lbllokasi]);break;
+					case 'txtbahasa':p.F_KosongkanText([txtbahasa, lblbahasa]);break;
+					case 'txtcabang':p.F_KosongkanText([txtcabang, lblcabang]);break;
+					case 'txtgudang':p.F_KosongkanText([txtgudang, lblgudang]);break;
+				}
+			}
+			
+			public function f_gantiGambar(ba:ByteArray):void
+			{
+				isUpload = true;
+				imgUser.source = ba;
+			}
+			
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String = '';
+				p.vpFocusEvent = true;
+				validasiForm();
+				if(validasi == true){ 
+					u.getItemAt(0).upassword = txtpassword.text
+					if(isUpdate == true)u.getItemAt(0).upassword = "auto";
+					if(isUpload == true)u.getItemAt(0).ugambar = 'm0_user-'+u.getItemAt(0).userid+'.jpg';
+					with(u.getItemAt(0))
+					a = [userid, txtkode.text, txtnama.text, upassword, ukontak, txtcabang.text, txtlokasi.text, 
+					txtgudang.text, txtkota.text, ugambar, int(chkaktif.selected), p.F_tglFormatDB(dtexpired.text), ulevel, '0', 
+					txtbahasa.text, udefaultview];
+					utama = p.F_splitArrayToString(a);
+					for(i=0;i<dgrole.dataProviderLength;i++)
+						if(dgrole.dataProvider.getItemAt(i).rkode != '' && dgrole.dataProvider.getItemAt(i).rkode != undefined){
+							a = [u.getItemAt(0).userid, dgrole.dataProvider.getItemAt(i).rkode];
+							if(i>0)detail += "▲";
+							detail += p.F_splitArrayToString(a);
+						}
+					p.F_wsSimpan('simpan', 'M0_UserSimpan', p.userid, isUpdate, utama+"△"+detail, '');
+				}
+				
+				function validasiForm():void
+				{
+					var i:int;
+					validasi = true;
+					vMsg = "";
+					if(txtkode.text == "")msgAlert(txtkode, 'Kode');
+					if(txtnama.text == "")msgAlert(txtnama, 'Nama');
+					if(txtpassword.text == "" && isUpdate == false)msgAlert(txtpassword, 'Password');
+					if(txtkontak.text == "")msgAlert(txtkontak, 'Kontak');
+					if(txtcabang.text == "")msgAlert(txtcabang, 'Cabang');
+					if(txtlokasi.text == "")msgAlert(txtlokasi, 'Lokasi');
+					if(txtgudang.text == "")msgAlert(txtgudang, 'Gudang');
+					if(txtkota.text == "")msgAlert(txtkota, 'Kota');
+					if(txtbahasa.text == "")msgAlert(txtbahasa, 'Bahasa');
+					if(dtexpired.text == "")msgAlert(dtexpired, 'Tgl Expired');
+					if(vMsg != '')msgAlert('clear', '');		
+					else{
+						if(txtpassword.text.length < 6 && isUpdate == false){
+							txtpassword.setFocus();
+							Alert.show("Panjang Password Minim 6 digit", "Informasi");
+							validasi = false;
+						}else if(dgrole.dataProvider.getItemAt(0).rkode == '' || dgrole.dataProvider.getItemAt(0).rkode == undefined){
+							Alert.show(parentApplication.l('Role Kosong !'), parentApplication.l('Validasi'));
+							validasi = false;
+						}
+					}
+					function msgAlert(focus:Object, pesan:String):void
+					{		
+						if(validasi == true)focus.setFocus();
+						vMsg += pesan+', ';
+						if(focus == 'clear'){
+							vMsg = vMsg.substr(0, vMsg.length-4);
+							vMsg += " Harus di isi dengan benar";
+							Alert.show(vMsg, "Validasi");}	
+						validasi = false;						
+					}
+				}
+			}
+			
+			public function f_hitungTotal():void
+			{
+				
+			}
+			
+			// Upload Foto
+			private function f_browseFile():void {
+				var arr:Array = [];
+				arr.push(new FileFilter("Images", ".gif;*.jpeg;*.jpg;*.png"));
+				fileReference.browse(arr);
+			}
+			
+			private function fileReference_select(evt:Event):void {
+				fileReference.load();
+			}
+			
+			private function fileReference_complete(evt:Event):void {
+				f_gantiGambar(fileReference.data);
+			}
+			
+//			[Bindable(event="myFlagChanged")]
+			protected function l(s:String):String
+			{
+				return FlexGlobals.topLevelApplication.l(s);
+			}
+			
+			protected function tberakhir_clickHandler(event:MouseEvent):void
+			{
+				Alert.show(	tberakhir.width+" ");
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbcancel"/>
+					<topmenu label="Ganti Password" icon="mainpassword"/>
+					<topmenu label="Photo" icon="tbphoto">
+						<topmenu label="Browse File" icon="tbaddphoto"/>
+						<topmenu label="Via Web Camera" icon="tbwebcam"/>
+					</topmenu>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<net:FileReference id="fileReference"  select="fileReference_select(event);" complete="fileReference_complete(event);" />
+	</fx:Declarations>
+	<mx:MenuBar left="0" right="0" top="0" height="30" dataProvider="{xmlListColl}" labelField="@label" iconField="@icon" id="mb"/>
+	<mx:TabNavigator id="tab" left="10" right="10" top="40" bottom="10">
+		<s:NavigatorContent width="100%" height="100%" label="Profil">
+			<s:Group id="grp" left="10" top="0" bottom="0" right="0">
+				<s:TextInput id="txtkode" left="108" top="0"/>
+				<s:TextInput id="txtnama" left="108" top="21" width="191"/>
+				<s:TextInput id="txtpassword" left="108" top="42" width="191" displayAsPassword="true"/>
+				<s:TextInput id="txtkontak" left="108" top="63" width="100"/>
+				<s:TextInput id="txtcabang" left="108" top="84" width="100"/>
+				<s:TextInput id="txtlokasi" left="108" top="105" width="100"/>
+				<s:TextInput id="txtgudang" left="108" top="126" width="100"/>
+				<s:TextInput id="txtkota" left="108" top="147" width="100"/>
+				<s:TextInput id="txtbahasa" left="108" top="168" width="100"/>
+				<mx:DateField id="dtexpired" left="108" top="189" width="125"/>
+				<s:CheckBox id="chkaktif" x="109" y="211" label="Aktif"/>
+				<s:Label id="tkode" left="0" y="7" text="Kode"/>
+				<s:Label id="tnama" left="0" y="28" text="Nama"/>
+				<s:Label id="tpassword" left="0" y="48" text="Password"/>
+				<s:Label id="tkontak" left="0" y="70" text="Kontak"/>
+				<s:Label id="tcabang" left="0" y="90" text="Cabang"/>
+				<s:Label id="tlokasi" left="0" y="111" text="Lokasi"/>
+				<s:Label id="tgudang" left="0" y="132" text="Gudang"/>
+				<s:Label id="tkota" left="0" y="154" text="Kota"/>
+				<s:Label id="tbahasa" left="0" y="173" text="Bahasa"/>
+				<s:Label id="tberakhir" left="0" y="195" text="Berakhir" click="tberakhir_clickHandler(event)"/>
+				<s:Label id="lblkontak" x="234" y="68" text=""/>
+				<s:Label id="lbllokasi" x="234" y="109" text=""/>
+				<s:Label id="lblcabang" x="234" y="88" text=""/>
+				<s:Label id="lblgudang" x="234" y="131" text=""/>
+				<s:Label id="lblbahasa" x="234" y="170" text=""/>
+				<s:BorderContainer visible="true" x="91" y="237" width="157" height="165">
+					<s:Image id="imgUser" x="10" y="10" width="135" height="143" scaleMode="stretch" source="{nopic}"/>
+				</s:BorderContainer>
+			</s:Group>
+		</s:NavigatorContent>
+		<s:NavigatorContent width="100%" height="100%" label="Role">
+			<s:DataGrid id="dgrole" left="0" top="0" right="0" bottom="0"/>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+</s:Module>

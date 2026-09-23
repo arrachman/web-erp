@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			
+			public var vUserId:int, vUserIdEdit:int=0, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String;
+			public var vKeyOut:Boolean = true, p:Object, o:Object = {}, dg:DataGrid, divisi:String="", subdivisi:String="", Departemen:String="";
+			
+			private function f_persiapan():void{
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				parentApplication.F_txtpencarian([txtsubdepartment, txtpersediaan,txthpp,txtpenjualan]);
+				chkaktif.label = FlexGlobals.topLevelApplication.l(chkaktif.label);
+				parentApplication.F_TranslateLabel([tkode, tnama, takunpersediaan, takunhargapokok, takunpenjualan, tcatatan]);
+				parentApplication.F_RequiredLabel([tkode, tnama]);
+				parentApplication.F_txtInOut(txtkode,'','M1_Item_CategoryCekId');
+				parentApplication.F_configMasterInput();
+				parentApplication.F_SetNavigasiKeyboard([txtkode, txtnama,txtcatatan]);
+				if(p.FormFilter != ''){
+					isUpdate = true;
+					txtkode.enabled = false;
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].ickode;
+					txtnama.text = dg.dataProvider[dg.selectedCell.rowIndex].icnama;
+					divisi =  dg.dataProvider[dg.selectedCell.rowIndex].icdivisi;
+					subdivisi =  dg.dataProvider[dg.selectedCell.rowIndex].icsubdivisi;
+					Departemen =  dg.dataProvider[dg.selectedCell.rowIndex].icdepartemen;
+					txtsubdepartment.text = dg.dataProvider[dg.selectedCell.rowIndex].icsubdepartemen;
+					lblsubdepartment.text = dg.dataProvider[dg.selectedCell.rowIndex].icsubdepartemennama;
+					txtpersediaan.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekpersediaan;
+					lblpersediaan.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekpersediaannama;
+					txthpp.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekhargapokok;
+					lblhargapokok.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekhargapokoknama;
+					txtpenjualan.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekpenjualan;
+					lblpenjualan.text=dg.dataProvider[dg.selectedCell.rowIndex].icrekpenjualannama;
+					txtcatatan.text = dg.dataProvider[dg.selectedCell.rowIndex].iccatatan;
+					vUserIdEdit = parentApplication.userid;
+					if (dg.dataProvider[dg.selectedCell.rowIndex].icaktif=="0"){chkaktif.selected = false;}else {chkaktif.selected = true;}
+					if(parentApplication.m.ArrFilter != null){
+						mb.menuBarItems[0].enabled = false;
+						mb.menuBarItems[1].enabled = false;
+					}
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				parentApplication.F_KosongkanText([txtkode, txtnama,txtpersediaan,txthpp,txtpenjualan,txtcatatan,lblpersediaan,lblhargapokok,lblpenjualan]);
+			}
+			
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtkode, n:'Kode', e:'Code'}, {t:txtnama, n:'Nama', e:'Name'}]) == true){
+					arr = [txtkode.text,txtnama.text,txtpersediaan.text,txthpp.text,txtpenjualan.text,txtcatatan.text,int(chkaktif.selected),vUserId,vDefDt,vUserIdEdit,vDefDt,
+							divisi, subdivisi, Departemen, txtsubdepartment.text];
+					utama = parentApplication.F_splitArrayToString(arr);
+					parentApplication.F_MasterSimpan(baru, 'M1_Item_CategorySimpan', utama, 'ickode')
+					vUserIdEdit = 0;
+				}
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtsubdepartment':
+						paket = 'CdM1_SubDepartment';
+						csfilter = 'sdpaktif = 1';
+						wsfilter = 'sdpaktif = 1 AND sdpkode = "'+ txtsubdepartment.text.split('"').join('\\"') +'"';
+						break;
+					case 'txtpersediaan':
+						paket = 'CdM1_Coa';
+						csfilter = 'caktif = 1 AND cgd = "D"';
+						wsfilter = 'caktif = 1 AND cgd = "D" and cnomor = "'+ txtpersediaan.text.split('"').join('\\"') +'"';
+						sort = 'cnomor asc';
+						break;
+					case 'txthpp':
+						paket = 'CdM1_Coa';
+						csfilter = 'caktif = 1 AND cgd = "D"';
+						wsfilter = 'caktif = 1 AND cgd = "D" and cnomor = "'+ txthpp.text.split('"').join('\\"') +'"';
+						sort = 'cnomor asc';
+						break;
+					case 'txtpenjualan':
+						paket = 'CdM1_Coa';
+						csfilter = 'caktif = 1 AND cgd = "D"';
+						wsfilter = 'caktif = 1 AND cgd = "D" and cnomor = "'+ txtpenjualan.text.split('"').join('\\"') +'"';
+						sort = 'cnomor asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = parentApplication.subject;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){		
+						case 'txtsubdepartment':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtsubdepartment.text = o.sdpkode;
+							lblsubdepartment.text = o.sdpnama;
+							divisi = o.sdpdivisi;
+							subdivisi = o.sdpsubdivisi;
+							Departemen =o.sdpdepartemen
+							break;
+						case 'txtpersediaan':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtpersediaan.text = o.cnomor;
+							lblpersediaan.text = o.cnama;
+							break;
+						case 'txthpp':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txthpp.text = o.cnomor;
+							lblhargapokok.text = o.cnama;
+							break;
+						case 'txtpenjualan':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtpenjualan.text = o.cnomor;
+							lblpenjualan.text = o.cnama;
+							break;
+					}
+				}else{					
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							// 9.2.1 Result untuk WS False apa saja
+							case 'txtpersediaan': txtpersediaan.text = ''; lblpersediaan.text = ''; break;
+							case 'txthpp': txthpp.text = ''; lblhargapokok.text = ''; break;
+							case 'txtpenjualan': txtpenjualan.text = ''; lblpenjualan.text = ''; break;
+						}
+				}
+			}
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtpersediaan':parentApplication.F_KosongkanText([txtpersediaan, lblpersediaan]);break;
+					case 'txthpp':parentApplication.F_KosongkanText([txthpp, lblhargapokok]);break;
+					case 'txtpenjualan':parentApplication.F_KosongkanText([txtpenjualan, lblpenjualan]);break;
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/savenew.png")]  public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>	
+	<s:Label id="tkode" left="10" top="44" text="Kode"/>
+	<s:Label id="tnama" left="10" top="64" text="Nama"/>
+	<s:Label id="takunpersediaan" left="10" top="105" text="Akun Persediaan"/>
+	<s:Label id="takunhargapokok" left="10" top="126" text="Akun Harga Pokok"/>
+	<s:Label id="takunpenjualan" left="10" top="147" text="Akun Penjualan"/>
+	<s:Label id="tcatatan" left="11" top="172" text="Catatan"/>
+	<s:Label id="lblpersediaan" left="244" top="106"/>
+	<s:Label id="lblhargapokok" left="244" top="126"/>
+	<s:Label id="lblpenjualan" left="244" top="146"/>
+	<s:TextInput id="txtkode" y="37" left="115" width="100" maxChars="25"/>
+	<s:TextInput id="txtnama" left="115" right="10" top="58" maxChars="100" />
+	<s:TextInput id="txtsubdepartment" left="115" top="79" width="100"/>
+	<s:TextInput id="txtpersediaan" top="100" left="115" width="100" maxChars="25"/>
+	<s:TextInput id="txthpp" top="121" left="115" width="100" />
+	<s:TextInput id="txtpenjualan" top="142" left="115" width="100" />
+	<s:TextArea id="txtcatatan" left="115" right="10" top="163" bottom="14" maxChars="250"/>
+	<s:CheckBox id="chkaktif" x="219" y="38" label="Aktif" selected="true"/>
+	<s:Label id="tsubdepartment" x="10" y="83" text="Sub Department"/>
+	<s:Label id="lblsubdepartment" x="244" y="85"/>
+</s:Module>

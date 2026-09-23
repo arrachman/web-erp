@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			public var o:Object = {};
+			public var vUserId:int, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String, userEdit:Number=0;
+			public var vKeyOut:Boolean = true, p:Object, dg:DataGrid;
+			private function f_persiapan():void{
+				FlexGlobals.topLevelApplication.F_txtpencarian([txttipepos, txtindexprice])
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				parentApplication.F_TranslateLabel([tkode, tnama, tcatatan]);
+				parentApplication.F_txtInOut(txtkode,'','M12_Pos_CategoryCekId');
+				parentApplication.F_configMasterInput();
+				parentApplication.F_RequiredLabel([tkode, tnama, tindexharga, ttipepos]);
+				parentApplication.F_SetNavigasiKeyboard([txtkode, txtnama, txtcatatan]);
+				if(p.FormFilter != ''){
+					isUpdate = true;
+					txtkode.enabled = false; 
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].pckode;
+					txtnama.text = dg.dataProvider[dg.selectedCell.rowIndex].pcnama;
+					txttipepos.text = dg.dataProvider[dg.selectedCell.rowIndex].pctipepos;
+					txtindexprice.text = dg.dataProvider[dg.selectedCell.rowIndex].pcindeksharga;
+					txtcatatan.text = dg.dataProvider[dg.selectedCell.rowIndex].pccatatan;
+					lbltipepops.text = dg.dataProvider[dg.selectedCell.rowIndex].pctipeposnama;
+					lblindeksharga.text = dg.dataProvider[dg.selectedCell.rowIndex].pcindeksharganama;
+					userEdit = FlexGlobals.topLevelApplication.userid;
+					if(parentApplication.m.ArrFilter != null){
+						mb.menuBarItems[0].enabled = false;
+						mb.menuBarItems[1].enabled = false;
+					}
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				parentApplication.F_KosongkanText([txtkode,txtnama,txtcatatan, txttipepos, txtindexprice]);
+			}
+			// set kondisi untuk filter =============================================
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txttipepos':
+						paket = 'CdM12_Pos_Type';
+						wsfilter = 'ptaktif=1 AND ptkode ="'+txttipepos.text.split('"').join('\\"')+'"';			// dipakai ketika validasi dari textinput
+						csfilter = 'ptaktif=1';																	// dipakai ketika buka form komponen pencarian
+						csfield = 2;
+						sort = 'ptkode asc';
+						break;
+					case 'txtindexprice':
+						paket = 'CdM1_Index_Price';
+						wsfilter = 'ipaktif=1 AND ipkode ="'+txtindexprice.text.split('"').join('\\"')+'"';			// dipakai ketika validasi dari textinput
+						csfilter = 'ipaktif=1';																	// dipakai ketika buka form komponen pencarian
+						csfield = 2;
+						sort = 'ipkode asc';
+						break;
+					
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtkode, n:'Kode'}, {t:txtnama, n:'Nama'}, {t:txttipepos, n:'Tipe POS'}, {t:txtindexprice, n:'Index Price'}]) == true){
+					arr = [txtkode.text, txtnama.text, txtcatatan.text, int(chkaktif.selected), vUserId, vDefDt, userEdit, 
+						vDefDt, "", "",  "",  "",  "", 0, 
+						0, 0, 0, 0, 0, FlexGlobals.topLevelApplication.m.DateFirst, FlexGlobals.topLevelApplication.m.DateFirst, FlexGlobals.topLevelApplication.m.DateFirst,
+						txttipepos.text, txtindexprice.text]
+					utama = parentApplication.F_splitArrayToString(arr);
+					FlexGlobals.topLevelApplication.F_MasterSimpan(baru, 'M12_Pos_CategorySimpan', utama,'pckode');
+					userEdit = 0;
+				}
+			}
+			
+			public function f_wsHasil():void
+			{
+				parentApplication.F_configMasterInputHasil();
+				var o:Object, s:String = p.subject, i:int;
+				if(p.wsSuccess == true){
+					if(FlexGlobals.topLevelApplication.wsArrUtama.getItemAt.length >= 0)o = FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0)
+					switch(s){
+						case 'txttipepos':
+							txttipepos.text = o.ptkode;
+							FlexGlobals.topLevelApplication.vpVarCurrent = o.ptkode;
+							lbltipepops.text = o.ptnama;
+//							Alert.show(FlexGlobals.topLevelApplication.vpVarCurrent);
+							break;
+						case 'txtindexprice':
+							txtindexprice.text = o.ipkode;
+							FlexGlobals.topLevelApplication.vpVarCurrent = txtindexprice.text;
+							lblindeksharga.text = o.ipnama;
+							break;
+					}
+				}else{			
+					// set ketika salah ====================================		
+					if(p.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txttipepos':
+								txttipepos.text = "";
+								lbltipepops.text = "";
+								break;
+							case 'txtindexprice':
+								txtindexprice.text = "";
+								lblindeksharga.text = "";
+								break;
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txttipepos':
+						txttipepos.text = "";
+						lbltipepops.text = "";
+						break;
+					case 'txtindexprice':
+						txtindexprice.text = "";
+						lblindeksharga.text = "";
+						break;
+				}
+			}
+			[Bindable] [Embed(source="assets/tb/save.png")] public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/savenew.png")] public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")] public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<s:Label id="tkode" left="10" top="45" text="Kode"/>
+	<s:Label id="ttipepos" left="10" top="88" text="Tipe POS"/>
+	<s:Label id="lbltipepops" left="218" top="86"/>
+	<s:Label id="tindexharga" left="10" top="109" text="Indeks Harga"/>
+	<s:Label id="lblindeksharga" left="219" top="110" />
+	<s:Label id="tnama" left="10" top="66" text="Nama"/>
+	<s:Label id="tcatatan" left="10" top="131" text="Catatan"/>
+	<s:TextInput id="txtkode" top="40" left="95" width="100"/>
+	<s:TextInput id="txtnama" left="95" right="10" top="61" maxChars="50" />
+	<s:TextInput id="txttipepos" top="82" left="95" width="100"/>
+	<s:TextInput id="txtindexprice" top="103" left="95" width="100"/>
+	<s:TextArea id="txtcatatan" left="95" right="10" top="124" bottom="12" maxChars="250"/>	
+	<s:CheckBox id="chkaktif" x="178" y="41" label="Aktif" selected="true" visible="false"/>
+</s:Module>

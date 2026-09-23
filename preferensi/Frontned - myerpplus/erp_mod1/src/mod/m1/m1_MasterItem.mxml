@@ -1,0 +1,462 @@
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	
+	<fx:Script>
+		<![CDATA[ 
+			import flash.sampler.NewObjectSample;
+			
+			import flashx.textLayout.factory.TruncationOptions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			import mx.managers.PopUpManager;
+			 
+			import spark.events.GridSelectionEvent;
+			import spark.primitives.Path;
+			public var arr:Array, arrColumn:Array, arrHistory:Array, sisa:int, o:Object = {};
+			public var saveas:Boolean=false, idsupplier : int = 0; 
+			[Bindable]private var acstok:ArrayCollection= new ArrayCollection();
+			public function f_grid_change():void{
+				arr[9] = ["Item",dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bnama,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid];
+			}
+			public function f_focusOnMe():void
+			{
+				txtkode.setFocus();
+			}
+			public function f_wsHasil():void{
+				var o:Object, s:String = parentApplication.subject;
+				if(parentApplication.wsSuccess == true){
+					switch(s){
+						case 'getstok':
+							if (parentApplication.wsArrUtama.length>0){
+								dgStok.dataProvider=parentApplication.wsArrUtama;}
+							break;
+						case 'txtSatuan':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtSatuan.text = o.ukode;
+							break;
+						case 'txtsupplier':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtsupplier.text = o.kkode;
+							idsupplier = o.kid
+							break;
+						case "TransaksiTerakhir" :
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							lbltransaksiterakhir.visible = true;bdrtransaksiterakhir.visible = true;lblbarang1.visible = true;
+							if (sumberterakhir=="PO"){
+								lbltransaksiterakhir.text="Order Pembelian Terakhir"
+								lblbarang1.text="Barang : " + dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bkode;
+							}else if (sumberterakhir=="SO"){
+								lbltransaksiterakhir.text="Order Penjualan Terakhir"
+								lblbarang1.text="Barang : " + dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bkode;
+							}else if (sumberterakhir=="RI"){
+								lbltransaksiterakhir.text="Pembelian Terakhir"
+								lblbarang1.text="Barang : " + dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bkode;
+							}else if (sumberterakhir=="SI"){
+								lbltransaksiterakhir.text="Penjualan Terakhir"
+								lblbarang1.text="Barang : " + dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bkode;
+							}
+							txtbukti.text = o.notransaksi;
+							txttanggal.text = o.tgl;
+							txtsuplier.text = o.kontaknama;
+							txtjumlah.text = o.jml;
+							txtharga.text=parentApplication.m.nfNominal.format(o.harga);
+					}
+				}else{
+					switch(parentApplication.subject){
+						case 'txtSatuan':txtSatuan.text='';break;
+						case 'txtsupplier':
+							txtsupplier.text='';
+							idsupplier = 0
+							break;
+						case 'getstok':
+							try{dgStok.dataProvider.removeAll() ;break;} 
+							catch(error:Error){break;}
+						case "TransaksiTerakhir" : 
+							lbltransaksiterakhir.visible = false;bdrtransaksiterakhir.visible = false;lblbarang1.visible = false;
+					}
+				}
+			}
+			protected function f_persiapan():void
+			{
+				FlexGlobals.topLevelApplication.F_TranslateLabel([tkode, ttipe, tnama, tstok, tsatuan,tstokpergudang, tbarang, tjmlorderjual, tjmlorderbeli]);
+				FlexGlobals.topLevelApplication.F_filterEnter([txtkode,txtnama,txtcatatan,txtSatuan,txtTipeBarang]);
+				FlexGlobals.topLevelApplication.F_persiapanFormMaster();
+				arr = new Array;
+				arr[0] = 'M1_Item_DataSearch'; 					//ws Tampil
+				arr[1] = 'bkode asc'; 							//ws Sort Default
+				arr[2] = 'Item'; 								//nama Form Input
+				arr[3] = 'mod/m1/m1_MasterItemInput.swf'; 		//link Form Input
+				arr[4] = '1130'; 								//width Form Input
+				arr[5] = '550'; 								//height Form Input
+				arr[6] = 'M1_ItemDelete'; 						//ws Delete
+				arr[7] = 'M1_ItemTerkait'; 						//ws Delete 
+				arr[8] = [1,11];								//modulid dan menuid
+				arrColumn = ['bkode', 'bnama', 'bcatatan'];
+				arrHistory = ['M1_Item_HistorySearch', 'bid', 'bkode asc', 'b']; // ws, field filter, sort, id/kode 
+				//this.addEventListener(KeyboardEvent.KEY_DOWN,function(e:KeyboardEvent):void{if (e.keyCode==Keyboard.F4){txtkode.setFocus()}});
+				// Daftarkan fungsi-fungsi text input
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtSatuan, txtsupplier]);
+				parentApplication.F_SetNavigasiKeyboard([txtkode,txtTipeBarang, txtnama, txtStok1,txtStok2]);
+				
+				mb.addEventListener(mx.events.MenuEvent.ITEM_CLICK, f_mbItemClick);
+				function f_saldoawal():void{Alert.show('saldo awal')}
+				function f_mbItemClick(e:MenuEvent):void
+				{
+					if(e.item.hasOwnProperty("data"))
+					{
+						var ic:String=e.item.@data;
+						switch(ic){
+							case 'TOBeli':Alert.show('T Order Beli');
+								break;
+							case 'TOJual':Alert.show('T Order Jual');
+								break;
+							case 'TBeli':Alert.show('T Beli');
+								break;
+							case 'TJual':Alert.show('T Jual');
+								break;
+						}
+					}
+				}
+				FlexGlobals.topLevelApplication.F_setGridJson(1, int(arr[8][1]));
+				FlexGlobals.topLevelApplication.registerGrid([dg,dgStok], 'data');
+				f_kondisiAwal();
+				//				mb.menuBarItems[7].addEventListener(MouseEvent.CLICK, f_Files);  
+				dg_contextmenu();
+				//				function f_Files():void{
+				//					FlexGlobals.topLevelApplication.F_OpenFilesMaster("Item", dg.dataProvider[dg.selectedCell.rowIndex].bnama, dg.dataProvider[dg.selectedCell.rowIndex].bid);
+				//				}
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtSatuan':
+						paket='CdM1_Unit';
+						wsfilter='ukode = "' + txtSatuan.text.split('"').join('\\"') +'"';
+						break;
+					case 'txtsupplier':
+						paket='CdM1_Contact';
+						wsfilter='kkategori = "S" AND kkode = "' + txtsupplier.text.split('"').join('\\"') +'"';
+						csfilter='kkategori = "S"';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case "txtSatuan":txtSatuan.text='';break;
+					case "txtsupplier":
+						txtsupplier.text='';
+						idsupplier = 0
+						break;
+				}
+			}
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+				var isfound:Boolean = false;
+				var arrayhakakses:Object;
+				arrayhakakses = FlexGlobals.topLevelApplication.m.ArrUserMenuCustom
+				for(var i:int=0;i<FlexGlobals.topLevelApplication.m.ArrUserMenuCustom.length;i++)
+				{
+					//Alert.show(arrayhakakses[i].mid+" && "+arrayhakakses[i].pcid+" && "+arrayhakakses[i].pckode+" && "+arrayhakakses[i].urakses);
+					if(arrayhakakses[i].mid == 1 && arrayhakakses[i].pcid == 2  && arrayhakakses[i].pckode == "Harga Beli" && arrayhakakses[i].urakses == 1){
+						isfound = true; break;
+					}
+				}
+				//Alert.show(dg.columnsLength+"")
+				if(isfound == true){
+					dg.columns.getItemAt(9).visible = true;
+				}else{
+					dg.columns.getItemAt(9).visible = false;
+				}
+				tbarang.text = parentApplication.l('Barang')+' :';
+				parentApplication.F_KosongkanText([txtkode,txtTipeBarang, txtnama, txtStok1,txtStok2,txtSatuan]);
+				if(dgStok.dataProvider != null){
+					dgStok.dataProvider.removeAll();
+				}
+				dg.dataProvider.removeAll();
+				//				parentApplication.f_formMasterTampil();
+			}
+			public var vfileextention:int=0;
+			public function f_cetak():void
+			{
+				var flt:String="";var srt:String="b.bkode, b.burutan";var grp:String="b.bkode, blg.blgnamalokasi";
+				o.str = parentApplication.StrFilter;
+				if (txtkode.text !=""){
+					flt += o.str("bkode", txtkode.text);
+				}
+				if (txtnama.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+= o.str("bnama", txtnama.text);
+				}
+				if (txtTipeBarang.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+= o.str("btipe", txtkode.text);
+				}
+				if (txtSatuan.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+= o.str("bsatuan", txtSatuan.text);
+				}
+				if (txtStok1.text==""){if (txtStok2.text!=''){txtStok1.text=txtStok2.text}}
+				if (txtStok2.text==""){if (txtStok1.text!=''){txtStok2.text=txtStok1.text}}
+				if (txtStok1.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+= o.str("bstok", txtStok1.text, 9, txtStok2.text);
+				}
+				if (txtcatatan.text !=""){
+					if (flt != ""){flt +=" And "}
+					flt+= o.str("bcatatan", txtcatatan.text);
+				}
+//				Alert.show(flt);
+				parentApplication.F_openReport(1,int(arr[8][1]),2,flt,srt,grp,vfileextention);
+				vfileextention = 0;
+			}
+			public function f_cekterpilih():Boolean{if(dg.selectedCell == null){return false}else{return true}}
+			public function f_paramDelete():String{return dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid;}
+			public function f_filterdata():String{
+				var f:String = '';
+				if(txtkode.text != '')
+					f = parentApplication.TambahFilter(f, 'bkode LIKE "%'+txtkode.text.split('"').join('\\"')+'%"');
+				if(txtnama.text != '')
+					f = parentApplication.TambahFilter(f, 'bnama LIKE "%'+txtnama.text.split('"').join('\\"')+'%"');
+				if(txtTipeBarang.text != '')
+					f = parentApplication.TambahFilter(f, 'btipe LIKE "%'+txtTipeBarang.text.split('"').join('\\"')+'%"');
+				if(txtSatuan.text != '')
+					f = parentApplication.TambahFilter(f, 'bsatuan LIKE "%'+txtSatuan.text.split('"').join('\\"')+'%"');
+				if (txtStok1.text==""){if (txtStok2.text!=''){txtStok1.text=txtStok2.text}}
+				if (txtStok2.text==""){if (txtStok1.text!=''){txtStok2.text=txtStok1.text}}
+				if(txtStok1.text != '')
+					f = parentApplication.TambahFilter(f, 'bstok between "'+txtStok1.text.split('"').join('\\"')+'" and "'+txtStok2.text.split('"').join('\\"')+'"');
+				if(txtcatatan.text != '')
+					f = parentApplication.TambahFilter(f, 'bcatatan LIKE "%'+txtcatatan.text.split('"').join('\\"')+'%"');
+				if(txtsupplier.text.length > 0)
+					f = parentApplication.TambahFilter(f, 'kid = "'+idsupplier+'"');
+				
+				return f;
+			}
+			
+			private function f_showstok():void{
+				//				if (mydgrow != mydgrow2){
+				FlexGlobals.topLevelApplication.F_wsSearch("getstok", 'M1_Item_Stock_WarehouseSearch', 0, 0, 'idbarang='+dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid, '');
+				mydgrow2 = mydgrow;
+				sisa = int(dg.dataProvider.getItemAt(mydgrow).bstok) - int(dg.dataProvider.getItemAt(mydgrow).bjmlorderjual);
+				tjmlorderjual.text= parentApplication.l('Jumlah Order Jual')+" : " + dg.dataProvider.getItemAt(mydgrow).bjmlorderjual +" "+parentApplication.l('sisa')+" : "+sisa;
+				tjmlorderbeli.text = parentApplication.l('Jumlah Order Beli')+" : "+dg.dataProvider.getItemAt(mydgrow).bjmlorderbeli;
+				//				}
+			}
+			private var mydgrow:int,mydgcol:int,mydgrow2:int;
+			
+			private var sumberterakhir:String="";
+			protected function dg_contextmenu():void
+			{
+				var vCMI:ContextMenuItem;
+				vCMI = new ContextMenuItem('Save As')
+				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_saveas); 
+				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Informasi Stok')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_informasistok); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Order Pembelian Terakhir')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_orderpembelianterakhir); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Order Penjualan Terakhir')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_orderpenjualanterakhir); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Pembelian Terakhir')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_pembelianterakhir); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Penjualan Terakhir')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_penjualanterakhir); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('History Transaksi')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_historytransaksi); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('History Order Pembelian')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_historyorderpembelian); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('History Order Penjualan')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_historyorderpenjualan); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('History Pembelian')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_historypembelian); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('History Penjualan')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_historypenjualan); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Barang Khusus')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_barangkhusus); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				//				vCMI = new ContextMenuItem('Barang Mutasi Khusus')
+				//				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_barangmutasikhusus); 
+				//				dg.contextMenu.customItems.push(vCMI);
+				vCMI = new ContextMenuItem(parentApplication.l('Tampilkan Gambar'))
+				vCMI.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, f_tampilkangambar); 
+				dg.contextMenu.customItems.push(vCMI);
+				function f_saveas():void{
+					saveas = true;
+					parentApplication.openFormX(arr[2], 1, arr[3], arr[5], arr[4], 't1', '@')
+				}
+				function f_informasistok():void{
+					FlexGlobals.topLevelApplication.openFormX("Barang Informasi Stok", 0, "mod/m1/m1_Barang_Informasi.swf",0,0,'t1',"x",[dg])
+				}
+				function f_orderpembelianterakhir():void{
+					sumberterakhir = 'PO';//dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid
+					FlexGlobals.topLevelApplication.F_wsDelete("TransaksiTerakhir", 'M1_ItemTransaksiTerakhir',parentApplication.userid,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid + "△PO",0,0,'', '');
+				}
+				function f_orderpenjualanterakhir():void{
+					sumberterakhir = 'SO';
+					FlexGlobals.topLevelApplication.F_wsDelete("TransaksiTerakhir", 'M1_ItemTransaksiTerakhir',parentApplication.userid,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid + "△SO",0,0,"", '');
+				}
+				function f_pembelianterakhir():void{
+					sumberterakhir = 'RI';
+					FlexGlobals.topLevelApplication.F_wsDelete("TransaksiTerakhir", 'M1_ItemTransaksiTerakhir',parentApplication.userid,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid + "△RI",0,0,"", '');
+				}
+				function f_penjualanterakhir():void{
+					sumberterakhir = 'SI';
+					FlexGlobals.topLevelApplication.F_wsDelete("TransaksiTerakhir", 'M1_ItemTransaksiTerakhir',parentApplication.userid,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bid + "△SI",0,0,"",'');
+				}
+				function f_historytransaksi():void{}
+				function f_historyorderpembelian():void{}
+				function f_historyorderpenjualan():void{}
+				function f_historypembelian():void{}
+				function f_historypenjualan():void{}
+				function f_barangkhusus():void{}
+				function f_barangmutasikhusus():void{}
+				function f_tampilkangambar():void{
+					if(dg.dataProvider.length > 0)
+						if(dg.dataProvider[dg.selectedCell.rowIndex].fnamafile.length > 0){
+							imggambar.source = "../files/f"+arr[8][0]+"/"+arr[2]+"/"+dg.dataProvider[dg.selectedCell.rowIndex].fnamafile;
+						}else{
+							imggambar.source = not_available;
+						}
+					bordergambar.visible = true; imggambar.visible = true; 
+				}
+			}
+			
+			protected function imggambar_clickHandler(event:MouseEvent):void
+			{
+				//				var a:m1_Zoom;
+				//				var myPopUp:m1_Zoom;
+				//				myPopUp = new m1_Zoom();
+				//				myPopUp.width =550;
+				//				myPopUp.height=500;
+				//				myPopUp.title="Image of " + dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bnama;
+				//				myPopUp.imgs.source = imggambar.source;
+				//				PopUpManager.addPopUp(myPopUp, this, true);
+				//				PopUpManager.centerPopUp(myPopUp);
+				
+			}
+			
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")]  public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")]  public var tbexport:Class;
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class; //First
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class; //Previous
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class; //Next
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class; //Last
+			[Bindable] [Embed(source="assets/tb/not_available.jpg")]  public var not_available:Class;
+			
+			protected function dg_clickHandler(event:MouseEvent):void
+			{
+				lbltransaksiterakhir.visible = false;bdrtransaksiterakhir.visible = false;lblbarang1.visible = false;
+				if(dg.dataProviderLength > 0){
+					mydgcol = dg.selectedCell.columnIndex; mydgrow=dg.selectedCell.rowIndex; //dg.setSelectedCell(mydgrow,mydgcol);
+					f_showstok();
+					tbarang.text = parentApplication.l('Barang')+" : "+dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).bkode;
+					bordergambar.visible = false; imggambar.visible = false;
+				}
+				//				<s:Label id="lblbarang" fontWeight="normal" text="Barang :"/>
+			}
+			
+			protected function imggambar_creationCompleteHandler(event:FlexEvent):void
+			{
+				imggambar.addEventListener(IOErrorEvent.IO_ERROR, ie_error);
+				function ie_error():void
+				{
+					imggambar.source = not_available;
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	<mx:Box width="69%" height="100%" top="29">
+		<s:Group width="100%" height="100%">
+			<s:Label id="tkode" x="10" y="15" text="Kode"/>
+			<s:Label id="ttipe" x="10" y="39" text="Tipe Barang" visible="false"/>
+			<s:Label id="tnama" x="10" y="37" text="Nama"/>
+			<s:Label id="tnama0" x="10" y="58" text="Supplier"/>
+			<s:TextInput id="txtsupplier" left="61" top="52" />
+			<s:Label id="tstok" x="218" y="17" text="Stok"/>
+			<s:Label id="tsatuan" x="217" y="39" text="Satuan"/>
+			<s:Label x="208" y="18" text="Harga Jual" visible="false"/>
+			<s:Label x="394" y="16" text="s.d." visible="false"/>
+			<s:Label id="lblsd" x="325" y="15" text="s.d."/>
+			<s:TextInput id="txtkode" x="61" y="10" />
+			<s:TextInput id="txtTipeBarang" x="127" y="31" width="128" visible="false"/>
+			<s:TextInput id="txtnama" x="61" y="31" />
+			<s:TextInput id="txtStok1" x="271" y="10" width="50" textAlign="right"/>
+			<s:TextInput id="txtStok2" x="349" y="10" width="50" textAlign="right" focusIn="txtStok2.text = txtStok1.text"/>
+			<s:TextInput id="txtSatuan" left="271" top="31"/>
+			<s:TextInput id="txtcatatan" x="267" y="31" visible="false"/>
+			<s:Label x="217" y="39" text="Catatan" visible="false"/>
+			<s:DataGrid id="dg" left="10" right="10" top="82" bottom="10" click="dg_clickHandler(event)"/>
+		</s:Group>
+	</mx:Box>
+	<mx:Box width="30%" height="100%" top="42" right="10">
+		<s:Label id="tstokpergudang" right="150" top="170" fontWeight="bold" text="Stok Per Gudang"/>
+		<s:Label id="tbarang" fontWeight="normal" text="Barang :"/>
+		<s:DataGrid id="dgStok" top="54" width="100%" height="156"/>
+		<s:Label id="tjmlorderjual" right="139" top="184" fontWeight="bold" text="Jumlah Order Jual :"/>
+		<s:Label id="tjmlorderbeli" fontWeight="bold" text="Jumlah Order Beli :"/>
+		<s:BorderContainer id="bordergambar" width="100%" height="250" visible="false">
+			<s:Image id="imggambar" width="100%" height="100%" visible="false" creationComplete="imggambar_creationCompleteHandler(event)"/>
+		</s:BorderContainer>
+		<s:Label id="lbltransaksiterakhir" right="139" top="204" fontWeight="bold" text="Transaksi Terakhir" visible="false"/>
+		<s:Label id="lblbarang1" fontWeight="normal" top="224" text="Barang :" visible="false"/>
+		<s:BorderContainer id="bdrtransaksiterakhir" width="100%" bottom="672" height="114" visible="false">
+			<s:Label x="10" y="10" text="Bukti" />
+			<s:Label x="10" y="30" text="Tgl" />
+			<s:Label x="10" y="50" text="Kontak" />
+			<s:Label x="10" y="70" text="Jml" />
+			<s:Label x="10" y="90"  text="Harga" />
+			<s:TextInput id="txtbukti" left="58" y="3" width="100%"  right="10" enabled="false" />
+			<s:TextInput id="txttanggal" left="58" y="24" width="100%"  right="10" enabled="false" />
+			<s:TextInput id="txtsuplier" left="58" y="45" width="100%"  right="10" enabled="false" />
+			<s:TextInput id="txtjumlah" left="58" y="66" width="100%"  right="10" enabled="false" textAlign="right"/>
+			<s:TextInput id="txtharga" left="58" y="87" width="100%"  right="10" enabled="false" textAlign="right"/>
+		</s:BorderContainer>
+		<s:BorderContainer bottom="672" width="100%" height="192" visible="false">
+			<s:Label right="196" top="340" text="Gambar" visible="false"/>
+		</s:BorderContainer>
+	</mx:Box>
+</s:Module>

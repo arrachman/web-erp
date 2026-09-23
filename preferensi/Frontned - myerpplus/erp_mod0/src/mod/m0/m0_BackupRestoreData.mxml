@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.events.GridEvent;
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			public var i:int, o:Object = {};
+			
+			public function f_persiapan():void
+			{ 
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 40, [dg], "data");
+
+				var arrMenuBar:ArrayCollection = new ArrayCollection([
+					{label:"Tampilkan", icon:parentApplication.tbpreview},
+					{label:"Backup", icon:parentApplication.tbsave},
+					{label:"Restore", icon:parentApplication.tbsave}]);
+				
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbTampilkan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbRestore);
+				
+				imgfirst.enabled = false;
+				imgprevious.enabled = false;
+				imgnext.enabled = false;
+				imglast.enabled = false;
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign", "center");
+				txtpaging.text = "0";
+				txtpaging.maxChars = 4;
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				
+				function f_mbTampilkan():void
+				{
+					f_kondisiAwal();
+				}
+				
+				function f_mbSimpan():void
+				{
+					simpanData(0);
+				}
+				
+				function f_mbRestore():void
+				{
+					if(dg.selectedCell == null)
+					{
+						Alert.show("Pilih data dulu", "Informasi");
+					}
+					else
+					{	
+						Alert.show('- Apliksai uProfit akan terkunci selama proses restore\n- Semua User yang login akan terlogout secara otomatis\n- Data saat ini akan terganti dengan data backup yang dipilih\nApakah Anda yakin akan melanjutkannya ?', 'Restore backup (' + dg.dataProvider[i].namafile+ ')', 3, null, function(e:Object):void
+						{	
+							if(e.detail == Alert.YES)
+							{
+								//m0_backup_dataRestore
+								FlexGlobals.topLevelApplication.F_wsSimpan("tampil2", "m0_backup_dataRestore", parentApplication.userid, true, dg.dataProvider[dg.selectedCell.rowIndex].namafile, "", 0, 0, "", "id DESC");
+							}
+						});
+					}
+				}
+				
+				function f_firstCLICK():void
+				{
+					if(imgfirst.enabled)
+					{
+						f_tampil();
+					}
+				}
+				
+				function f_previousCLICK():void
+				{
+					if(imgprevious.enabled)
+					{
+						f_tampil(int(txtpaging.text)-1);
+					}
+				}
+				
+				function f_nextCLICK():void
+				{
+					if(imgnext.enabled)
+					{
+						f_tampil(int(txtpaging.text)+1);
+					}
+				}
+				
+				function f_lastCLICK():void
+				{
+					if(imglast.enabled)
+					{
+						f_tampil(int(-1));
+					}
+				}
+				
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ENTER)
+					{
+						if(int(txtpaging.text) > 0)
+						{
+							f_tampil(int(txtpaging.text));
+						}
+					}
+				}
+				
+				f_kondisiAwal();
+			}
+			
+			public function f_kondisiAwal():void
+			{
+				f_tampil();
+			}
+			
+			public function f_tampil(page:int = 1):void
+			{
+				var filter:String = "";
+				FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'm0_backup_datasearch', 0, 0, filter, "id DESC");
+			}
+			
+			public function f_wsHasil():void
+			{
+				var i:int, j:int, arr:Object, ada:Boolean, ar:ArrayCollection;
+				
+				if(parentApplication.wsSuccess)
+				{
+					switch(parentApplication.subject)
+					{
+						case "tampil":
+							dg.dataProvider = parentApplication.wsArrUtama;
+							
+							for(i=0;i<dg.dataProviderLength;i++)
+							{
+								switch(int(dg.dataProvider[i].status))
+								{
+									case 0:dg.dataProvider[i].statusbackup = "Mulai";break;
+									case 1:dg.dataProvider[i].statusbackup = "Proses";break;
+									case 2:dg.dataProvider[i].statusbackup = "Selesai";break;
+									case 3:dg.dataProvider[i].statusbackup = "Error";break;
+								}
+							}
+							FlexGlobals.topLevelApplication.F_dgRefresh(dg);
+							dg.setSelectedCell(0,1);
+							dg.setFocus();
+							break;
+					}
+				}
+				else
+				{		
+					if(parentApplication.F_validasiFalse(parentApplication.subject))
+					{
+						if(parentApplication.subject.indexOf("bukacompencarian") < 0)
+						{
+							Alert.show("subject : "+parentApplication.subject + " " +FlexGlobals.topLevelApplication.wsErrmessage, "Informasi");
+						}
+						else
+						{
+							dg.dataProvider[dg.selectedCell.rowIndex].snilai = "";
+						}
+					} 
+				}
+			}
+			
+			public function simpanData(id:int):void
+			{
+				var a:Array, i:int, j:int, data:String = "", datadetail:String = "";
+				
+				switch(id)
+				{
+					case 0:
+						FlexGlobals.topLevelApplication.F_wsSimpan("tampil", "m0_backup_dataSimpan", parentApplication.userid, true, "", "", 0, 0, "", "id DESC");
+						break;
+				} 
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false, id:String = '';
+				
+				switch(target)
+				{
+				}
+				
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox, id];
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target)
+				{
+				}
+			}
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5" visible="false">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{parentApplication.navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{parentApplication.navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{parentApplication.navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{parentApplication.navl}"/>
+	</s:Group>
+	<s:Group left="10" right="10" top="40" bottom="10">
+		<s:DataGrid id="dg" left="0" right="0" top="0" bottom="0"/>
+	</s:Group>
+</s:Module>

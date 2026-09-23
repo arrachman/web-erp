@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="500" height="350"
+		  keyDown="module1_keyDownHandler(event)"
+		  creationComplete="module1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			
+			public var validasi:Boolean, isUpdate:Boolean, module:String,inputuser:int,inputtgl:String,modifikasiuser:int,modifikasitgl:String
+			public var arr: Array;
+			public var ac:ArrayCollection = new ArrayCollection();
+			
+			public function f_Persiapan():void{
+				dg.dataProvider = ac;
+				arr = FlexGlobals.topLevelApplication.FormFilter.split('|')
+				module = "M"+FlexGlobals.topLevelApplication.currentModuleID.toString();
+				if(arr[1] == 'master')
+					if(arr[3] == '')
+						FlexGlobals.topLevelApplication.F_wsSearch('Load',module+"_NotesSearch",0,0,"nsumber='"+arr[0]+"' and nidtransaksi='"+arr[2]+"'",'nid desc','',parentApplication.m.formatDate)
+					else
+						FlexGlobals.topLevelApplication.F_wsSearch('Load',module+"_NotesSearch",0,0,"nsumber='"+arr[0]+"' and nidtransaksi='"+arr[2]+"' and nidtransaksi2='"+arr[3]+"'",'nid desc','',parentApplication.m.formatDate)
+				else
+					FlexGlobals.topLevelApplication.F_wsSearch('Load',module+"_NotesSearch",0,0,"nsumber='"+arr[0]+"' and nidtransaksi="+arr[1]+"",'nid desc','',parentApplication.m.formatDate)
+			}
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				f_Persiapan();
+				// TODO Auto-generated method stub
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbReset);
+				function f_mbSimpan ():void{
+					f_simpan();
+				}
+				function f_mbReset():void{
+					txacatatan.text = '';
+				}
+			}
+			
+			public function f_kondisiAwal():void{
+				isUpdate= false
+			}
+			
+			protected function f_keyDownModule(e:KeyboardEvent):void
+			{				
+				switch(e.keyCode){
+					case Keyboard.S:
+						if(e.ctrlKey)f_simpan();
+						break;
+				}
+			}	
+			
+			protected function f_simpan():void
+			{
+				var a:Array, utama:String, detail:String, p:Object;
+				p = FlexGlobals.topLevelApplication
+				parentApplication.vpFocusEvent = true;
+				if(mb.menuBarItems[0].enabled ){
+					if(txacatatan.text!=''){
+						if(arr[1] == 'master'){
+							a = [0,arr[0],arr[2],arr[3],txacatatan.text,inputuser,FlexGlobals.topLevelApplication.F_tglFormatDB(inputtgl),modifikasiuser,FlexGlobals.topLevelApplication.F_tglFormatDB(modifikasitgl)];
+							utama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							if(arr[3] == '')
+								FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M1_NotesSimpan", parentApplication.userid, false, utama,'',1,20,"nsumber='"+arr[0]+"' and nidtransaksi='"+arr[2]+"'",'nid desc',FlexGlobals.topLevelApplication.m.formatDate,FlexGlobals.topLevelApplication.m.formatDate);
+							else
+								FlexGlobals.topLevelApplication.F_wsSimpan("simpan", "M1_NotesSimpan", parentApplication.userid, false, utama,'',1,20,"nsumber='"+arr[0]+"' and nidtransaksi='"+arr[2]+"' and nidtransaksi2='"+arr[3]+"'",'nid desc',FlexGlobals.topLevelApplication.m.formatDate,FlexGlobals.topLevelApplication.m.formatDate);
+						}else{
+							a = [0,arr[0],arr[1],txacatatan.text,inputuser,FlexGlobals.topLevelApplication.F_tglFormatDB(inputtgl),modifikasiuser,FlexGlobals.topLevelApplication.F_tglFormatDB(modifikasitgl)];
+							utama = FlexGlobals.topLevelApplication.F_splitArrayToString(a);
+							FlexGlobals.topLevelApplication.F_wsSimpan("simpan", module+"_NotesSimpan",parentApplication.userid, false, utama,'',1,20,"nsumber='"+arr[0]+"' and nidtransaksi='"+arr[1]+"'",'nid desc',FlexGlobals.topLevelApplication.m.formatDate,FlexGlobals.topLevelApplication.m.formatDate);
+						}
+					}else{
+						Alert.show('Catatan Tidak Boleh Kosong','Peringatan!');
+					}
+				}
+				
+			}
+			
+			public function f_wsHasil():void
+			{
+				var ws :Object; var i:int
+				if (FlexGlobals.topLevelApplication.wsSuccess==true){
+					ws = FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0)
+					switch(FlexGlobals.topLevelApplication.subject){
+						case "Load":
+							txacatatan.setFocus();
+							ac.removeAll()
+							inputuser = FlexGlobals.topLevelApplication.userid;
+							inputtgl = FlexGlobals.topLevelApplication.DefaultTanggal
+							modifikasiuser = 0;
+							modifikasitgl = FlexGlobals.topLevelApplication.DefaultTanggal;
+							isUpdate= false;
+							for(i = 0; i< FlexGlobals.topLevelApplication.wsArrUtama.length; i++){
+								with(FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(i)){
+									ac.addItem({ncatatan:ncatatan.substring(0,35).split("\n").join(' '),ninputusernama:ninputusernama,ninputtgl:ninputtgl});
+								}
+							}
+							break;
+						case "simpan":
+							txacatatan.setFocus();
+							txacatatan.text='';
+							inputuser = FlexGlobals.topLevelApplication.userid;
+							inputtgl = FlexGlobals.topLevelApplication.DefaultTanggal
+							modifikasiuser = 0;
+							modifikasitgl = FlexGlobals.topLevelApplication.DefaultTanggal;
+							isUpdate= false;
+							ac.removeAll()
+							for(i = 0; i< FlexGlobals.topLevelApplication.wsArrUtama.length; i++){
+								with(FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(i)){
+									ac.addItem({ncatatan:ncatatan.substr(0,35).split("\n").join(' '),ninputusernama:ninputusernama,ninputtgl:ninputtgl});
+								}
+								
+							}
+							break;
+						
+					}
+				}else{
+					switch (FlexGlobals.topLevelApplication.subject){
+						case "Load":
+							inputuser = FlexGlobals.topLevelApplication.userid;
+							inputtgl = FlexGlobals.topLevelApplication.DefaultTanggal
+							modifikasiuser = 0;
+							modifikasitgl = FlexGlobals.topLevelApplication.DefaultTanggal;
+							isUpdate= false;
+							txacatatan.setFocus();
+							break;
+						case "simpan":
+							txacatatan.setFocus();
+							break
+						case "delete":
+							FlexGlobals.topLevelApplication.wsErrmessage;
+							break;
+					}
+				}
+			}
+			
+			protected function module1_keyDownHandler(event:KeyboardEvent):void
+			{
+				if(event.keyCode == Keyboard.ESCAPE)
+					FlexGlobals.topLevelApplication.closeFormPopUp();
+			}
+			
+			protected function dg_clickHandler(event:MouseEvent):void
+			{
+				if(dg.selectedCell == null)
+					return;
+				
+				txacatatan.text = FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(dg.selectedCell.rowIndex).ncatatan;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave" enabled="true"/>
+					<topmenu label="Reset" icon="tbreset" enabled="true"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>	
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:TextArea id="txacatatan" left="10" right="10" top="36" height="105" maxChars="500"/>
+	<s:DataGrid left="10" id="dg" right="10" top="149" bottom="10" alternatingRowColors="['#FFFFFF', '#EFF3FA']" requestedRowCount="4" selectionMode="singleCell" click="dg_clickHandler(event)">
+		<s:columns>
+			<s:ArrayList>
+				<s:GridColumn dataField="ncatatan" headerText="Catatan" width="261"/>
+				<s:GridColumn dataField="ninputusernama" headerText="User"/>
+				<s:GridColumn dataField="ninputtgl" headerText="Tanggal"/>
+			</s:ArrayList>
+		</s:columns>
+	</s:DataGrid>
+</s:Module>

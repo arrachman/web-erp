@@ -1,0 +1,968 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="module1_creationCompleteHandler()">
+	<fx:Script> 
+		<![CDATA[
+			import MyClass.chart;
+			
+			import mx.charts.*;
+			import mx.charts.chartClasses.IAxis;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.series.*;
+			import mx.collections.ArrayCollection;
+			import mx.containers.HBox;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.graphics.GradientEntry;
+			import mx.graphics.IFill;
+			import mx.graphics.LinearGradient;
+			import mx.graphics.SolidColor;
+			import mx.utils.StringUtil;
+			
+			import spark.components.*;
+			import spark.events.GridEvent;
+			import spark.primitives.Path;
+			import spark.primitives.Rect;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")]  public var tbexport:Class;
+			[Bindable] [Embed(source="assets/tb/chartbar.png")]  public var tbchartbar:Class;
+			[Bindable] [Embed(source="assets/tb/up.png")]  public var tbup:Class;
+			[Bindable] [Embed(source="assets/tb/down.png")]  public var tbdown:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			
+			public var o:Object = {}, i:int, s:Object = {}, arr:ArrayCollection, boxselected:Object, gridselected:DataGrid, list:ArrayCollection;
+			public var hitung:Number = 0, tmr:Timer = new Timer(500, 0);
+			
+			protected function module1_creationCompleteHandler():void
+			{
+				var n:int;
+				o.p = this;
+				o.x = -1;
+				// -- box max
+				o['bmax'] = new HBox;
+				o['bmax'].id = 'bmax';
+				o['bmax'].percentWidth = 100;
+				o['bmax'].percentHeight = 100;
+				o['bmax'].setStyle("verticalGap", 0);
+				o['bmax'].setStyle("borderAlpha", 1);
+				o['bmax'].setStyle("paddingBottom", 10);
+				o['bmax'].setStyle("backgroundColor", "#f5f4f4");
+				o['bmax'].addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void{
+					boxselected = e.currentTarget;
+				});
+				boxselected = o['bmax'];
+				boxmax.addElement(o['bmax']);
+				// -- end box max
+				boxmax.visible = false;
+				arr = new ArrayCollection;
+				list = new ArrayCollection;
+				for(i=0;i<parentApplication.m.statistic.length;i++){
+					if(parentApplication.m.statistic[i].n == FlexGlobals.topLevelApplication.currentModuleID+"_"+FlexGlobals.topLevelApplication.currentMenuID){
+						o.i = i;
+						o.mod = FlexGlobals.topLevelApplication.currentModuleID;
+						o.menu = FlexGlobals.topLevelApplication.currentMenuID;
+						s = parentApplication.m.statistic[i].s;
+						break;
+					}
+				}
+				
+				if(s == null) 
+					return;
+				
+				tmr.addEventListener(TimerEvent.TIMER, function():void{
+					hitung += 90/(o.arr.length-1);
+					lblinfo.text = "Rendering Form : "+(hitung+10).toString().split(".")[0]+"%\nPlease Wait";
+					f_add();
+					parentApplication.validateNow();
+					if((i+1) == o.arr.length){
+						lblinfo.text = "Rendering Form : 100%\nPlease Wait";
+						grpBusy.visible = false;
+						f_getdata();
+						return; 
+					}
+					i++;
+				});
+				o.arr = new Array;
+				for(i=0;i<s.length;i++){
+					o.ob = s[i].d;
+					for(n=0;n<o.ob.length;n++){
+						o.arr[o.arr.length] = [i, n];
+					}
+				}
+				tmr.repeatCount = o.arr.length;
+				box.removeAllElements();
+				i=0;
+				lblinfo.text = "Rendering Form : 0%\nPlease Wait";
+				grpBusy.visible = true;
+				parentApplication.m.tmrBusy.reset();
+				parentApplication.m.tmrBusy.start();
+				tmr.start();
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, function():void
+				{
+					f_getdata();
+				});
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, function():void
+				{
+					if(boxmax.visible){
+						o.n = o['bmax'].getElementAt(0)['getElementAt'](0)['getElementAt'](2).text;
+						screenshot(boxmax);
+					}else{
+						box.percentHeight = 100;
+						o.n = o.p.parent.parent.label;
+						box.callLater(screenshot, [box]);
+					}
+				});
+			}
+			
+			protected function screenshot(box:VBox):void
+			{
+				import com.adobe.images.JPGEncoder;
+				var jpgSource:BitmapData = new BitmapData (box.width, box.height); 
+				jpgSource.draw(box); 
+				
+				var jpgEncoder:JPGEncoder = new JPGEncoder(100); 
+				var jpgStream:ByteArray = jpgEncoder.encode(jpgSource);
+				o.label = o.n.split("/").join(" ");
+				FlexGlobals.topLevelApplication.F_wsUpload('setUpload', 'uploadFile', '0', 'm0_ScreenShot', 'jpg', jpgStream, 0, o.label, '', '@', FlexGlobals.topLevelApplication.DefaultTanggalforDB);
+				box.height = o.p.height-50;
+				box.percentHeight = NaN;
+			}
+			
+			protected function f_add():void
+			{
+				var nobox:int = o.arr[i][0], nodata:int = o.arr[i][1];
+				if(nobox != o.x)
+				{
+					o.a = s[nobox].id.split("|");
+					o.oi = o.a[0].split('b')['join']('');
+					if(o.a[1] < 200) o.a[1] = 200;
+					buatbox(o.a[0], o.a[1]);
+				}
+				o.x = o.arr[i][0];
+				o.ob = s[nobox].d;
+				o.oi = o.ob[nodata].i.slice(2, o.ob[nodata].i.length); 
+				if(o.ob[nodata].g.length > 0){
+					o.nografik = o.oi;
+					o["dg"+o.nografik] = o.ob[nodata].d;
+					addgrafik(o.ob[nodata].g.split("|"));
+					o['lblg'+o.oi].text = o.ob[nodata].b;
+				}else{
+					o.nogrid = o.oi;
+					o["dd"+o.nogrid] = o.ob[nodata].d;
+					addgrid();
+					o['lbl'+o.oi].text = o.ob[nodata].b; 
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var p:Object = parentApplication, ob:String = p.ob_resultWs, a:Array, j:int, n:Array, y:int;
+				var m:Object, s:String = parentApplication.subject, i:int;
+				if(s == "get"){
+					a = ob.split(p.sptLogin);
+					for(i=0;i<a.length;i++){
+						p.ob_resultWs = a[i];
+						p.f_setVariableWS();
+						o.o = list[i].id;
+						o[o.o].dataProvider = new ArrayCollection;
+						o[o.o].dataProvider = p.wsArrUtama;
+						if(int(list[i].g)){
+//							o[o.o+"s0"].selectedIndex = 1;
+							
+							// set skala Linear Axis 
+							setSkala();
+						}
+					}
+				}else if(p.wsSuccess && s == "setUpload"){
+					var Urlnya:String = parentApplication.m.url+"/report/?p=" + p.vArrResult[2]+"&n="+o.n;
+					var request:URLRequest = new URLRequest(Urlnya);
+					navigateToURL(request, "_blank");
+				}else{
+//					// 9.2 Result WS False		
+//					if(parentApplication.F_validasiFalse(s) ){
+//					}
+				}
+				
+				function setSkala():void
+				{
+					var j:int, n:Number = 0;
+					switch(int(list[i].type)){
+						case 0:
+						case 1:
+						case 6:
+							o.t = parentApplication.m.nfNominal.format(list[i].skala);
+							if(o.t == null || list[i].skala.length == 0)
+								return;
+							o.f = o[o.o+"s0"].yField;
+							for(j=0;j<o[o.o].dataProvider.length;j++)
+								o[o.o].dataProvider.getItemAt(j)[o.f] = o[o.o].dataProvider.getItemAt(j)[o.f]/list[i].skala;
+							o[o.o+"la"].title = "Skala 1 : "+o.t;
+							break;
+					}
+				}
+			}
+			
+			public function buatbox(id:String, h:int):void
+			{
+				o[id] = new HBox;
+				o[id].id = id;
+				o[id].percentWidth = 100;
+				o[id].height = h;
+				o[id].setStyle("verticalGap", 0);
+				o[id].setStyle("borderAlpha", 1);
+//				o[id].setStyle("paddingBottom", 10);
+				o[id].setStyle("backgroundColor", "#f5f4f4");
+				o[id].addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void{
+					boxselected = e.currentTarget;
+				});
+				boxselected = o[id];
+				box.addElement(o[id]);
+				
+				o.o = id+"|"+String(h).split("00").join("");
+				arr.addItem({id:id, i:o.o, detail:new ArrayCollection});
+			}
+			public function addgrid():void
+			{
+				var b:BorderContainer = new BorderContainer;
+				b.id = "bd"+o.nogrid;
+				b.percentWidth = 100;
+				b.percentHeight = 100;
+				b.setStyle("backgroundColor", "#EFF7F8");
+				b.setStyle("borderColor", "#14C2ED");
+				b.addElement(paketjudul("lbl"+o.nogrid, "img"+o.nogrid));
+				o.o = paketgrid("d"+o.nogrid);
+				b.addElement(o.o);
+				boxselected.addElement(b);
+				o["vd"+o.nogrid] = {};
+				o["vd"+o.nogrid].paketwsnama = "";
+				o["vd"+o.nogrid].paketws = "";
+				o["vd"+o.nogrid].filter = "";
+				o["vd"+o.nogrid].sort = "";
+				o["vd"+o.nogrid].pagenumber = 0;
+				o["vd"+o.nogrid].limit = 0;
+				
+				o.i = getItemIndexByProperty(arr, "id", boxselected.id);
+				arr[o.i].detail.addItem({i:"vd"+o.nogrid, b:"", p:"", f:"", s:"", l:0, n:0});
+				
+				FlexGlobals.topLevelApplication.F_RegGrid(o.mod, o.menu, [o.o], "data");
+				o.o.selectionMode = "singleRow";
+			}
+			
+			public function addgrafik(ar:Array):void
+			{
+				var b:BorderContainer = new BorderContainer;
+				b.id = "bg"+o.nografik;
+				b.percentWidth = 100;
+				b.percentHeight = 100;
+//				b.setStyle("backgroundColor", "#EFF7F8");
+				b.setStyle("borderColor", "#14C2ED");
+				b.addElement(paketjudul("lblg"+o.nografik, "imgg"+o.nografik));
+				o.o = paketcontent("g"+o.nografik, ar);
+				b.addElement(o.o);
+				boxselected.addElement(b);
+				o["vg"+o.nografik] = {};
+				o["vg"+o.nografik].paketwsnama = "";
+				o["vg"+o.nografik].paketws = "";
+				o["vg"+o.nografik].filter = "";
+				o["vg"+o.nografik].sort = "";
+				o["vg"+o.nografik].pagenumber = 0;
+				o["vg"+o.nografik].limit = 0;
+				
+				o.i = getItemIndexByProperty(arr, "id", boxselected.id);
+				arr[o.i].detail.addItem({i:"vg"+o.nografik, b:"", p:"", f:"", s:"", l:0, n:0});
+			}
+			
+			public function getItemIndexByProperty(array:ArrayCollection, property:String, value:String):int
+			{
+				for (var i:Number = 0; i < array.length; i++)
+				{
+					var obj:Object = Object(array[i])
+					if (obj[property] == value)
+						return i;
+				}
+				return -1;
+				
+				array.getItemIndex();
+			}
+			
+			public function paketjudul(label:String, img:String):Group
+			{ 
+				// - Membuat Group 
+				var g:Group = new Group;
+				g.percentWidth = 100;
+				var ge:GradientEntry = new GradientEntry;
+				ge.color = 0xADEFFF;
+				var ge2:GradientEntry = new GradientEntry;
+				ge2.color = 0x81CBED;
+				var lg:LinearGradient = new LinearGradient;
+				lg.x = 50;
+				lg.y = 0;
+				lg.scaleX = 20;
+				lg.rotation = 90;
+				lg.entries = [ge, ge2];
+				var r:Rect = new Rect;
+				r.left=0;
+				r.right=0;
+				r.top=0;
+				r.bottom=0;
+				r.fill = lg;
+				g.addElement(r);
+				g.validateNow();
+				
+				ge = new GradientEntry;
+				ge.color = 0xffffff;
+				ge.ratio = 0;
+				ge.alpha = 0.55;
+				ge2 = new GradientEntry;
+				ge2.color = 0xffffff;
+				ge2.ratio = 0;
+				ge2.alpha = 0.15;
+				lg = new LinearGradient;
+				lg.x = 50;
+				lg.y = 0;
+				lg.scaleX = 20;
+				lg.rotation = 90;
+				lg.entries = [ge, ge2];
+				
+				var p:Path = new Path;
+				p.left = 0;
+				p.right = 0;
+				p.data = "M 0 0 L 84 0 L 84 15 C 84 15 44 5 0 15 C 0 15 0 0 0 0 Z";
+				p.fill = lg;
+				g.addElement(p);
+				g.validateNow();
+				
+				o[label] = new Label;
+				o[label].id = label;
+				o[label].y = 10;
+				o[label].left = 42;
+				o[label].setStyle("fontWeight", "bold");
+				g.addElement(o[label]);
+				g.validateNow();
+				
+				var i:Image = new Image;
+				i.y = 5;
+				i.left = 10;
+				i.width = 25;
+				i.height = 20;
+				i.source = tbchartbar;
+				g.addElement(i);
+				g.validateNow();
+				
+				o['p'+img] = new Image;
+				o['p'+img].id = 'p'+img;
+				o['p'+img].y = 2;
+				o['p'+img].right = 40;
+				o['p'+img].height = 26;
+				o['p'+img].toolTip = "Cetak Box ini";
+				o['p'+img].verticalAlign = "middle";
+				o['p'+img].source = tbprint; 
+				o['p'+img].useHandCursor = true;
+				o['p'+img].buttonMode = true;
+				o['p'+img].mouseChildren = true;
+				o['p'+img].addEventListener(flash.events.MouseEvent.CLICK, function(e:MouseEvent):void{
+					var ar:Array = e.currentTarget.toString().split("."), ob:Object = e.currentTarget, i:int;
+					if(boxmax.visible)
+						for(i=0;i<ar.length-14;i++)
+							ob = ob.parent; 
+					else
+						for(i=0;i<ar.length-14;i++){
+							ob = ob.parent; 
+							if(i==4)break; 
+						}
+					o.n = ob['getElementAt'](0)['getElementAt'](2).text;
+					import com.adobe.images.JPGEncoder;
+					var jpgSource:BitmapData = new BitmapData (ob.width, ob.height);
+					jpgSource.draw(ob as BorderContainer);
+					
+					var jpgEncoder:JPGEncoder = new JPGEncoder(100);
+					var jpgStream:ByteArray = jpgEncoder.encode(jpgSource);
+					o.label = o.n.split("/").join(" ");
+					FlexGlobals.topLevelApplication.F_wsUpload('setUpload', 'uploadFile', '0', 'm0_ScreenShot', 'jpg', jpgStream, 0, o.label, '', '@', FlexGlobals.topLevelApplication.DefaultTanggalforDB);
+				});
+				g.addElement(o['p'+img]);
+				g.validateNow();
+				
+				o[img] = new Image;
+				o[img].id = img;
+				o[img].y = 2;
+				o[img].right = 10;
+				o[img].height = 26;
+				o[img].verticalAlign = "middle";
+				o[img].source = tbup;
+				o[img].useHandCursor = true;
+				o[img].buttonMode = true;
+				o[img].mouseChildren = true;
+				o[img].toolTip = "Perbesar Box";
+				o[img].addEventListener(flash.events.MouseEvent.CLICK, function(e:MouseEvent):void{
+					var ar:Array = e.currentTarget.toString().split("."), ob:Object = e.currentTarget, i:int;
+					if(o[img].source.toString().split("tbdown").length == 1){
+						o[img].source = tbdown;
+						o.imgselect = o[img];
+						for(i=0;i<ar.length-14;i++){
+							ob = ob.parent;
+							if(i==3)o.boxselect = ob.parent;
+						}
+						boxmax.visible = true;
+						box.visible = false;
+						for(i=0;i<o.boxselect.numElements;i++)
+							if(o.boxselect.getElementAt(i).id == ob.id){
+								o.nomor = i;
+								break;
+							}
+						o['bmax'].addElement(ob as BorderContainer);
+						o[img].toolTip = "Perkecil Box";
+					}else{ 
+						o[img].toolTip = "Perbesar Box";
+						o.imgselect.source = tbup;
+						boxmax.visible = false;
+						box.visible = true;
+						o.boxselect.addElementAt(o['bmax'].getElementAt(0), o.nomor);
+					}
+				});
+				g.addElement(o[img]);
+				g.validateNow();
+				return g;
+			}
+			 
+			public function paketcontent(cc:String, a:Array):Object
+			{
+				var j:int, d:LinearAxis;
+				o[cc+"c"] = new CategoryAxis;
+				o[cc+"la"] = new LinearAxis;
+				o[cc+"la"].baseAtZero = false;
+				o[cc+"la"].labelFunction = linearAxis_labelFunc;
+				switch(int(a[0])){
+					case 0:
+						o[cc] = new ColumnChart;
+						o[cc].verticalAxis = o[cc+"la"];
+						o[cc].horizontalAxis = o[cc+"c"];
+						o[cc+"c"].categoryField = a[1];
+						o.ar = a[6].split(parentApplication.sptRow);
+						o[cc].series = new Array;
+						chart_standart(cc);
+						for(j=0;j<o.ar.length;j++){
+							o[cc+"s"+j] = new ColumnSeries;
+							o[cc+"s"+j].xField = a[1];
+							o[cc+"s"+j].yField = o.ar[j];
+							o[cc+"s"+j].displayName = o.ar[j];
+							o[cc+"s"+j].setStyle("showDataEffect", changeEffect);
+							if(o.ar.length == 1)
+								o[cc+"s"+j].fillFunction = f;
+							else{
+								o[cc+"s"+j].setStyle("fill", o.p['scc'+(j+1)]);
+								o[cc+"s"+j].setStyle("stroke", o.p['sc'+(j+1)]);
+							}
+							o[cc].series[o[cc].series.length] = o[cc+"s"+j];
+						}
+						break;
+					case 1:
+						o[cc] = new AreaChart;
+						o[cc].verticalAxis = o[cc+"la"];
+						o[cc].horizontalAxis = o[cc+"c"];
+						o[cc+"c"].categoryField = a[1];
+						o.ar = a[6].split(parentApplication.sptRow);
+						o[cc].series = new Array;
+						for(j=0;j<o.ar.length;j++){
+							o[cc+"s"+j] = new AreaSeries;
+							o[cc+"s"+j].yField = o.ar[j];
+							o[cc+"s"+j].displayName = o.ar[j];
+							o[cc+"s"+j].setStyle("showDataEffect", changeEffect);
+							o[cc+"s"+j].setStyle("areaStroke", o.p['sl'+(j+1)]);
+							o[cc+"s"+j].setStyle("areaFill", o.p['slc'+(j+1)]);
+//							o[cc+"s"+j].fillFunction = f;
+							o[cc].series[o[cc].series.length] = o[cc+"s"+j];
+						}
+						break;
+					case 2:
+						o[cc] = new BarChart;
+						o[cc].verticalAxis = o[cc+"c"];
+						o[cc].horizontalAxis = o[cc+"la"];
+						o[cc+"c"].categoryField = a[1];
+						o.ar = a[6].split(parentApplication.sptRow);
+						o[cc].series = new Array;
+						for(j=0;j<o.ar.length;j++){
+							o[cc+"s"+j] = new BarSeries;
+							o[cc+"s"+j].yField = a[1];
+							o[cc+"s"+j].xField = o.ar[j];
+							o[cc+"s"+j].displayName = o.ar[j];
+							o[cc+"s"+j].setStyle("showDataEffect", changeEffect);
+							o[cc+"s"+j].setStyle("fill", o.p['scc'+(j+1)]);
+							o[cc+"s"+j].setStyle("stroke", o.p['sc'+(j+1)]);
+//							o[cc+"s"+j].fillFunction = f;
+							o[cc].series[o[cc].series.length] = o[cc+"s"+j];
+						}
+						break;
+					case 3:
+						o[cc] = new CandlestickChart;
+						o[cc+"c"].categoryField = a[1];
+						o[cc+"c"].title = a[1];
+						o[cc].verticalAxis = o[cc+"la"];
+						o[cc].horizontalAxis = o[cc+"c"];
+						o[cc+"s0"] = new CandlestickSeries;
+						o[cc+"s0"].openField = a[2];
+						o[cc+"s0"].highField = a[3];
+						o[cc+"s0"].lowField = a[4];
+						o[cc+"s0"].closeField = a[5];
+						o[cc+"s0"].setStyle("showDataEffect", changeEffect);
+						o[cc+"s0"].setStyle("fill", shup);
+						o[cc+"s0"].setStyle("declineFill", shdown);
+						o[cc+"s0"].setStyle("stroke", shwick);
+						o[cc+"s0"].setStyle("boxStroke", shbox);
+//						o[cc+"s0"].fillFunction = f;
+						o[cc].series = [o[cc+"s0"]];
+						break;
+					case 4:
+						o[cc] = new BubbleChart;
+						o[cc].setStyle("maxRadius", 20);
+						o[cc+"s0"] = new BubbleSeries;
+						o[cc+"s0"].displayName = a[1];
+						o[cc+"s0"].xField = a[2];
+						o[cc+"s0"].yField = a[3];
+						o[cc+"s0"].radiusField = a[4];
+						o[cc+"s0"].setStyle("showDataEffect", changeEffect);
+						o[cc+"s0"].setStyle("fill", sbc1);
+						o[cc+"s0"].setStyle("stroke", bstroke1);
+//						o[cc+"s0"].fillFunction = f;
+						o[cc].series = [o[cc+"s0"]];
+						break;
+					case 5:
+						o[cc] = new HLOCChart;
+						o[cc+"c"].categoryField = a[1];
+						o[cc+"c"].title = a[1];
+						o[cc].verticalAxis = o[cc+"la"];
+						o[cc].horizontalAxis = o[cc+"c"];
+						o[cc+"s0"] = new HLOCSeries;
+						o[cc+"s0"].openField = a[2];
+						o[cc+"s0"].highField = a[3];
+						o[cc+"s0"].lowField = a[4];
+						o[cc+"s0"].closeField = a[5];
+						o[cc+"s0"].setStyle("showDataEffect", changeEffect);
+						o[cc+"s0"].setStyle('stroke', sh1);
+						o[cc+"s0"].setStyle('openTickStroke', sh1);
+						o[cc+"s0"].setStyle('closeTickStroke', sh1);
+						o[cc].series = [o[cc+"s0"]];
+						break;
+					case 6: 
+						o[cc] = new LineChart;
+						o[cc].verticalAxis = o[cc+"la"];
+						o[cc].horizontalAxis = o[cc+"c"];
+						o[cc+"c"].categoryField = a[1];
+						o.ar = a[6].split(parentApplication.sptRow);
+						o[cc].series = new Array;
+						for(j=0;j<o.ar.length;j++){
+							o[cc+"s"+j] = new LineSeries;
+							o[cc+"s"+j].yField = o.ar[j];
+							o[cc+"s"+j].displayName = o.ar[j];
+							o[cc+"s"+j].setStyle("showDataEffect", changeEffect);
+							o[cc+"s"+j].setStyle("lineStroke", o.p['sl'+(j+1)]);
+//							o[cc+"s"+j].fillFunction = f;
+							o[cc].series[o[cc].series.length] = o[cc+"s"+j];
+						}
+						break;
+					case 7:
+						o[cc] = new PieChart;
+						o[cc].series = new Array;
+						o[cc+"s0"] = new PieSeries;
+						o[cc+"s0"].nameField = a[1];
+						o[cc+"s0"].field = a[2];
+						o[cc+"s0"].setStyle("labelPosition", 'callout');
+						o[cc+"s0"].labelFunction = displayGold;
+						o[cc+"s0"].setStyle("showDataEffect", changeEffect);
+						o[cc+"s0"].setStyle("calloutStroke", ecallouts);
+						o[cc+"s0"].setStyle("stroke", eradial);
+						o[cc+"s0"].setStyle("fills", [sec1, sec2, sec3]);
+						o[cc+"s0"].filters = new Array;
+//						o[cc+"s0"].fillFunction = f;
+						o[cc].series[o[cc].series.length] = o[cc+"s0"];
+						break;
+					case 8: 
+						o[cc] = new PlotChart;
+						o.ar = a[7].split(parentApplication.sptRow);
+						o[cc].series = new Array;
+						for(j=0;j<o.ar.length;j++){ 
+							o.ar1 = o.ar[j].split(parentApplication.sptField);
+							o[cc+"s"+j] = new PlotSeries;
+							o[cc+"s"+j].xField = o.ar1[0];
+							o[cc+"s"+j].yField = o.ar1[1];
+							o[cc+"s"+j].displayName = o.ar1[2];
+							o[cc+"s"+j].setStyle("showDataEffect", changeEffect);
+							o[cc+"s"+j].setStyle("fill", o.p['spc'+(j+1)]);
+							o[cc+"s"+j].setStyle("stroke", o.p['sp'+(j+1)]);
+							o[cc].series[o[cc].series.length] = o[cc+"s"+j];
+						}
+						break;
+				}
+				
+				o[cc].id = cc;
+				o[cc].percentWidth = 100;
+				o[cc].percentHeight = 100;
+				o[cc].top = 30;
+				o[cc].bottom = 1;
+				o[cc].setStyle("color", "0x323232")
+				o[cc].setStyle("paddingLeft", 5)
+				o[cc].setStyle("paddingRight", 5)
+				o[cc].showDataTips = true;
+				
+				return o[cc];
+				
+				function chart_standart(cc:String):void
+				{
+					o[cc].dataTipFunction = dataTipFunc
+					o[cc].selectionMode = "single";
+					o[cc].addEventListener(mx.charts.events.ChartItemEvent.ITEM_CLICK, function(e:ChartItemEvent):void{
+						getdetail(o[cc].id, o[cc].dataProvider, e.hitData.chartItem.index);
+					});
+					o[cc].addEventListener(mx.charts.events.ChartItemEvent.ITEM_ROLL_OVER, function(e:ChartItemEvent):void{
+						o[cc+"s0"].selectedIndex = e.hitData.chartItem.index;
+						o[cc+"s0"].validateNow();
+					});
+				}
+				
+				function f(element:ChartItem, index:Number):IFill{
+					var c:SolidColor = new SolidColor(0xe48701);
+					switch(index){
+						case 0:c.color = 0xe48701;break;	
+						case 1:c.color = 0xa5bc4e;break;	
+						case 2:c.color = 0x1b95d9;break;	
+						case 3:c.color = 0x5503c6;break;	
+						case 4:c.color = 0xe90b07;break;	
+					} 
+					return c;
+				}
+				
+				function dataTipFunc(item:HitData):String {
+					var cSI:Object = item.chartItem as Object;
+					var col:String = Object(item.element).yField;
+					return StringUtil.substitute("<b>{0}</b><br>{1}: {2}", cSI.item[Object(item.element).xField], col, parentApplication.m.nfNominal.format(cSI.item[col]));
+				}
+				
+				function linearAxis_labelFunc(item:Object, prevValue:Object, axis:IAxis):String {
+					return parentApplication.m.nfNominal.format(item);
+				}
+				
+				function displayGold(data:Object, field:String, index:Number, percentValue:Number):String {
+					var temp:String= (" " + percentValue)['substr'](0,6);
+					return data.Country + ": " + '\n' + "Total Gold: " + data.Gold + '\n' + temp + "%";
+				}
+			}
+			
+			public function getdetail(data:String, arr:ArrayCollection, idx:int):void
+			{
+				o.a = o["d"+data].split("|");
+				if(int(o.a[0]) == 1){
+					
+					// jika detail form transaksi
+					if(int(o.a[1]) == 0){
+						if(o.a[5].length == 0)o.s = [];
+						else{
+							o.f = "";
+							o.ar = o.a[5].split(parentApplication.sptRow);
+							for(i=0;i<o.ar.length;i++){
+								o.o = o.ar[i].split(parentApplication.sptField);
+								if(o.f.length > 0) o.f += " AND "; 
+								o.f += o.o[0]+" "+op(o.o[3], opsi(i)); 
+							}
+							o.s = "";
+							o.ar = o.a[6].split(parentApplication.sptRow);
+							for(i=0;i<o.ar.length;i++){
+								o.o = o.ar[i].split(parentApplication.sptField);
+								if(o.s.length > 0) o.s += ", "; 
+								o.s += o.o[0]+" ";
+								if(o.o[1] == 0)o.s+="ASC";else o.s="DESC"; 
+							}
+						}
+						FlexGlobals.topLevelApplication.openForm(o.a[3], o.a[4], "statistik", [o.f, o.s, ""]);
+					}
+					
+					
+					// jika detail form data-data
+					if(int(o.a[1]) == 1){
+						if(o.a[5].length == 0)o.s = [];
+						else{
+							o.f = "";
+							o.ar = o.a[5].split(parentApplication.sptRow);
+							for(i=0;i<o.ar.length;i++){
+								o.o = o.ar[i].split(parentApplication.sptField);
+								if(o.f.length > 0) o.f += " AND "; 
+								o.f += o.o[0]+" "+op(o.o[3], opsi(i)); 
+							}
+							o.s = "";
+							o.ar = o.a[6].split(parentApplication.sptRow);
+							for(i=0;i<o.ar.length;i++){
+								o.o = o.ar[i].split(parentApplication.sptField);
+								if(o.s.length > 0) o.s += ", "; 
+								o.s += o.o[0]+" ";
+								if(o.o[1] == 0)o.s+="ASC";else o.s="DESC"; 
+							}
+						}
+						FlexGlobals.topLevelApplication.openForm(o.a[3], o.a[4], "statistik", [o.f, o.s, ""]);
+					}
+					
+					// jika detail form report
+					if(int(o.a[1]) == 2){
+						o.f = "";
+						//jika report Progress
+						if(o.a[5] == 0){
+							
+							for(i=0;i<parentApplication.m.ArrReport.length;i++){ 
+								o.om = parentApplication.m.ArrReport[i];
+								if(o.om.rmoduleid == o.a[2] && o.om.rmenuid == o.a[3] && o.om.ritem == o.a[4]){
+									o.rid = o.om.rid;
+									break;
+								}
+								
+							}
+							
+							for(i=0;i<parentApplication.m.laporan.length;i++){
+								if(parentApplication.m.laporan[i].n == o.a[2]+"_"+o.a[3]){
+									o.ob = parentApplication.m.laporan[i][o.rid][0].property;
+									o.ar = o.a[6].split(parentApplication.sptRow);
+									o.i = 0;
+									for(i=0;i<o.ob.length;i++){
+										if(o.i > 0) o.f += parentApplication.sptRow;
+										o.f += opsi(o.i);
+										if(o.ob[i].s == 1){
+											o.f += parentApplication.sptRow+opsi(o.i);
+										}
+									}
+									break; 
+								}
+							}
+						}
+						
+						//jika report standart
+						if(o.a[5] == 1){
+							if(o.a[6].length > 0)
+								o.ar = o.a[6].split(parentApplication.sptRow);
+								for(i=0;i<o.ar.length;i++){
+									o.o = o.ar[i].split(parentApplication.sptField);
+									if(o.f.length > 0) o.f += " AND "; 
+									o.s = opsi(i);
+									if(o.s.length > 0)
+									o.f += o.o[0]+" "+op(o.o[3], o.s); 
+								}
+						}
+						
+						FlexGlobals.topLevelApplication.F_openReport(int(o.a[2]), int(o.a[3]), int(o.a[4]), o.f);
+					}
+				}else Alert.show("Detail tidak ada", "Informasi");
+				
+				function op(data:int, s:String):String
+				{
+					switch(data){
+						case 0:return ' LIKE "%'+s+'%"'; break;
+						case 1:return ' = "'+s+'"'; break;
+						case 2:return ' <> "'+s+'"'; break;
+						case 3:return ' > "'+s+'"';	break;
+						case 4:return ' < "'+s+'"'; break;
+						case 5:return ' >= "'+s+'"'; break;
+						case 6:return ' <= "'+s+'"'; break;
+						case 7:return ' LIKE "'+s+'%"'; break;
+						case 8:return ' LIKE "%'+s+'"';	break;
+					}
+					return ' = "'+s+'"';
+				}
+				
+				function opsi(no:int):String
+				{
+					o.i++;
+					o.x = o.ar[no].split(parentApplication.sptField);
+					
+					if(o.x[1] == 0){
+						if(arr[idx].hasOwnProperty(o.x[2]))
+							return arr[idx][o.x[2]];
+						else
+							return "";
+					}else if(o.x[1] == 1){ 
+						return o.x[2];
+					}else if(o.x[1] == 2){
+						switch(int(o.x[2])){
+							case 0:o.df = FlexGlobals.topLevelApplication.DefaultTanggal;break;
+							case 1:o.df = "01"+FlexGlobals.topLevelApplication.DefaultTanggal.slice(2, 10);break;
+							case 2:
+								o.df = FlexGlobals.topLevelApplication.DefaultTanggal;
+								o.df = FlexGlobals.topLevelApplication.kelasku.getDayCount(o.df.slice(6, 10), (o.df.slice(3, 4)+1))
+								o.df = o.df+FlexGlobals.topLevelApplication.DefaultTanggal.slice(2, 10);
+								break;
+							case 3:return "";break;
+							
+						}
+						return FlexGlobals.topLevelApplication.F_tglFormatDB(o.df);
+					}
+					return "";
+				}
+			}
+			
+			public function paketgrid(cc:String):DataGrid
+			{
+				o[cc] = new DataGrid;
+				o[cc].id = cc;
+				o[cc].top = 30;
+				o[cc].percentWidth = 100;
+				o[cc].percentHeight = 100;
+				o[cc].requestedRowCount = "4";
+				o[cc].addEventListener(GridEvent.GRID_ROLL_OVER, f_GRID_ROLL_OVER);
+				
+				function f_GRID_ROLL_OVER(e:GridEvent):void
+				{
+					gridselected = o[cc];
+					o.row = e.rowIndex;
+				}
+				return o[cc]; 
+			}
+			
+			public function f_getdata():void
+			{
+				var p:Object = parentApplication;
+				var n:int, Subject:String = "get", paket:String = "M0_StatisticSearch", paging:String = "", ws:String = "";
+				list.removeAll();
+				for(i=0;i<s.length;i++){
+					o.ob = s[i].d;
+					for(n=0;n<o.ob.length;n++){
+						if(o.ob[n].p.length > 0){
+							if(paging.length > 0){
+								paging += p.sptLogin;
+								ws += p.sptField;
+							}
+							o.o = o.ob[n].i.slice(1, o.ob[n].i.length);
+							o[o.o].dataProvider = new ArrayCollection;
+							if(o.ob[n].g.length == 0)
+								list.addItem({id:o.o, g:0});
+							else
+								list.addItem({id:o.o, g:1, type:o.ob[n].g.split("|")[0], skala:o.ob[n].g.split("|")[2]});
+							paging += pag(o.ob[n].n, o.ob[n].l, o.ob[n].f, o.ob[n].s);
+							ws += o.ob[n].p;
+						}
+					}
+				}
+				
+				
+				FlexGlobals.topLevelApplication.F_callWS(Subject, paket, paging, p.userid, false, ws)
+			
+				function pag(pageNumber:int = 0, itemLimit:int = 0, strFilter:String = "", strSort:String = ""):String{
+					var p:Object = parentApplication;
+					return pageNumber+p.sptSubParam+itemLimit+p.sptSubParam+strFilter+p.sptSubParam+strSort+p.sptSubParam+p.m.formatDate+p.sptSubParam+p.m.formatDate+" "+p.m.formatTime;
+				}
+			}
+ 
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch(components){
+					case "link":
+						getdetail(gridselected.id, (gridselected.dataProvider as ArrayCollection), o.row)
+						break;
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Tampilkan" icon="tbsave"/>
+					<topmenu label="Cetak" icon="tbprint"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<mx:SeriesInterpolate  id="changeEffect" duration="1200"/>
+		
+		<!-- ```` BUBBLE ```` -->
+		<!-- Define custom color and line style for the bubbles. -->
+		<mx:SolidColor id="sbc1" color="blue" alpha=".3"/>
+		<mx:SolidColorStroke id="bstroke1" color="blue" weight="1"/>
+		
+		<!-- ```` COLUMN AND BAR ```` -->
+		<!-- Define custom colors for use as fills. -->
+		<mx:SolidColor id="scc1" color="0xe48701" alpha=".6"/>
+		<mx:SolidColor id="scc2" color="0xa5bc4e" alpha=".6"/>
+		<mx:SolidColor id="scc3" color="0x1b95d9" alpha=".6"/>
+		<mx:SolidColor id="scc4" color="0x5503c6" alpha=".6"/>
+		<mx:SolidColor id="scc5" color="0xe90b07" alpha=".6"/>
+		
+		<!-- Define custom Strokes for the columns. -->
+		<mx:SolidColorStroke id="sc1" color="0xe48701" weight="2"/>
+		<mx:SolidColorStroke id="sc2" color="0xa5bc4e" weight="2"/>
+		<mx:SolidColorStroke id="sc3" color="0x1b95d9" weight="2"/>
+		<mx:SolidColorStroke id="sc4" color="0x5503c6" weight="2"/>
+		<mx:SolidColorStroke id="sc5" color="0xe90b07" weight="2"/>
+		
+		<!-- ```` LINE AND AREA ```` -->
+		<!-- Define custom colors for use as fills in the AreaChart control. -->
+		<mx:SolidColor id="slc1" color="blue" alpha=".3"/>
+		<mx:SolidColor id="slc2" color="red" alpha=".3"/>
+		<mx:SolidColor id="slc3" color="green" alpha=".3"/>
+		
+		<!-- Define custom Strokes. -->
+		<mx:SolidColorStroke id = "sl1" color="blue" weight="2"/>
+		<mx:SolidColorStroke id = "sl2" color="red" weight="2"/>
+		<mx:SolidColorStroke id = "sl3" color="green" weight="2"/>
+		
+		<!-- ```` CANDLESTICK AND HLOC ```` -->
+		<mx:SolidColorStroke id="sh1" color="0x000000" weight="5" joints="bevel" caps="square"/>
+		<!-- Define custom colors for the candles. -->
+		<mx:SolidColor id="shup" color="green" alpha=".8"/>
+		<mx:SolidColor id="shdown" color="red" alpha=".8"/>
+		
+		<!-- Define custom Stroke for the candle wick. -->
+		<mx:SolidColorStroke id="shwick" color="black" weight="2"/>
+		
+		<!-- Define custom Stroke for the candle box. -->
+		<mx:SolidColorStroke id="shbox" color="black" weight="1"/>
+		
+		<!-- ```` PIE ```` -->
+		<!-- Define custom colors for use as pie wedge fills. -->
+		<mx:SolidColor id="sec1" color="blue" alpha=".6"/>
+		<mx:SolidColor id="sec2" color="red" alpha=".6"/>
+		<mx:SolidColor id="sec3" color="0x663300" alpha=".6"/>
+		
+		<!-- This Stroke is used for the callout lines. -->
+		<mx:SolidColorStroke id="ecallouts" weight="2" color="0x999999" alpha=".8" caps="square"/>
+		
+		<!-- This Stroke is used to separate the wedges in the pie. -->
+		<mx:SolidColorStroke id="eradial" weight="1" color="0xFFFFCC" alpha=".3"/>
+		
+		<!-- This Stroke is used for the outer border of the pie. -->
+		<mx:SolidColorStroke id="epieborder" color="0x000000" weight="2" alpha=".5"/>
+
+		<!-- ```` PLOT ```` -->
+		<!-- Define custom colors for use as plot point fills. -->
+		<mx:SolidColor id="spc1" color="blue" alpha=".3"/>
+		<mx:SolidColor id="spc2" color="red" alpha=".3"/>
+		<mx:SolidColor id="spc3" color="green" alpha=".3"/>
+		
+		<!-- Define custom Strokes. -->
+		<mx:SolidColorStroke id="sp1" color="blue" weight="1"/>
+		<mx:SolidColorStroke id="sp2" color="red" weight="1"/>
+		<mx:SolidColorStroke id="sp3" color="green" weight="1"/>
+	</fx:Declarations>	 
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label" visible="true"/>
+	<mx:VBox id="boxmax" left="10" right="10" top="40" bottom="10"/>
+	<mx:VBox id="box" left="10" right="10" top="40" height="{this.height-50}"/>
+	<s:Group id="grpBusy" left="0" right="0" top="0" bottom="0" visible="false">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry id="grpGEBusy" color="white" alpha="0.2" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:Label id="lblinfo" left="20" right="20" top="250" height="76" fontSize="30" fontWeight="bold"
+				 text="Rendering Form  ..." textAlign="center"/>
+	</s:Group>
+</s:Module>

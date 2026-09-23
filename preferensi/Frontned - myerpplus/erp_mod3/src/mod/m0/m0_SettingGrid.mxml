@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" initialize="p=parentApplication"
+		  creationComplete="f_persiapan()">
+	<fx:Style source="../../script/MyERPPlus.css"/>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.events.ResizeEvent;
+			
+			import script.*;
+			
+			import spark.components.Button;
+			import spark.components.CheckBox;
+			import spark.components.ComboBox;
+			import spark.components.DataGrid;
+			import spark.components.NavigatorContent;
+			import spark.components.RadioButton;
+			import spark.components.TextInput;
+			import spark.components.supportClasses.ItemRenderer;
+			import spark.events.GridEvent;
+			import spark.events.GridItemEditorEvent;
+
+			//Main
+			[Bindable] [Embed(source="assets/main/doubleright.gif")]  public var tbdoubleright:Class; //Double Right
+			[Bindable] [Embed(source="assets/main/downarrow.png")]  public var tbdownarrow:Class; //Down Arrow
+			[Bindable] [Embed(source="assets/main/folderclose.png")]  public var folderclose:Class;
+			[Bindable] [Embed(source="assets/main/folderopen.png")]  public var folderopen:Class;
+			//Module
+			[Bindable] [Embed(source="assets/mod/m0.png")]  public var iconm0:Class; //MyERPPlus
+			[Bindable] [Embed(source="assets/mod/m1.png")]  public var iconm1:Class; //Master Data
+			[Bindable] [Embed(source="assets/mod/m2.png")]  public var iconm2:Class; //Finance & Accounting
+			[Bindable] [Embed(source="assets/mod/m3.png")]  public var iconm3:Class; //Inventory & Warehouse
+			[Bindable] [Embed(source="assets/mod/m4.png")]  public var iconm4:Class; //Purchasing
+			[Bindable] [Embed(source="assets/mod/m5.png")]  public var iconm5:Class; //Sales
+			[Bindable] [Embed(source="assets/mod/m6.png")]  public var iconm6:Class; //Fixed Asset
+			[Bindable] [Embed(source="assets/mod/m7.png")]  public var iconm7:Class; //Salesman
+			[Bindable] [Embed(source="assets/mod/m8.png")]  public var iconm8:Class; //Konsolidasi
+			//Tipe menu
+			[Bindable] [Embed(source="assets/main/t0.png")]  public var t0:Class; //Master Data
+			[Bindable] [Embed(source="assets/main/t1.png")]  public var t1:Class; //Master Data
+			[Bindable] [Embed(source="assets/main/t2.png")]  public var t2:Class; //Transaksi
+			[Bindable] [Embed(source="assets/main/t3.png")]  public var t3:Class; //Data
+			[Bindable] [Embed(source="assets/main/t4.png")]  public var t4:Class; //Laporan
+			[Bindable] [Embed(source="assets/main/t5.png")]  public var t5:Class; //Setting
+			[Bindable] [Embed(source="assets/main/t6.png")]  public var t6:Class; //Chart
+			[Bindable] [Embed(source="assets/main/t7.png")]  public var t7:Class; //KPI
+			
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			
+			[Bindable] public var selectedNode:XML;
+			public var o:Object = {};
+			protected var arrColumn:Array = new Array, bHxbottom:Boolean = false, idmodule:int = 0, c:CheckBox, modLabel:String;
+			protected var p:Object, ExpandMenuPertama:Boolean, idmenu:int = 0, a:ComboBox, i:int, img:RadioButton;
+			
+			public function f_focusOnMe():void
+			{
+				mb.setFocus();
+			}
+			
+			protected function f_persiapan():void
+			{
+				// Buat Datagrid sebanyak 10
+				for(i=1;i<=10;i++){
+					// Buat Tab Navigator
+					o['t'+i] = new NavigatorContent;
+					o['t'+i].percentHeight = 100;
+					o['t'+i].percentWidth = 100;
+					o['t'+i].label = "Grid "+i;
+					
+					// Buat Label "ID Grid"
+					o['l'+i] = new Label;
+					o['l'+i].x = 10;
+					o['l'+i].y = 7;
+					o['l'+i].text = "ID Grid";
+					o['t'+i].addElement(o['l'+i]);
+					
+					// Buat Textinput utk inputan id grid
+					o['txtidgrid'+i] = new TextInput;
+					o["txtidgrid"+i].id = 'txtidgrid'+(tab.length+1);
+					o["txtidgrid"+i].x = 57;
+					o["txtidgrid"+i].y = 0;
+					o["txtidgrid"+i].width = 68;
+					o["txtidgrid"+i].height = 22;
+					o["txtidgrid"+i].text = "dg"+i;
+					o['t'+i].addElement(o["txtidgrid"+i]);
+					
+					// Buat Array Collection utk grid
+					o['dg'+i+'_ac'] = new ArrayCollection;
+					
+					// Buat Grid lock 
+					o['dg'+i+'_lock'] = new DataGrid;
+					o['dg'+i+'_lock'].id = 'dg'+i+'_lock';
+					o['dg'+i+'_lock'].top = 27;
+					o['dg'+i+'_lock'].left = 0;
+					o['dg'+i+'_lock'].bottom = 0;
+					o['dg'+i+'_lock'].percentWidth = 20;
+					o['dg'+i+'_lock'].addEventListener(KeyboardEvent.KEY_DOWN, f_dg_lock);
+					o['t'+i].addElement(o['dg'+i+'_lock']);
+					
+					// fungsi event Key Down Datagrid Lock
+					function f_dg_lock(e:KeyboardEvent):void{
+						f_GRID_KEY_DOWN(e, o['dg'+(tab.selectedIndex+1)+'_ac'], o['dg'+(tab.selectedIndex+1)+'_lock']);
+					}
+					
+					// Buat Grid
+					o['dg'+i] = new DataGrid;
+					o['dg'+i].id = 'dg'+i;
+					o['dg'+i].top = 27;
+					o['dg'+i].right = 0;
+					o['dg'+i].bottom = 0;
+					o['dg'+i].percentWidth = 80;
+					o['dg'+i].addEventListener(KeyboardEvent.KEY_DOWN, f_dg);
+					o['t'+i].addElement(o['dg'+i]);	
+					
+					// fungsi event Key Down Datagrid
+					function f_dg(e:KeyboardEvent):void{
+						f_GRID_KEY_DOWN(e, o['dg'+(tab.selectedIndex+1)+'_ac'], o['dg'+(tab.selectedIndex+1)]);
+					}
+				}
+				
+				// Setting Button Bottom
+				btnbottom.setStyle('icontop', tbdoubleright);
+				btnbottom.setStyle('iconbottom', tbdownarrow);
+				
+				// Get WebService M0_MenuTree
+				FlexGlobals.topLevelApplication.F_wsGetDataById('MenuTree', 'M0_MenuTree', parentApplication.ubahasa, 0, 0, '', "mntype <> 4");
+				
+				// Fungsi KeyDown Custom utk memindahkan data ke atas atau ke bawah dg cara tekan ctrl + Up / DOWN
+				function f_GRID_KEY_DOWN(e:KeyboardEvent, ac:ArrayCollection, dg:DataGrid):void{
+					switch(e.keyCode){
+						case Keyboard.UP: // Jika Keybaord UP
+							// Jika CTRLKEY dan harus lebih dari baris pertama
+							if(e.ctrlKey && p.rowIndex > 0){
+								o.g = ac.getItemAt(p.rowIndex-1);
+								ac.setItemAt(ac.getItemAt(p.rowIndex), p.rowIndex-1);
+								ac.setItemAt(o.g, p.rowIndex);
+								ac.getItemAt(p.rowIndex-1).no = p.rowIndex;
+								ac.getItemAt(p.rowIndex).no = p.rowIndex+1;
+								dg.setSelectedCell(p.rowIndex-1, p.columnIndex);
+							} 
+							break;
+						case Keyboard.DOWN: // Jika Keybaord DOWN
+							// jika CTRLKEY dan harus kurang dari baris terakhir
+							if(e.ctrlKey && p.rowIndex < ac.length-1){
+								o.g = ac.getItemAt(p.rowIndex+1);
+								ac.setItemAt(ac.getItemAt(p.rowIndex), p.rowIndex+1);
+								ac.setItemAt(o.g, p.rowIndex);
+								ac.getItemAt(p.rowIndex+1).no = p.rowIndex+2;
+								ac.getItemAt(p.rowIndex).no = p.rowIndex+1;
+								dg.setSelectedCell(p.rowIndex+1, p.columnIndex);
+							}						
+							break;
+					}
+				}
+				
+				// Buad Event Tab, saat change
+				tab.addEventListener(mx.events.IndexChangedEvent.CHANGE, f_tabChange);
+				
+				// Buat Event Menu Bar saat item klik
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbTambah);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbHapus);
+				
+				function f_tabChange():void{ 
+					if(tab.selectedIndex >=0)
+					o['dg'+(tab.selectedIndex+1)+'_lock'].setFocus();
+				}
+				
+				function f_mbSimpan():void{
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(0, 3, 1))
+						if(lblmenu.text == '')
+							Alert.show('Pilih Menu dulu', 'Validasi');
+						else f_simpan();	
+				}
+				
+				function f_mbTambah():void{ 
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(0, 3, 1)){
+						if(tab.length == 10){
+							Alert.show('Maksimal 10 Grid');
+							return
+						}
+						o['dg'+(tab.length+1)+'_ac'].removeAll();
+						tab.addElement(o['t'+(tab.length+1)]);
+						tab.selectedIndex = tab.length-1;
+						tab.validateNow();
+					}
+				}
+				
+				function f_mbHapus():void{ 
+					if(tab.length > 0){
+						tab.removeElementAt(tab.length-1);
+						f_tabChange();
+					}
+				}
+				
+				// semua tab navigator di remove
+				tab.removeAll();
+				
+			}
+			
+			public function f_wsHasil():void
+			{
+				var a:Array, j:Object, n:int;
+				if(p.subject == 'set'){
+					p.F_wsJson('get', 'M0_GetFileLibrary', '/app/libs/grid'); 	
+				}else if(p.subject == 'get'){
+					if(p.wsSuccess){
+						parentApplication.m.grid = parentApplication.wsJson;
+					}else Alert.show('File grid.json Not Found', 'Information');
+				}else if(p.subject == 'getPropertyGrid'){
+					FlexGlobals.topLevelApplication.F_RegGrid(0, 3, [o.dg1, o.dg2, o.dg3, o.dg4, o.dg5, o.dg6, o.dg7, o.dg8, o.dg9, o.dg10], 'transaksi', 2, 'o');
+				}else if(p.subject == 'MenuTree'){
+					
+					o.ArrTreeItem = p.ob_resultWs.split("Θ")[1].split("|");
+					tree.dataProvider = XML(o.ArrTreeItem[0]);
+					ExpandMenuPertama = true;
+					
+					var btn:spark.components.Button;
+					var wsArrUtamaf:ArrayCollection=new ArrayCollection;
+					wsArrUtamaf = p.f_ArrDetail(p.ob_resultWs.split("Θ")[0]);
+					var jmlModuleAktif:int=wsArrUtamaf.length;
+					
+					vx.removeAllChildren();
+					p.arrModule.removeAll();
+					p.m.objTemp.m0_Grid_b = [];
+					for (i = 0; i < jmlModuleAktif; i++)
+					{
+						btn = new Button();
+						btn.label = wsArrUtamaf[i].f2;
+						btn.id = "mn-" + wsArrUtamaf[i].f0;
+						btn.styleName="parent";
+						btn.useHandCursor = true;
+						btn.buttonMode = true;
+						p.arrModule.addItem({mid:wsArrUtamaf[i].f0,mname:wsArrUtamaf[i].f2})
+						if(btn.id == "mn-0") {btn.setStyle("icon", iconm0)}
+						if(btn.id == "mn-1") {btn.setStyle("icon", iconm1)}
+						if(btn.id == "mn-2") {btn.setStyle("icon", iconm2)}
+						if(btn.id == "mn-3") {btn.setStyle("icon", iconm3)}
+						if(btn.id == "mn-4") {btn.setStyle("icon", iconm4)}
+						if(btn.id == "mn-5") {btn.setStyle("icon", iconm5)}
+						if(btn.id == "mn-6") {btn.setStyle("icon", iconm6)}
+						if(btn.id == "mn-7") {btn.setStyle("icon", iconm7)}
+						if(btn.id == "mn-8") {btn.setStyle("icon", iconm8)}
+						btn.addEventListener(MouseEvent.CLICK, f_btnModuleClick);
+						btn.percentWidth = 100;
+						btn.height = 30;
+						p.m.objTemp.m0_Grid_b[i] = btn;
+						vx.addChild(btn);
+					}
+					vx.height = jmlModuleAktif * 30;
+					with (BoxGrupMenu){
+						height = vx.height+28;
+						maxHeight = height;
+						minHeight = (4 * 30) + 28;
+					}
+					
+					function f_btnModuleClick(event:Event):void {
+						idmodule = event.currentTarget.id.split("-")[1];
+						tree.dataProvider = XML(o.ArrTreeItem[idmodule]);
+						BtnLinkJudul.label = event.currentTarget.label;
+						ExpandMenuPertama=true;
+					}
+					
+					FlexGlobals.topLevelApplication.F_RegGrid(0, 3, [o.dg1, o.dg2, o.dg3, o.dg4, o.dg5, o.dg6, o.dg7, o.dg8, o.dg9, o.dg10], 'transaksi', 2, 'o');
+				}
+			}
+			
+			protected function f_treeClick(event:ListEvent):void
+			{
+				if(!parentApplication.apaBisaAkses(0, 3, 4))
+					return;
+				
+				selectedNode=Tree(event.target).selectedItem as XML;
+				var StrLabel:String = selectedNode.@l;
+				var IsPopup:int = selectedNode.@p;
+				var StrURL:String = selectedNode.@u;
+				var Tinggi:int = selectedNode.@tg;
+				var Lebar:int = selectedNode.@lb;
+				var Tipe:String = selectedNode.@t;
+				var j:Object, n:int;
+				idmenu = selectedNode.@id;
+				if(StrURL != '-'){
+					FlexGlobals.topLevelApplication.F_setGridJson(idmodule, idmenu);
+					if(p.wsJson != null){
+						FlexGlobals.topLevelApplication.grpBusy.validateNow();
+						FlexGlobals.topLevelApplication.grpGEBusy.alpha = 0.5;
+						FlexGlobals.topLevelApplication.grpBusy.visible = true;
+						FlexGlobals.topLevelApplication.grpBusy.validateDisplayList();
+						FlexGlobals.topLevelApplication.grpBusy.validateNow();
+						aksi();
+					}else{
+						tab.removeAll();
+						lblmenu.text = StrLabel;
+					}
+					
+					function aksi():void {
+						tab.removeAll();
+						lblmenu.text = StrLabel;
+						j = p.wsJson;
+						for(i=0;i<j.grid.length;i++){
+							tab.addElement(o['t'+(i+1)]);
+							tab.selectedIndex = tab.length-1;
+							tab.validateNow();
+							o['txtidgrid'+(i+1)].text = j.grid[i].id;
+							o['dg'+(i+1)+'_ac'].removeAll();
+							for(n=0;n<j.grid[i].property.length;n++){
+								
+								if(j.grid[i].property[n].hasOwnProperty('r'))
+									with(j.grid[i].property[n])
+										o['dg'+(i+1)+'_ac'].addItem({
+											to:(n+1), w:w, df:df, ht:ht,
+											e:int(e), v:int(v), s:int(s), r:int(r),
+											lf:lf, ir:ir, hr:hr, ie:ie, no:(n+1)});
+								else
+									with(j.grid[i].property[n])
+										o['dg'+(i+1)+'_ac'].addItem({
+											to:(n+1), w:w, df:df, ht:ht,
+											e:int(e), v:int(v), s:int(s), r:0,
+											lf:lf, ir:ir, hr:hr, ie:ie, no:(n+1)});
+								o['dg'+(i+1)].scroller.verticalScrollBar.value = o['dg'+(i+1)].scroller.verticalScrollBar.maximum;
+								o['dg'+(i+1)].scroller.verticalScrollBar.validateNow();
+							}
+							o['dg'+(i+1)+'_lock'].setSelectedCell(0, 1);
+							o['dg'+(i+1)].setSelectedCell(0, 0);
+							o['dg'+(i+1)+'_lock'].setFocus();
+							o['dg'+(i+1)+'_lock'].validateNow();
+							o['dg'+(i+1)].validateNow();
+						}  
+						parentApplication.grpBusy.visible = false;
+					}
+				}
+			}
+			
+			protected function ExpandFavorit():void {
+				if(ExpandMenuPertama) {
+					ExpandMenuPertama=false;
+					tree.selectedIndex  = 0;
+					selectedNode=tree.selectedItem as XML;
+					tree.expandItem(selectedNode, true, false);
+				}
+			}
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{
+				o.a = column.split('|');
+				if(column == 'add' || o.a[0] == 'add'){
+					if(o.a.length == 1)o.d = o[dg.id.split('_lock').join('')+'_ac'].getItemAt(o[dg.id.split('_lock').join('')+'_ac'].length-1);
+					else o.d = o[dg.id.split('_lock').join('')+'_ac'].getItemAt(o.a[1]);
+					o.d.to = o.d.no;
+					o.d.w = 120;
+					o.d.df = "";
+					o.d.ht = "New Header Text "+o.d.no;
+					o.d.r = 0;
+					o.d.t = 0;
+					o.d.e = 1;
+					o.d.v = 1; 
+					o.d.s = 0;
+					o.d.r = 0;
+					o.d.lf = 0;
+					o.d.ir = 0;
+					o.d.hr = 0;
+					o.d.ie = 0;
+					if(o.a.length == 1)p.F_dgColumnRefresh(dg, dg.dataProviderLength-1);
+					else p.F_dgColumnRefresh(dg, o.a[1]);
+					o.a = null;
+				}else if(dg.selectedCell != null)
+					switch(dg.columns.getItemAt(dg.selectedCell.columnIndex).dataField){
+						case "r":
+						case "e":
+						case "s":
+						case "v":
+							if(column == 'space'){
+								if(Boolean(dg.dataProvider.getItemAt(dg.selectedCell.rowIndex)[dg.columns.getItemAt(dg.selectedCell.columnIndex).dataField]))
+									dg.dataProvider.getItemAt(dg.selectedCell.rowIndex)[dg.columns.getItemAt(dg.selectedCell.columnIndex).dataField] = 0;
+								else
+									dg.dataProvider.getItemAt(dg.selectedCell.rowIndex)[dg.columns.getItemAt(dg.selectedCell.columnIndex).dataField] = 1;
+								dg.dataProvider.setItemAt(dg.dataProvider.getItemAt(dg.selectedCell.rowIndex), dg.selectedCell.rowIndex);
+							}
+							break;
+					}
+			}
+
+			protected function f_simpan():void
+			{				
+				var s:String = '';
+				arrColumn = ['to', 'w', 'df', 'ht', 'r', 'e', 'v', 's', 'lf', 'ir', 'hr', 'ie'];
+				for(i=0;i<tab.length;i++){
+					if(i == 0)s = p.F_jsonEncode(o['txtidgrid'+(i+1)].text, o.dg1_ac, arrColumn);
+					else s += ", "+p.F_jsonEncode(o['txtidgrid'+(i+1)].text, o['dg'+(i+1)+'_ac'], arrColumn);
+				}
+				p.F_wsJson('set', 'M0_SetFileLibrary', 'grid/'+idmodule+"_"+idmenu, p.F_jsonContent('grid', s));
+			}
+			
+			protected function vx_resizeHandler(event:ResizeEvent):void
+			{
+				p = parentApplication;
+				vx.height = BoxGrupMenu.height-28;
+				vx.validateNow();
+				if(event.oldHeight > BoxGrupMenu.height){
+					// turun 
+					if(parentApplication.m.objTemp.hasOwnProperty('m0_Grid_b'))
+						if(p.m.objTemp.m0_Grid_b[int(vx.height/30)] != null){
+							for(i=int(vx.height/30);i<p.m.objTemp.m0_Grid_b.length;i++){
+								if(p.m.objTemp.m0_Grid_b.length > (i+1)){
+									p.m.objTemp.m0_Grid_b[i+1].height = 28;
+									p.m.objTemp.m0_Grid_b[i+1].width = 28;
+									hxbottom.addChild(p.m.objTemp.m0_Grid_b[i+1]);
+								}
+							}
+							if(((vx.height/30)-int(vx.height/30)) <= 0.1){
+								p.m.objTemp.m0_Grid_b[int(vx.height/30)].height = 28;
+								p.m.objTemp.m0_Grid_b[int(vx.height/30)].width = 28;
+								hxbottom.addChildAt(p.m.objTemp.m0_Grid_b[int(vx.height/30)], 0);
+							} 
+							if(bHxbottom == false){
+								bHxbottom = true
+								hxbottom.removeChild(btnbottom);
+							}
+						}
+				}else{
+					// naik
+					if(parentApplication.m.objTemp.hasOwnProperty('m0_Grid_b'))
+						if(p.m.objTemp.m0_Grid_b[int(vx.height/30)] != null){
+							for(i=0;i<int(vx.height/30);i++){
+								if(p.m.objTemp.m0_Grid_b.length > (i+1)){
+									p.m.objTemp.m0_Grid_b[i].height = 30;
+									p.m.objTemp.m0_Grid_b[i].percentWidth = 100;
+									vx.addChildAt(p.m.objTemp.m0_Grid_b[i], i);
+								}
+							}
+							if(((vx.height/30)-int(vx.height/30)) > 0.1){
+								p.m.objTemp.m0_Grid_b[int(vx.height/30)].height = 30;
+								p.m.objTemp.m0_Grid_b[int(vx.height/30)].percentWidth = 100;
+								vx.addChild(p.m.objTemp.m0_Grid_b[int(vx.height/30)]);
+							}
+							if(hxbottom.numChildren == 0){
+								bHxbottom = false;
+								hxbottom.addChild(btnbottom);
+							}
+						}
+				}
+			}
+			
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				switch(components){
+					case "comboBox":
+						if(dataField == 't')
+							return new ArrayCollection([{l:'Normal', v:0}, {l:'Info', v:1}, {l:'Wajib', v:2}]);
+						else if(dataField == 'lf')
+							return new ArrayCollection([{l:'Undefined', v:0}, {l:'Nominal', v:1}, {l:'Number', v:2}, {l:'Date', v:3}, {l:'1 Baris', v:4}, {l:'Date Time', v:5},  {l:'Nominal POS', v:6}]);
+						else if(dataField == 'ir')
+							return new ArrayCollection([{l:'Label Left', v:0}, {l:'Label Center', v:1}, {l:'Label Right', v:2}, {l:'Checkbox', v:3}, {l:'Combo Box', v:4}, {l:'Link', v:5}, {l:'Radio Button', v:6}, {l:'Search', v:7}, {l:'Date Field', v:8}, {l:'Country', v:9}, {l:'Yes No', v:10}, {l:'Upload File', v:11}, {l:'Config', v:12}, {l:'Download', v:13}, {l:'Custom', v:14}, {l:'Custom', v:15}]);
+						else if(dataField == 'hr')
+							return new ArrayCollection([{l:'Label Left', v:0}, {l:'Label Center', v:1}, {l:'Label Right', v:2}, {l:'Checkbox', v:3}]);
+						else if(dataField == 'ie')
+							return new ArrayCollection([{l:'Undefined', v:0}, {l:'Nominal', v:1}, {l:'Date Field', v:2}, {l:'Discount', v:3}, {l:'Number', v:4}, {l:'Numeric Stapper', v:5}, {l:'Search', v:6}, {l:'Combo Box', v:7}, {l:'Custom', v:8}, {l:'Search Barcode', v:9}]);
+						break;
+				}
+				return new ArrayCollection([]);
+			}
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Tambah" icon="tbadd"/>
+					<topmenu label="Hapus" icon="tbdelete"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<mx:VBox width="250" top="30" bottom="0" verticalGap="0" maxWidth="300" borderAlpha="1">
+		<mx:HBox width="100%" height="25" backgroundColor="#EBF4FF" horizontalAlign="right" horizontalGap="2" verticalAlign="middle">	
+			<mx:LinkButton x="11" width="100%" label="Judul" fontWeight="bold" textAlign="left" id="BtnLinkJudul"/>
+			<mx:Box width="0" height="100%"/>
+		</mx:HBox>
+		<mx:Box height="100%" width="100%" >
+			<mx:VDividedBox width="100%" height="100%" liveDragging="true">
+				<mx:Box width="100%" height="100%">
+					<mx:Tree id="tree" height="100%" width="100%" useHandCursor="true" buttonMode="true" labelField="@l" iconField="@t" showRoot="false" itemClick="f_treeClick(event)" indentation="5" updateComplete="ExpandFavorit()" folderOpenIcon="{folderopen}" folderClosedIcon="{folderclose}"/>	
+				</mx:Box>
+				<mx:Box width="100%" height="210" id="BoxGrupMenu" verticalGap="0" resize="vx_resizeHandler(event)">
+					<mx:VBox id="vx" horizontalAlign="left" width="100%" verticalGap="0" verticalScrollPolicy="off"/>
+					<mx:HBox id="hxbottom" horizontalGap="0" width="100%"> 
+						<s:Button id="btnbottom" styleName="parent" width="100%"/>
+					</mx:HBox>
+				</mx:Box>
+			</mx:VDividedBox> 
+		</mx:Box>
+	</mx:VBox>
+	<mx:VBox top="30" bottom="0" left="250" right="0" verticalGap="0"  borderAlpha="1">
+		<s:Group top="0" bottom="0" left="0" right="0" width="100%" height="100%">
+			<mx:TabNavigator id="tab" left="10" right="10" top="39" bottom="10"/>
+			<s:Label id="lblmenu" left="10" top="10" width="264" height="21" fontSize="20" fontWeight="bold" text=""/>
+		</s:Group>
+	</mx:VBox>
+</s:Module>

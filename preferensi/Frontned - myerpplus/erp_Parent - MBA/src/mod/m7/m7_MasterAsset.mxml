@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	<fx:Script source="KeyNavigator.as"/>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			public var saveas:Boolean=false;
+			public var arr:Array, arrColumn:Array, o:Object = {}, kodepenyusutan:String='';
+			public function f_grid_change():void{
+				arr[9] = ["Asset",dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).anama,dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).akode];
+			}
+			
+			public function f_focusOnMe():void
+			{
+				txtkode1.setFocus();
+			}
+			
+			public function F_tglFormatDB(s:String):String
+			{
+				var arr:Array = s.split("/"), d:String;
+				if(arr.length==3)
+					if(arr[2].split(' ')['length'] > 1)
+						d = arr[2].split(' ')[0]+"-"+arr[1]+"-"+arr[0]+" "+arr[2].split(' ')[1];
+					else
+						d = arr[2]+"-"+arr[1]+"-"+arr[0];
+					else 
+						d = '';
+				return d;
+			}
+			
+			protected function f_persiapan():void
+			{
+				//FlexGlobals.topLevelApplication.F_filterEnter([txtkode,txtnama]);
+				FlexGlobals.topLevelApplication.F_persiapanFormMaster();
+				arr = new Array;
+				arr[0] = 'M7_AssetSearch'; //ws Tampil
+				arr[1] = 'akode asc'; //ws Sort Default
+				arr[2] = 'Asset'; //nama Form Input
+				arr[3] = 'mod/m7/m7_MasterAssetInput.swf'; //link Form Input
+				arr[4] = '632'; //width Form Input
+				arr[5] = '456'; //height Form Input
+				arr[6] = 'M7_AssetDelete'; //ws Delete
+				arr[7] = 'M7_AssetTerkait'; //ws Delete
+				arrColumn = ['akode', 'anama'];
+				arr[8] = [7,25]; //menu
+				FlexGlobals.topLevelApplication.F_setGridJson(7, int(arr[8][1]));
+				cmbjenisreport.dataProvider = FlexGlobals.topLevelApplication.getReportItem(7, 25);
+				FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbjenisreport])
+				FlexGlobals.topLevelApplication.registerGrid([dg]);
+				F_txtpencarian([txtkelompok,txtdevisi,txtlokasi,txtpenyusutan]);
+				FlexGlobals.topLevelApplication.F_DateFieldStandard([dtawal,dtakhir]);
+				// Daftarkan fungsi-fungsi text input
+				parentApplication.F_SetNavigasiKeyboard([txtkode1, txtkode2, txtnama, txtpenyusutan, txtumur, cmbstatus, cmbjenisreport]);
+				
+				f_kondisiAwal();
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtkelompok':
+						paket = 'CdM7_Asset_Category';
+						wsfilter = 'ackode ="'+txtkelompok.text.split('"').join('\\"')+'"';
+						sort = 'ackode asc';
+						break;
+					case 'txtdevisi':
+						paket = 'CdM1_Division';
+						wsfilter = "daktif=1 AND dkode = '"+txtdevisi.text+"'";
+						csfilter = "daktif=1";
+						break;
+					case 'txtlokasi':
+						paket = 'CdM1_Location';
+						wsfilter = "laktif=1 AND lkode = '"+txtlokasi.text+"'";
+						csfilter = "laktif=1";
+						break;
+					case 'txtpenyusutan':
+						paket = 'CdM7_Depreciation_Category';
+						wsfilter = 'aktif=1 AND nama ="'+txtpenyusutan.text.split('"').join('\\"')+'"';
+						csfilter = 'aktif=1';
+						sort = 'kode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = parentApplication.subject;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){
+						case 'txtkelompok':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtkelompok.text = o.ackode;
+							break;
+						case 'txtdevisi':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtdevisi.text = o.dkode;
+							break;
+						case 'txtlokasi':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtlokasi.text = o.lkode;
+							break;
+						case 'txtpenyusutan':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtpenyusutan.text = o.nama;
+							kodepenyusutan = o.kode;
+							break;
+					}
+				}else{					
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'txtkelompok':break;
+							case 'txtdevisi':break;
+							case 'txtlokasi':break;
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtkelompok':parentApplication.F_KosongkanText([txtkelompok]);break;
+					case 'txtdevisi':parentApplication.F_KosongkanText([txtdevisi]);break;
+					case 'txtlokasi':parentApplication.F_KosongkanText([txtlokasi]);break;
+					case 'txtpenyusutan':parentApplication.F_KosongkanText([txtpenyusutan]);break;
+				}
+			}
+			
+			public var vfileextention:int=0;
+			public function f_cetak():void
+			{
+				var flt:String="";var srt:String="";var grp:String="";
+				if(txtkode1.text.length > 0 && txtkode2.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='akode BETWEEN "' + txtkode1.text.split('"').join('\\"') + '" AND "' + txtkode2.text.split('"').join('\\"') + '"';
+				}else if(txtkode1.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='akode >= "' +txtkode1.text.split('"').join('\\"')+ '"';
+				}else if(txtkode2.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='akode <= "' +txtkode2.text.split('"').join('\\"')+ '"';
+				}
+				if(dtawal.text != '' && dtakhir.text == ''){
+					if(flt != '')flt += " AND ";
+					flt+='atglbeli >= "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '"';
+				}
+				else if(dtawal.text == '' && dtakhir.text != ''){
+					if(flt != '')flt += " AND ";
+					flt+='atglbeli <= "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"';
+				}
+				else if(dtawal.text != '' && dtakhir.text != ''){
+					if(flt != '')flt += " AND ";
+					flt+='atglbeli BETWEEN "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '" AND "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"';
+				}
+				
+				if (txtnama.text.length > 0){
+					if (flt != ""){flt +=" AND "}
+					flt+='anama like "%' + txtnama.text.split('"').join('\\"') + '%"'
+				}
+				if(txtdevisi.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='adivisi like "%' + txtdevisi.text.split('"').join('\\"') + '%"'
+				}
+				if(txtkelompok.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='akategori like "%' + txtkelompok.text.split('"').join('\\"') + '%"'
+				}
+				if(txtlokasi.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='alokasi like "%' + txtlokasi.text.split('"').join('\\"') + '%"'
+				}
+				if(txtpenyusutan.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='ametode = '+kodepenyusutan;
+				}
+				if(cmbstatus.selectedIndex >= 0){
+					if(flt != '')flt += " AND ";
+					flt+='astatus = '+cmbstatus.selectedItem.dnumber;
+				}
+				if(txtumur.text.length > 0){
+					if(flt != '')flt += " AND ";
+					flt+='aumurekonomis = '+Number(txtumur.text);
+				}
+				FlexGlobals.topLevelApplication.F_openReport(7, int(arr[8][1]),cmbjenisreport.selectedItem.ritem,flt,srt,grp,vfileextention);
+			}
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+				parentApplication.F_KosongkanText([txtkode1, txtkode2, txtnama, txtkelompok, txtdevisi, txtlokasi, txtumur, txtpenyusutan]);
+				cmbstatus.selectedIndex = 0;
+				dtawal.text = FlexGlobals.topLevelApplication.DefaultTanggal;
+				dtakhir.text = FlexGlobals.topLevelApplication.DefaultTanggal;
+				//				parentApplication.f_formMasterTampil();
+			}
+			public function f_cekterpilih():Boolean{if(dg.selectedCell == null){return false}else{return true}}
+			public function f_paramDelete():String{return dg.dataProvider.getItemAt(dg.selectedCell.rowIndex).aid;}
+			public function f_filterdata():String{
+				var f:String = '';
+				if(txtkode1.text != '' && txtkode2.text != '')
+					f = parentApplication.TambahFilter(f, 'akode BETWEEN "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '" AND "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"');
+				if(txtkode1.text != '' && txtkode2.text == '')
+					f = parentApplication.TambahFilter(f, 'akode >= "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '"');
+				if(txtkode2.text == '' && txtkode2.text != '')
+					f = parentApplication.TambahFilter(f, 'akode <= "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"');
+				if(txtkode1.text != '')
+					f = parentApplication.TambahFilter(f, 'akode LIKE "%'+txtkode1.text.split('"').join('\\"')+'%"');
+				if(txtnama.text != '')
+					f = parentApplication.TambahFilter(f, 'anama LIKE "%'+txtnama.text.split('"').join('\\"')+'%"');
+				if(txtkelompok.text != '')
+					f = parentApplication.TambahFilter(f, 'akategori like "%' + txtkelompok.text.split('"').join('\\"') + '%"');
+				if(txtdevisi.text != '')
+					f = parentApplication.TambahFilter(f, 'adivisi like "%' + txtdevisi.text.split('"').join('\\"') + '%"');
+				if(txtlokasi.text != '')
+					f = parentApplication.TambahFilter(f, 'akategori like "%' + txtkelompok.text.split('"').join('\\"') + '%"');
+				if(dtawal.text != '' && dtakhir.text == '')
+					f = parentApplication.TambahFilter(f, 'atglbeli >= "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '"');
+				if(dtawal.text == '' && dtakhir.text != '')
+					f = parentApplication.TambahFilter(f, 'atglbeli <= "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"');
+				if(dtawal.text != '' && dtakhir.text != '')
+					f = parentApplication.TambahFilter(f, 'atglbeli BETWEEN "' + F_tglFormatDB(dtawal.text).split('"').join('\\"') + '" AND "' + F_tglFormatDB(dtakhir.text).split('"').join('\\"') + '"');
+				if(txtpenyusutan.text != '')
+					f = parentApplication.TambahFilter(f, 'ametode = '+kodepenyusutan);
+				if(cmbstatus.selectedIndex >= 0)
+					f = parentApplication.TambahFilter(f, 'astatus = '+cmbstatus.selectedItem.dnumber);
+				if(txtumur.text != '')
+					f = parentApplication.TambahFilter(f, 'aumurekonomis = '+Number(txtumur.text));
+				return f;
+			}
+			
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")]  public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class; //First
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class; //Previous
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class; //Next
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class; //Last
+			[Bindable] [Embed(source="assets/tb/export.png")] public var tbexport:Class;
+			[Bindable] [Embed(source="assets/tb/upload.png")]  public var tbattachment:Class;
+			[Bindable] [Embed(source="assets/tb/note.png")]  public var tbnote:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:ArrayCollection id="isicombo" >
+			<fx:Array>
+				<fx:Object dbulan="Garis Lurus" dnumber="1"/>
+				<fx:Object dbulan="Saldo Menurun" dnumber="2"/>
+				<fx:Object dbulan="Tanpa Penyusutan" dnumber="3"/>
+			</fx:Array>
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="Status" >
+			<fx:Array>
+				<fx:Object dbulan="Belum" dnumber="0"/>
+				<fx:Object dbulan="Proses" dnumber="1"/>
+				<fx:Object dbulan="Selesai" dnumber="2"/>
+			</fx:Array>
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+		
+	</s:Group>
+	<mx:DividedBox top="30" width="100%" height="100%">
+		<mx:Canvas width="100%" height="124" minHeight="145" maxHeight="145">
+			<s:Label left="10" top="15" text="Kode"/>
+			<s:Label left="10" top="37" text="Tgl Beli"/>
+			<s:Label left="10" top="57" text="Nama"/>
+			<s:Label left="10" top="79" text="Kategori"/>
+			<s:Label left="10" top="101" text="Jenis Laporan"/>
+			<s:Label left="520" top="15" text="Divisi"/>
+			<s:Label left="520" top="37" text="Lokasi"/>
+			<s:Label left="520" top="57" text="Metode Penyusutan"/>
+			<s:Label left="520" top="79" text="Umur Ekonomis"/>
+			<s:Label left="520" top="101" text="Status"/>
+			<s:Label left="260" top="15" text="s/d"/>
+			<s:Label left="260" top="37" text="s/d"/>
+			<s:TextInput id="txtkode1" x="95" y="10"/>
+			<s:TextInput id="txtkode2" x="287" y="10"/>
+			<mx:DateField id="dtawal" x="95" y="31" width="153" editable="true" showToday="true"/>
+			<mx:DateField id="dtakhir" x="287" y="31" width="153"  editable="true" showToday="true"/>
+			<s:TextInput id="txtnama" x="95" y="53" width="320"/>
+			<s:TextInput id="txtkelompok" left="95" top="74" width="320"/>
+			<s:ComboBox id="cmbjenisreport" x="95" y="95" width="320"/>
+			<s:TextInput id="txtdevisi" left="635" top="10"/>
+			<s:TextInput id="txtlokasi" left="635" top="31"/>
+			<s:TextInput id="txtpenyusutan" left="635" top="52"/>
+			<s:TextInput id="txtumur" left="635" top="73" height="23" maxChars="10" restrict="0123456789"/>
+			<s:ComboBox id="cmbstatus" labelField="dbulan" left="635" top="95" selectedIndex="0" height="23" dataProvider="{Status}" restrict="" >
+				<s:itemRenderer>
+					<fx:Component>
+						<mx:HBox height="20" top="20" left="10" paddingTop="5" paddingLeft="5">
+							<s:Label text="{data.dbulan}" width="100%" top="20" rollOut="setStyle('backgroundColor','#FFFFFF')" rollOver="setStyle('backgroundColor','#ECF4FF')"/>
+							<s:Label text="{data.dnumber}" width="0%" visible="false" top="20" rollOut="setStyle('backgroundColor','#FFFFFF')" rollOver="setStyle('backgroundColor','#ECF4FF')"/> 
+						</mx:HBox>
+					</fx:Component>
+				</s:itemRenderer>
+			</s:ComboBox>
+		</mx:Canvas>
+		<mx:Canvas width="100%" height="95%">
+			<s:DataGrid id="dg" left="10" right="10" top="0" bottom="10"/>
+		</mx:Canvas>
+	</mx:DividedBox>
+</s:Module>

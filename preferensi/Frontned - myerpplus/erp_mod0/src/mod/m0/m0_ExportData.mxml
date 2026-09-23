@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="100%" height="100%" creationComplete="f_Persiapan()"
+		  keyDown="f_keydown(event)">
+	<fx:Script>
+		<![CDATA[
+			import MyClass.HargaDariSubtotal;
+			import MyClass.WriteExcelFile;
+			
+			import comxls.as3xls.xls.Cell;
+			import comxls.as3xls.xls.ExcelFile;
+			import comxls.as3xls.xls.Sheet;
+			
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ICollectionView;
+			import mx.collections.IViewCursor;
+			import mx.controls.Alert;
+			import mx.controls.DataGrid;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.components.CheckBox;
+			import spark.components.gridClasses.GridColumn;
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			
+			public var module:String,inputuser:int,inputtgl:String,modifikasiuser:int,modifikasitgl:String
+			public var o:Object = {}, no:int, i:int, jum:int, arr:ArrayCollection, urutan:int, moduleid:int;
+			protected var sumber:String, idtransaksi:String, id2:String = '';
+			public var validasi:Boolean, pesanAlert:String, matauang:String, kurs:Number;
+			public var bytearrayexcel : ByteArray = new ByteArray;
+			public var exportExcel:WriteExcelFile = new WriteExcelFile;
+			[bindable] public var acSimpan : ArrayCollection = new ArrayCollection();
+			[Bindable] public var acKolomSumber:ArrayCollection = new ArrayCollection();
+			[Bindable] public var acImportGagal:ArrayCollection = new ArrayCollection();
+			
+			public var berhasil : Number = 0, gagal:Number = 0 //set jml import data yang berhasil
+			public var index:int = 0; //set jml import data yang berhasil
+			public var jmlProgress:int, num:Number, j:int, close:Boolean;
+			public var kodegagalimport : String = "", deskripsi : String = "";
+			
+			public function f_getProperty(components:String, dataField:String, data:Boolean, info:String = ''):Object
+			{
+				
+				switch(components){
+					case "comboBox":
+						var sumberkosong : Boolean = false
+						if(dataField == 'kolomsumber'){
+							return acKolomSumber;
+							
+						}
+						//						break;
+				}
+				return new ArrayCollection([]);
+			}
+			[Bindable]  
+			public var ArrayNamaKolom:Array = []; 
+			public var ArrayDataField:Array = [];
+			[Bindable]  
+			private var gridColumns:ArrayCollection = new ArrayCollection(); 
+			
+			public function f_Persiapan():void{
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbBatal);
+				
+				f_kondisiAwal();
+				
+				function f_mbSimpan():void{
+					f_writeExcel();
+				}
+				
+				function f_mbBatal():void{
+					f_kondisiAwal()
+				}
+			}
+			
+			
+			public function f_kondisiAwal():void{
+				//set kolom di dgExport ==============================================================================
+
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 22, [dgExport], 'transaksi');
+				f_cmbimport();
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			
+			
+			public function f_keydown(e:KeyboardEvent):void{
+				switch(e.keyCode){
+					case Keyboard.F12:
+						FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dgExport);
+						FlexGlobals.topLevelApplication.F_acAdd(dgExport);
+						f_browseFile();
+						break;
+					case Keyboard.N:
+						if(e.ctrlKey){
+							FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dgExport);
+							FlexGlobals.topLevelApplication.F_acAdd(dgExport);
+							f_browseFile();
+						}
+						break;
+					//					case Keyboard.D:
+					//						if(e.ctrlKey)
+					//							f_hapus();
+					//						break;
+					case Keyboard.DELETE:
+						o.arr = new ArrayCollection([dgExport.dataProvider[dgExport.selectedCell.rowIndex]]);
+						break;
+					case Keyboard.S:
+						if(e.ctrlKey)
+						break;
+				}
+			}
+			
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case "checkBoxHeader":
+						
+						for (i=0; i<dgExport.dataProviderLength; i++){
+							dgExport.dataProvider.getItemAt(i).chk = data;
+						}
+						break;
+					case "checkBox":
+						dgExport.dataProvider.getItemAt(dgExport.selectedCell.rowIndex).chk = data;
+						break;
+					
+				}
+				FlexGlobals.topLevelApplication.F_dgRefresh(dgExport);
+			}
+			
+			private function f_browseFile():void
+			{
+				var arr:Array = [];
+				arr.push(new FileFilter("Excel File","*.xls"));
+				fileReference.browse(arr);
+			}
+			
+			private function fileReference_select(evt:Event):void {
+				fileReference.load();
+			}
+			
+			private function fileReference_complete(evt:Event):void {
+				
+				
+				bytearrayexcel = fileReference.data
+				var excelFile:ExcelFile = new ExcelFile();
+				excelFile.loadFromByteArray(bytearrayexcel);
+				var sheet : Sheet = excelFile.sheets[0];
+				for(var i:int = 0; i<excelFile.sheets.length; i++){
+					sheet = excelFile.sheets[i];
+				}
+			}
+			
+			public function F_SetMapping():void{
+				
+				
+			}
+			public function f_setKolomExcel(index:int, kolomexcel:String):void{
+				
+			}
+			
+			
+				
+			
+			public var txtheader:String = "";
+			public var headergrid:Array = [];
+			//END OF IMPORT SALDO AWAL PIUTANG =============================================================================================================================
+			public function f_wsHasil():void
+			{
+				var ws:Object;
+				if(FlexGlobals.topLevelApplication.wsSuccess ){
+					switch (FlexGlobals.topLevelApplication.subject){
+						
+						case "tampil":
+							txtheader = FlexGlobals.topLevelApplication.vArrResult[3]
+							headergrid = txtheader.split(""+FlexGlobals.topLevelApplication.sptField+"");
+							for each (var field:String in headergrid)  
+							{  
+//								Alert.show(field)
+								var myColumn:GridColumn = new GridColumn(); 
+								myColumn.width = 150;
+								myColumn.editable = false;
+								myColumn.headerText = field;
+								field = field.split(" ").join("");
+								myColumn.dataField = field.toLowerCase();
+								dgExport.columns.addItem(myColumn);
+							} 
+							dgExport.dataProvider = FlexGlobals.topLevelApplication.wsArrUtama;
+							break;
+						
+						case "Uploading":
+							FlexGlobals.topLevelApplication.F_wsSearch('tampilFile', 'M2_FilesSearch', 1, 1, 'fsumber = "CR" AND fidtransaksi = "0"', 'finputtgl desc');
+							break;
+						case "tampilFile":
+							navigateToURL(new URLRequest(FlexGlobals.topLevelApplication.m.url+"/files/f2/CR/"+FlexGlobals.topLevelApplication.wsArrUtama[0].fnamafile));
+							break
+						
+					}
+				}
+				else{
+					if(parentApplication.F_validasiFalse(FlexGlobals.topLevelApplication.subject) ){
+						switch (FlexGlobals.topLevelApplication.subject){
+							case "simpan":
+								
+								break;
+							
+							case "Uploading":
+								navigateToURL(new URLRequest(FlexGlobals.topLevelApplication.m.url+"/files/f2/CR/Data Gagal Import_"+jmlfile+".xls"));
+								break;
+							
+						}
+					}
+				}
+			}
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					
+				}
+			}
+			public var jmlfile : int = 0;
+			public function f_writeExcel():void{
+				
+				//				if(kodegagalimport.length > 0){
+				
+//				var excelFile:ExcelFile = new ExcelFile();
+				//ambil sheet pertama
+//				var sheet : Sheet = new Sheet;;
+//				var fr:FileReference = new FileReference;
+				
+//				for(var a:int = 0; a<headergrid.length; a++){
+//					sheet.setCell(0, a, headergrid[a]);
+//					excelFile.sheets.addItem(sheet);
+//				}
+//				var i : int = 0;
+//				addexcel(i)
+//				function addexcel(index:int = 0):void{
+//					sheet.setCell(index + 1, 0, dgExport.dataProvider[index].kid);
+//					excelFile.sheets.addItem(sheet);
+					
+//					if(i<dgExport.dataProviderLength){
+//						i++
+//						addexcel(i)
+//						
+//					}
+//				}
+				
+//				for (var i : int = 0; i<dgExport.dataProviderLength; i++){
+//					sheet.setCell(i+1, 0, dgExport.dataProvider[i].kid);
+//				}
+				exportExcel.dataGridToExcel(dgExport, txtnamafile.text, txtheader);
+//				FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, "CR", "xls", excelFile.saveToByteArray(), 0, txtnamafile.text+".xls", "", "0", FlexGlobals.topLevelApplication.DefaultTanggalforDB, 0, 0, '', '');
+			}
+			
+			public function f_UlangImport():void{
+				
+			}
+			
+			protected function btnambildata_clickHandler(event:MouseEvent):void
+			{
+				FlexGlobals.topLevelApplication.F_wsSearch("tampil", "CdM1_Contact", 0, 0, "", "");
+			}
+			
+			public function f_cmbimport():void{
+				
+			}
+			public function f_setVisibleGroup(grpvisibletrue:Array, grpvisiblefalse:Array):void{
+				var i:int;
+				for(i = 0; i<grpvisibletrue.length; i++){
+					grpvisibletrue[i].visible = true
+				}
+				for(i = 0; i<grpvisiblefalse.length; i++){
+					grpvisiblefalse[i].visible = false;
+				}
+				
+			}
+			
+			
+//			public function dataGridToExcel(dataGrid:DataGrid, filename:String):void
+//			{
+//				var sheet:Sheet = new Sheet();
+//				sheet.resize((dataGrid.dataProvider as ICollectionView).length + 1, dataGrid.columns.length + 1);
+//				
+//				for(var i:int = 0; i<dataGrid.columns.length; i++) {
+//					sheet.setCell(0, i, (dataGrid.columns[i] as DataGridColumn).headerText);
+//				}
+//				
+//				var cursor:IViewCursor = dataGrid.dataProvider.createCursor();
+//				var rowCount:int = 1;
+//				
+//				while(!cursor.afterLast)
+//				{
+//					for(var j:int = 0; j<dataGrid.columns.length; j++)
+//					{
+//						var col:DataGridColumn = dataGrid.columns[j] as DataGridColumn;
+//						sheet.setCell(rowCount, j, col.itemToLabel(cursor.current));
+//					}
+//					rowCount++;
+//					cursor.moveNext();
+//				}
+//				
+//				var xls:ExcelFile = new ExcelFile();
+//				xls.sheets.addItem(sheet);
+//				
+//				var bytes:ByteArray = xls.saveToByteArray();
+//				var fileReference:FileReference = new FileReference();
+//				fileReference.save(bytes, filename);
+//			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Import" icon="tbsave" enabled="true"/>
+					<topmenu label="Batal" icon="tbclose" enabled="true"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<net:FileReference id="fileReference" select="fileReference_select(event)" complete="fileReference_complete(event)" />
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	
+	<s:Group id="grpdgExport" right="0" top="58" bottom="0" left="0">
+		<s:Label id="tdataimport" left="0" top="0" text="Pilih Data yang akan diimport" visible="true"  fontWeight="bold"/>
+		<s:DataGrid id="dgExport" left="0" right="0" top="25" bottom="0"/>
+		<s:CheckBox x="481" y="43" label="CheckBox" visible="false"/>
+	</s:Group>
+	
+	<s:Group id="grppopup" left="0" right="0" top="0" bottom="0" visible="false">
+		<s:Rect id="backgroundRect" left="0" right="0" top="0" bottom="0">
+			<s:fill>
+				<s:LinearGradient rotation="90">
+					<s:GradientEntry color="white" alpha="0.5" />
+				</s:LinearGradient>
+			</s:fill>
+		</s:Rect>
+		<s:Group id="progress" left="100" right="100" top="245" height="126">
+			
+			<s:TitleWindow left="0" right="0" bottom="9" top="0" close="grppopup.visible = false">
+				<s:Label left="2" top="12" fontWeight="bold" text="Proccessing..." fontSize="14"/>
+				<mx:ProgressBar id="pb" left="0" right="0" top="32" label=" " direction="right" labelPlacement="center" mode="manual" barSkin="skins.progressBar"/>
+				<s:Label id="lblPersen" right="2" top="56" fontWeight="bold" text="0 %"/>
+				<s:Label id="lblProses" left="2" top="56" fontWeight="bold" text=" "/>
+				
+			</s:TitleWindow>
+		</s:Group>
+	</s:Group>
+	<s:Button x="214" y="32" label="Tampilkan" click="btnambildata_clickHandler(event)"/>
+	<s:TextInput x="46" y="32" text="Nama File" id="txtnamafile"/>
+	
+</s:Module>

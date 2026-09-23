@@ -1,0 +1,1026 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="module1_creationCompleteHandler()">
+	<fx:Script> 
+		<![CDATA[
+			import mx.events.MenuEvent;
+			
+			import org.hamcrest.mxml.collection.ArrayWithSize;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")]  public var tbexport:Class;
+			
+			import com.adobe.fiber.core.model_internal;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.DateField;
+			import mx.core.FlexGlobals;
+			
+			import org.hamcrest.number.isNotANumber;
+			
+			import spark.components.ComboBox;
+			import spark.components.Image;
+			import spark.components.TextInput;
+			import spark.events.IndexChangeEvent;
+			
+			public var o:Object = {}, m:Object = {}, validasi:Boolean, pesanAlert:String;
+			protected var img:Image, i:int, t:TextInput,  d:DateField; 
+			
+			protected var Where:Array, OrderBy:Object, GroupBy:Object;
+			protected var OperatorDate:ArrayCollection, OperatorString:ArrayCollection, OperatorAngka:ArrayCollection;
+			
+			protected var sptField:String, sptRow:String;
+			protected function module1_creationCompleteHandler():void
+			{
+				sptField = parentApplication.sptField;
+				sptRow = parentApplication.sptRow;
+				
+				// default operator date, string dan angka
+				OperatorDate = new ArrayCollection([{l:"="}, {l:"<>"}, {l:">"}, {l:"<"}, {l:">="}, {l:"<="}]);
+				OperatorString = new ArrayCollection([{l:"="}, {l:"Berisi"}, {l:"<>"}, {l:"Diawali"}, {l:"Diakhiri"}]);
+				OperatorAngka = new ArrayCollection([{l:"="}, {l:"Berisi"}, {l:"<>"}, {l:">"}, {l:"<"}, {l:">="},{l:"<="}]);
+				
+				// add event menubar, cetaklangsung dan export to
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_cetaklangsung);
+				mb.addEventListener(mx.events.MenuEvent.ITEM_CLICK, f_exportTO); 
+				
+				// cetak berdasarkan item yang di pilih (Excel, HTML, Doc, Txt, Jpg)
+				function f_exportTO(e:MenuEvent):void
+				{
+					cetak(e.item.@data);
+				}
+				
+				// cetak langsung, item default PDF
+				function f_cetaklangsung():void
+				{
+					cetak("0");
+				}
+				
+				// fungsi cetak, param extension.
+				function cetak(ext:String):void
+				{
+					var dataWhere:String = '', dataOrderBy:String = '', dataGroupBy:String = '', Param1:String = '', ar:Array = [], berisi:Boolean, bValue:Boolean, arr:Array = [], arrParam:Array = [], arrP:ArrayCollection = new ArrayCollection, bol:Boolean, j:int, s2:String, pemecah:Object = {};
+					
+					// item
+					var item1:Object, item2:Object, komponen:Object, sampaidengan:Boolean;
+					
+					// variable untuk watermak
+					var statusketemu:Boolean = true, WaterMark:String = "";
+					
+					var field:String;
+					arrP = new ArrayCollection;
+					arrParam = [];
+					
+					// jika 'Where' kosong
+					if(Where == null)
+						return;
+					validasi = true;
+					pesanAlert = "";
+					for(i=0;i<Where.length;i++)
+					{
+						item1 = o['item'+[i]];
+						item2 = o['item2'+[i]];
+						komponen = Where[i].k;
+						sampaidengan = Boolean(int(Where[i].s));
+						if(Where[i].r == "1")
+						{
+							if(komponen == '3')
+							{
+								if(item1.selectedIndex < 0)
+								{
+									parentApplication.msgAlert(item1, Where[i].l);
+								}
+								if(sampaidengan)
+								{
+									if(item2.selectedIndex < 0)
+									{
+										parentApplication.msgAlert(item2, Where[i].l);
+									}
+								}
+							}
+							else
+							{
+								if(item1.text.length == 0)
+								{
+									parentApplication.msgAlert(item1, Where[i].l);
+								}
+								if(sampaidengan)
+								{
+									if(item2.text.length == 0)
+									{
+										parentApplication.msgAlert(item2, Where[i].l);
+									}
+								}
+								
+							}
+						}
+					}
+					if(pesanAlert.length > 0)parentApplication.msgAlert('pesanAlert', '');
+					if(!validasi)
+					{
+						return
+					}
+					for(i=0;i<Where.length;i++)
+					{
+						item1 = o['item'+[i]];
+						item2 = o['item2'+[i]];
+						komponen = Where[i].k;
+						field = Where[i].f;
+						sampaidengan = Boolean(int(Where[i].s));
+						// -------------- Set watermark -----------------------
+						if(statusketemu && field.split("status").length == 2)
+						{
+							statusketemu = false;
+							if(item1.selectedIndex >= 0)
+								if(item1.selectedItem.v.length > 0)
+									if(item1.selectedItem.v == 0)
+										WaterMark = "Draft"; 
+						}
+
+						// ------------------------------ Set Param ------------------------------
+						// jika Report Progress
+						if(Where[i].hasOwnProperty('pr'))
+						{ 
+							arr = Where[i].pr.split(sptField); 
+							if(komponen == 2 && Boolean(int(arr[0])))
+							{ 
+								Param1 = arr[1]+" ";
+								
+								arr[2] = " "+arr[2]+" ";
+								
+								// jika sampai dengan
+								if(sampaidengan)
+									Param1 += parentApplication.F_paramDate(item1.text, item2.text, arr[2]);
+								else
+									Param1 += parentApplication.F_paramDate(item1.text, "", arr[2]);
+								Param1 += " "+arr[3];
+								bol = true;
+								if(arr.length == 4)
+									arrParam[arrParam.length] = arrParam.length;
+								else
+								{
+									for(j=0;j<arrParam.length;j++)
+									{
+										if(int(arrParam[j]) == int(arr[4]))
+										{
+											bol = false;
+											break;
+										}
+									}
+									if(bol)arrParam[arrParam.length] = arr[4];
+								}
+								if(bol)
+									arrP.addItem({no:arrParam[arrParam.length-1], p:Param1});
+								else 
+									arrP.setItemAt({no:arrParam[arrParam.length-1], p:arrP[j].p+" "+Param1}, j);
+							}
+							else
+							{
+								berisi = true;
+								if(komponen == 3)
+									if(item1.selectedIndex >= 0)
+									{
+										if(item1.selectedItem.v.length == 0)
+											berisi = false;
+									}
+									else
+										berisi = false;
+								else 
+									if(item1.text.length == 0)
+										berisi = false;
+								
+								if(berisi && Boolean(int(arr[0])))
+								{
+									Param1 = arr[1]+" ";
+									// jika combo 
+									arr[2] = " "+arr[2]+" ";
+									if(komponen == 3)
+									{
+										// jika sampai dengan
+										if(sampaidengan)
+										{
+											Param1 += item1.selectedItem.l+arr[2]+item2.selectedItem.l;
+										}else{
+											Param1 += item1.selectedItem.l;
+										}
+									}else{ // jika bukan combo
+										// jika sampai dengan
+										if(sampaidengan)
+										{
+											Param1 += item1.text+arr[2]+item2.text;
+										}else{
+											Param1 += item1.text;
+										}
+									} 
+									
+									Param1 += " "+arr[3];
+									bol = true;
+									if(arr.length == 4)
+										arrParam[arrParam.length] = arrParam.length;
+									else
+									{
+										for(j=0;j<arrParam.length;j++)
+										{
+											if(int(arrParam[j]) == int(arr[4]))
+											{
+												bol = false;
+												break;
+											}
+										}
+										if(bol)
+											arrParam[arrParam.length] = arr[4];
+									}
+									if(bol)
+										arrP.addItem({no:arrParam[arrParam.length-1], p:Param1});
+									else 
+										arrP.setItemAt({no:arrParam[arrParam.length-1], p:arrP[j].p+" "+Param1}, j);
+								}
+							}
+						}
+						
+						if(cmbreport.dataProvider[cmbreport.selectedIndex].rquery == 2)
+						{
+							if(komponen == 3) // combobox
+								ar[ar.length] = item1.selectedItem.v.replace('"', '\\\\"');
+							else 
+								ar[ar.length] = l(item1.text).replace('"', '\\\\"');
+							if(int(Where[i].s) == 1) //jika s.d
+								if(komponen == 3) // combobox
+									ar[ar.length] = item2.selectedItem.v.replace('"', '\\\\"');
+								else 
+									ar[ar.length] = l(item2.text).replace('"', '\\\\"');
+						}
+						else
+						{ 
+							// jika s.d
+							if(sampaidengan)
+							{ 
+								if(komponen == 3)
+								{ // jika combo box
+									if(item1.selectedIndex > 0 || item2.selectedIndex > 0) // jika awal atau akhir terisi
+										if(dataWhere.length > 0)dataWhere+=" AND ";
+									
+									if(item1.selectedIndex > 0 && item2.selectedIndex > 0) // jika awal dan akhir terisi
+										dataWhere += parentApplication.StrFilter(field, item1.selectedItem.v, 9, item2.selectedItem.v);
+									else if(item1.selectedIndex > 0) // jika awal terisi
+										dataWhere += parentApplication.StrFilter(field, item1.selectedItem.v, 5);
+									else if(item2.selectedIndex > 0) // jika akhir terisi
+										dataWhere += parentApplication.StrFilter(field, item2.selectedItem.v, 6);
+								}
+								else
+								{
+									// selain property combo box {text biasa, pencarian, tanggal}
+									if(item1.text.length > 0 || item2.text.length > 0) // jika awal atau akhir terisi
+										if(dataWhere.length > 0)dataWhere+=" AND ";
+									
+									if(item1.text.length > 0 && item2.text.length > 0) // jika awal dan akhir terisi
+										dataWhere += parentApplication.StrFilter(field, l(item1.text), 9, l(item2.text));
+									else if(item1.text.length > 0) // jika awal terisi
+										dataWhere += parentApplication.StrFilter(field, l(item1.text), 5);
+									else if(item2.text.length > 0) // jika akhir terisi
+										dataWhere += parentApplication.StrFilter(field, l(item2.text), 6);
+								}
+							}
+							else
+							{ 
+								switch(komponen)
+								{
+									//pencarian
+									case "1":
+										if(item1.text.length > 0)
+											dataWhere = parentApplication.TambahFilter(dataWhere, parentApplication.StrFilter(field, item1.text, 1));
+										break;
+									// combobox
+									case "3": 
+										if(item1.selectedIndex >= 0)
+											if(item1.selectedItem.v.length > 0)
+											{
+												if(dataWhere.length > 0)
+													dataWhere += " AND ";
+												pemecah.desimal = item1.selectedItem.v.split(",");
+												if(pemecah.desimal.length == 1)
+													dataWhere += "(" + field + f_d(item1.selectedItem.v)+ ")";
+												else
+												{
+													dataWhere += "(";
+													for(var x:int=0;x<pemecah.desimal.length;x++)
+														dataWhere += "(" + field + f_d(pemecah.desimal[x])+ ") OR ";
+													dataWhere = dataWhere.slice(0, dataWhere.length-4)+")";
+												}
+											} 
+										break;
+									// selain property combo box, pencarian {text biasa, tanggal}
+									default:
+										if(item1.text.length > 0)
+											dataWhere = parentApplication.TambahFilter(dataWhere, field + f_d(l(item1.text)));
+								}
+							}
+						}
+					}
+					
+					arrParam.sort(Array.NUMERIC);
+					Param1 = "";
+					for(i=0;i<arrParam.length;i++)
+					{
+						for(j=0;j<arrP.length;j++)
+						{
+							if(arrParam[i] == arrP[j].no)
+							{
+								if(Param1.length == 0)Param1 = arrP[j].p;
+								else Param1 += " "+arrP[j].p;
+								break;
+							}
+						}
+					}
+					
+					function l(s:String):String
+					{
+						if(komponen == 2)
+							return parentApplication.F_tglFormatDB(s);
+						return s;
+					}
+					
+					function f_d(s:String):String
+					{
+						s = s.replace('"', '\\\\"');
+						switch(int(komponen))
+						{
+							case 0:
+								switch(o['op'+[i]].selectedIndex)
+								{
+									case 0:return ' = "'+s+'"'; break;
+									case 1:return ' like "%'+s+'%"'; break;
+									case 2:return ' <> "'+s+'"';break;
+									case 3:return ' like "'+s+'%"'; break;
+									case 4:return ' like "%'+s+'"'; break;
+								}
+								break;
+							case 2:
+								switch(o['op'+[i]].selectedIndex)
+								{
+									case 0:return ' = "'+s+'"'; break;
+									case 2:return ' <> "'+s+'"';break;
+									case 3:return ' > "'+s+'"';	break;
+									case 4:return ' < "'+s+'"'; break;
+									case 5:return ' >= "'+s+'"'; break;
+									case 6:return ' <= "'+s+'"'; break;
+								}
+								break;
+							case 3:
+								if(field.slice(field.length-2, field.length) == " >" || field.slice(field.length-2, field.length) == " <")
+									return '= "'+s+'"';
+								break;
+							case 4:
+								switch(o['op'+[i]].selectedIndex)
+								{
+									case 0:return ' = "'+s+'"'; break;
+									case 1:return ' like "%'+s+'%"'; break;
+									case 2:return ' <> "'+s+'"';	break;
+									case 3:return ' > "'+s+'"';	break;
+									case 4:return ' < "'+s+'"'; break;
+									case 5:return ' >= "'+s+'"';	break;
+									case 6:return ' <= "'+s+'"'; break;
+								}
+								break;
+						}
+						return ' = "'+s+'"';
+					}
+	
+					if(cmbreport.dataProvider[cmbreport.selectedIndex].rquery == 2)
+					{
+						dataWhere = parentApplication.F_splitArrayToString(ar);
+						dataWhere = dataWhere.split(sptField).join(sptRow);
+					}
+					
+					// Order By
+					for(i=0;i<OrderBy.id.split("|")[0];i++)
+					{
+						item1 = o['itemo'+[i]];
+						item2 = o['itemo2'+[i]];
+						if(item1.selectedIndex >= 0)
+						{
+							if(dataOrderBy.length == 0)
+								dataOrderBy = item1.selectedItem.v +" "+item2.selectedItem.l;
+							else
+								dataOrderBy += ", "+item1.selectedItem.v +" "+item2.selectedItem.l;
+						}
+					}
+					// Group By
+					for(i=0;i<GroupBy.id.split("|")[0];i++)
+					{
+						item1 = o['itemb'+[i]];
+						if(item1.selectedIndex >= 0)
+							if(dataGroupBy.length == 0)
+								dataGroupBy = item1.selectedItem.v
+							else
+								dataGroupBy += ", "+item1.selectedItem.v;
+					}
+					parentApplication.F_openReport(o.mod, o.menut, cmbreport.selectedItem.ritem, dataWhere, dataOrderBy, dataGroupBy, ext, Param1, "", 0, WaterMark);
+				}
+
+				cmbreport.dataProvider = parentApplication.f_getReportMenuLaporan(parentApplication.currentModuleID, parentApplication.m.currentMenuIDT);
+				parentApplication.F_ComboBoxStandard([cmbreport]);
+				cmbreport.selectedIndex = 0;
+				for(i=0;i<parentApplication.m.laporan.length;i++)
+				{
+					if(parentApplication.m.laporan[i].n == parentApplication.currentModuleID+"_"+parentApplication.currentMenuID)
+					{
+						o.i = i;
+						o.mod = parentApplication.currentModuleID;
+						o.menu = parentApplication.currentMenuID;
+						o.menut = parentApplication.m.currentMenuIDT;
+						if(cmbreport.dataProvider.length > 0)
+						{
+							o.d = cmbreport.dataProvider[cmbreport.selectedIndex].rid;
+							Where = (parentApplication.m.laporan[i][o.d][0].property as Array);
+							OrderBy = parentApplication.m.laporan[i][o.d][1];
+							GroupBy = parentApplication.m.laporan[i][o.d][2];
+						}
+						break;
+					}
+				}
+				if(Where == null || OrderBy == null || GroupBy == null) 
+					return;
+				 
+				f_add();
+			}
+			
+			protected function f_add():void
+			{
+				var w:int = 0, l:int = 0, j:int, a:Array, len:int = 0;
+				
+				grpWhere.removeAllElements();
+				grpOrderBy.removeAllElements();
+				grpGroupBy.removeAllElements();
+				
+				function newLabel():Object
+				{
+					o['l'+i] = new Label;
+					o['l'+i].left = 20;
+					o['l'+i].top = l;
+					o['l'+i].text = parentApplication.l(Where[i].l);
+					ReuqiredLabel();
+					
+					return o['l'+i];
+				}
+					
+				function newLabelUntil():Object
+				{
+					o['sd'+[i]] = new Label;
+					o['sd'+[i]].left = 250;
+					o['sd'+[i]].top = (l+2);
+					o['sd'+[i]].text = parentApplication.l("s.d"); 
+					return o['sd'+[i]];
+				}
+					
+				// Buat label
+				for(i=0;i<Where.length;i++)
+				{
+					if(int(Where[i].k) == 3)
+						l += 25;
+					else
+						l += 23;
+					grpWhere.addElement(newLabel());
+					
+					if(int(Where[i].s) == 1)
+						grpWhere.addElement(newLabelUntil());
+					
+					if(int(Where[i].k) == 2)
+						l -= 3;
+					else
+						l -= 2;
+				}
+				
+				i = 0;
+				parentApplication.validateNow(); 
+				parentApplication.callLater(abc); 
+				function abc():void
+				{
+					if(len < int(o['l'+i].width))
+						len = o['l'+i].width; 
+					i++;  
+					if(i == Where.length)
+					{
+						if(len > 60)
+							len -= 60;
+						else
+							len = 0;
+
+						o.l = new Label;
+						o.l.text = "Filter";
+						o.l.setStyle('fontSize', '15');
+						o.l.setStyle('fontWeight', 'bold');
+						grpWhere.addElement(o.l);
+						
+						datasplit = OrderBy.id.split("|");
+						if(datasplit.length == 1)
+							datasplit[0] = OrderBy.id;
+						if(datasplit[0] > 0)
+						{
+							o.l = new Label;
+							o.l.text = "Order By";
+							o.l.setStyle('fontSize', '15');
+							o.l.setStyle('fontWeight', 'bold');
+							grpOrderBy.addElement(o.l);
+						}
+						
+						datasplit = GroupBy.id.split("|");
+						if(datasplit.length == 1)
+							datasplit[0] = GroupBy.id;
+						if(datasplit[0] > 0)
+						{
+							o.l = new Label;
+							o.l.text = "Group By";
+							o.l.setStyle('fontSize', '15');
+							o.l.setStyle('fontWeight', 'bold');
+							grpGroupBy.addElement(o.l);
+						}
+						
+						// menyiapkan filter
+						for(i=0;i<Where.length;i++)
+						{
+							if(int(Where[i].s) == 1)
+								o['sd'+[i]].left += len;
+							
+							w += 21;
+							switch(int(Where[i].k))
+							{
+								//text biasa
+								case 0:
+									// membuat operator jika buka s.d
+									if(int(Where[i].s) == 0)
+									{
+										o['op'+[i]] = new ComboBox;
+										o['op'+[i]].id = 'op'+[i];
+										o['op'+[i]].width = 70;
+										o['op'+[i]].left = 90+len;
+										o['op'+[i]].dataProvider = OperatorString;
+										o['op'+[i]].top = w;
+										grpWhere.addElement(o['op'+[i]]);
+										parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+										o['op'+[i]].selectedIndex = 0;
+									}
+									
+									o['item'+[i]] = new TextInput;
+									o['item'+[i]].id = 'item'+[i];
+									o['item'+[i]].width = Where[i].w;
+									o['item'+[i]].left = 170+len;
+									o['item'+[i]].text = Where[i].p;
+									o['item'+[i]].top = w;
+									grpWhere.addElement(o['item'+[i]]);
+									parentApplication.F_SetNavigasiKeyboard([o['item'+[i]]]);
+									
+									// jika s.d
+									if(int(Where[i].s) == 1)
+									{
+										o['item'+[i]].left = 90+len;
+										
+										o['item2'+[i]] = new TextInput;
+										o['item2'+[i]].id = 'item2'+[i];
+										o['item2'+[i]].width = Where[i].w;
+										o['item2'+[i]].left = 280+len;
+										o['item2'+[i]].text = Where[i].p;
+										o['item2'+[i]].top = w;
+										grpWhere.addElement(o['item2'+[i]]);
+										parentApplication.F_SetNavigasiKeyboard([o['item2'+[i]]]);
+										o['item2'+[i]].addEventListener(FocusEvent.FOCUS_IN, TextfocusInHandler);
+									}
+									if(int(Where[i].s) == 0)
+										w += 1;
+									break;
+								//pencarian
+								case 1:
+									o['item'+[i]] = new TextInput;
+									o['item'+[i]].id = 'item'+[i];
+									o['item'+[i]].width = Where[i].w;
+									o['item'+[i]].left = 90+len;
+									o['item'+[i]].top = w;
+									grpWhere.addElement(o['item'+[i]]);
+									parentApplication.F_txtpencarian([o['item'+[i]]]);
+									o['item'+[i]].text = Where[i].p.split(sptField)[0];
+									
+									if(int(Where[i].s) == 1)
+									{
+										
+										o['item2'+[i]] = new TextInput;
+										o['item2'+[i]].id = 'item2'+[i];
+										o['item2'+[i]].width = Where[i].w;
+										o['item2'+[i]].left = 280+len;
+										o['item2'+[i]].top = w;
+										grpWhere.addElement(o['item2'+[i]]);
+										parentApplication.F_txtpencarian([o['item2'+[i]]]);
+										o['item2'+[i]].text = Where[i].p.split(sptField)[0];
+									}
+									if(int(Where[i].s) == 0)
+										w += 1;
+									break;
+								case 2://date
+									if(int(Where[i].s) == 0)
+									{
+										o['op'+[i]] = new ComboBox;
+										o['op'+[i]].id = 'op'+[i];
+										o['op'+[i]].width = 70;
+										o['op'+[i]].left = 90+len;
+										o['op'+[i]].dataProvider = OperatorDate;
+										o['op'+[i]].top = w;
+										grpWhere.addElement(o['op'+[i]]);
+										parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+										o['op'+[i]].selectedIndex = 0;
+									}
+									
+									o['item'+[i]] = new DateField;
+									o['item'+[i]].id = 'item'+[i];
+									o['item'+[i]].width = Where[i].w;
+									o['item'+[i]].left = 170+len;
+									// terjemahkan value
+									// jika value masih berupa string maka di default tanggal sekarang
+									m.a = Where[i].p.split(sptField)
+									if(m.a.length == 2)
+									{
+										switch(int(m.a[0]))
+										{
+											// Default tanggal sekarang
+											case 0:m.d = parentApplication.DefaultTanggal;break;
+											// Default Awal Bulan
+											case 1:m.d = "01"+parentApplication.DefaultTanggal.slice(2, 10);break;
+											// Default Akhir Bulan
+											case 2: 
+												m.d = parentApplication.DefaultTanggal;
+												m.s = parentApplication.kelasku.getDayCount(m.d.slice(6, 10), (m.d.slice(3, 4)+1))
+												m.d = m.s+m.d.slice(2, 10);
+												break;
+											// Default kosong
+											case 3:m.d = "";break;
+										}
+										switch(int(m.a[1]))
+										{
+											// Default tanggal sekarang
+											case 0:m.d2 = parentApplication.DefaultTanggal;break;
+											// Default Awal Bulan
+											case 1:m.d2 = "01"+parentApplication.DefaultTanggal.slice(2, 10);break;
+											// Default Akhir Bulan
+											case 2:
+												m.d2 = parentApplication.DefaultTanggal;
+												m.s = parentApplication.kelasku.getDayCount(m.d2.slice(6, 10), (m.d2.slice(3, 4)+1))
+												m.d2 = m.s+m.d2.slice(2, 10);
+												break;
+											// Default kosong
+											case 3:m.d2 = "";break;
+										}
+									}else{
+										m.d = "01"+parentApplication.DefaultTanggal.slice(2, 10);
+										m.d2 = "01"+parentApplication.DefaultTanggal.slice(2, 10);
+									}
+									o['item'+[i]].text = m.d;
+									o['item'+[i]].top = w;
+									grpWhere.addElement(o['item'+[i]]);
+									parentApplication.F_DateFieldStandard([o['item'+[i]]]);
+									
+									if(int(Where[i].s) == 1)
+									{
+										o['item'+[i]].left = 90+len;
+										
+										o['item2'+[i]] = new DateField;
+										o['item2'+[i]].id = 'item2'+[i];
+										o['item2'+[i]].width = Where[i].w;
+										o['item2'+[i]].left = 280+len;
+										o['item2'+[i]].text = m.d2;
+										o['item2'+[i]].top = w;
+										grpWhere.addElement(o['item2'+[i]]);
+										parentApplication.F_DateFieldStandard([o['item2'+[i]]]);
+									}
+									if(int(Where[i].s) == 0)
+										w += 1;
+									break;
+								case 3://combobox
+									o['item'+[i]] = new ComboBox;
+									o['item'+[i]].id = 'item'+[i];
+									o['item'+[i]].width = Where[i].w;
+									o['item'+[i]].left = 90+len;
+									o['item'+[i]].dataProvider = new ArrayCollection;
+									a = Where[i].p.split('|')[1].split('▲');
+									for(j=0;j<a.length;j++)
+										o['item'+[i]].dataProvider.addItem({l:a[j].split(sptField)[0], v:a[j].split(sptField)[1]});
+									o['item'+[i]].top = w;
+									grpWhere.addElement(o['item'+[i]]);
+									parentApplication.F_ComboBoxStandard([o['item'+[i]]]);
+									o['item'+[i]].selectedIndex = int(Where[i].p.split('|')[0]);
+									
+									if(int(Where[i].s) == 1)
+									{
+										o['item'+[i]].left = 90+len;
+										
+										o['item2'+[i]] = new ComboBox;
+										o['item2'+[i]].id = 'item2'+[i];
+										o['item2'+[i]].width = Where[i].w;
+										o['item2'+[i]].left = 280+len;
+										o['item2'+[i]].dataProvider = new ArrayCollection;
+										a = Where[i].p.split('|')[1].split('▲');
+										for(j=0;j<a.length;j++)
+											o['item2'+[i]].dataProvider.addItem({l:a[j].split(sptField)[0], v:a[j].split(sptField)[1]});
+										o['item2'+[i]].top = w;
+										grpWhere.addElement(o['item2'+[i]]);
+										parentApplication.F_ComboBoxStandard([o['item2'+[i]]]);
+										o['item2'+[i]].selectedIndex = int(Where[i].p.split('|')[0]);
+									}
+									w += 1;
+									break;
+								case 4: //Angka
+									// membuat operator jika buka s.d
+									if(int(Where[i].s) == 0)
+									{
+										o['op'+[i]] = new ComboBox;
+										o['op'+[i]].id = 'op'+[i];
+										o['op'+[i]].width = 70;
+										o['op'+[i]].left = 90+len;
+										o['op'+[i]].dataProvider = OperatorAngka;
+										o['op'+[i]].top = w;
+										grpWhere.addElement(o['op'+[i]]);
+										parentApplication.F_ComboBoxStandard([o['op'+[i]]]);
+										o['op'+[i]].selectedIndex = 0;
+									}
+									
+									o['item'+[i]] = new TextInput;
+									o['item'+[i]].id = 'item'+[i];
+									o['item'+[i]].width = Where[i].w;
+									o['item'+[i]].left = 170+len;
+									o['item'+[i]].text = Where[i].p;
+									o['item'+[i]].top = w;
+									o['item'+[i]].restrict = parentApplication.m.nfNominal.decimalSeparator+"0-9\\-";
+									grpWhere.addElement(o['item'+[i]]);
+									parentApplication.F_SetNavigasiKeyboard([o['item'+[i]]]);
+									
+									// jika s.d
+									if(int(Where[i].s) == 1)
+									{
+										o['item'+[i]].left = 90+len;
+										 
+										o['item2'+[i]] = new TextInput;
+										o['item2'+[i]].id = 'item2'+[i];
+										o['item2'+[i]].width = Where[i].w;
+										o['item2'+[i]].left = 280+len;
+										o['item2'+[i]].text = Where[i].p;
+										o['item2'+[i]].top = w;
+										o['item2'+[i]].restrict = parentApplication.m.nfNominal.decimalSeparator+"0-9\\-";
+										grpWhere.addElement(o['item2'+[i]]);
+										parentApplication.F_SetNavigasiKeyboard([o['item2'+[i]]]);
+									}
+									if(int(Where[i].s) == 0)
+										w += 1;
+									break;
+							}
+						}
+						
+						var datasplit:Array, datasplit2:Array;
+						
+						// order by
+						o.arr = new ArrayCollection;
+						for(i=0;i<OrderBy.property.length;i++)
+						{
+							o.arr.addItem({l:OrderBy.property[i].l, v:OrderBy.property[i].f});
+						}
+						o.sort = new ArrayCollection;
+						o.sort.addItem({l:"ASC"});
+						o.sort.addItem({l:"DESC"});
+						w = 0;
+						datasplit = OrderBy.id.split("|");
+						if(datasplit.length == 1)
+							datasplit[0] = OrderBy.id;
+						else 
+							datasplit2 = datasplit[1].split(parentApplication.sptField);
+						for(i=0;i<datasplit[0];i++)
+						{
+							o['itemo'+[i]] = new ComboBox;
+							o['itemo'+[i]].id = 'itemo'+[i];
+							o['itemo'+[i]].width = 153;
+							o['itemo'+[i]].left = 20;
+							o['itemo'+[i]].dataProvider = o.arr;
+							w += 21;
+							o['itemo'+[i]].top = w;
+							grpOrderBy.addElement(o['itemo'+[i]]);
+							parentApplication.F_ComboBoxStandard([o['itemo'+[i]]]);
+							if(datasplit.length == 2)
+								o['itemo'+[i]].selectedIndex = (datasplit2[i]-1);
+							else
+								o['itemo'+[i]].selectedIndex = -1;
+							
+							o['itemo2'+[i]] = new ComboBox;
+							o['itemo2'+[i]].id = 'itemo2'+[i];
+							o['itemo2'+[i]].width = 100;
+							o['itemo2'+[i]].left = 180;
+							o['itemo2'+[i]].dataProvider = o.sort;
+							o['itemo2'+[i]].top = w;
+							w += 1;
+							grpOrderBy.addElement(o['itemo2'+[i]]);
+							parentApplication.F_ComboBoxStandard([o['itemo2'+[i]]]);
+							o['itemo2'+[i]].selectedIndex = 0;
+						}
+						
+						// group by
+						o.arr2 = new ArrayCollection;
+						for(i=0;i<GroupBy.property.length;i++)
+						{
+							o.arr2.addItem({l:GroupBy.property[i].l, v:GroupBy.property[i].f});
+						}
+						w = 0;
+						datasplit = GroupBy.id.split("|");
+						if(datasplit.length == 1)
+							datasplit[0] = GroupBy.id;
+						else
+							datasplit2 = datasplit[1].split(parentApplication.sptField);
+						for(i=0;i<datasplit[0];i++)
+						{
+							o['itemb'+[i]] = new ComboBox;
+							o['itemb'+[i]].id = 'itemb'+[i];
+							o['itemb'+[i]].width = 153;
+							o['itemb'+[i]].left = 20;
+							o['itemb'+[i]].dataProvider = o.arr2;
+							w += 21;
+							o['itemb'+[i]].top = w;
+							w += 1;
+							grpGroupBy.addElement(o['itemb'+[i]]);
+							parentApplication.F_ComboBoxStandard([o['itemb'+[i]]]);
+							if(datasplit.length == 2)
+							{
+								o['itemb'+[i]].selectedIndex = (datasplit2[1]-1);
+							}
+							else
+								o['itemb'+[i]].selectedIndex = -1;
+						}
+						grpWhere.validateNow();
+						grpOrderBy.validateNow();
+						grpGroupBy.validateNow();
+						w = 80;
+						grpWhere.top = w;
+						w += 10+grpWhere.contentHeight;
+						grpOrderBy.top = w;
+						w += 10+grpOrderBy.contentHeight;
+						grpGroupBy.top = w;
+						grpWhere.left = 10;
+						grpOrderBy.left = 10;
+						grpGroupBy.left = 10;
+						grpWhere.visible = true;
+						grpOrderBy.visible = true;
+						grpGroupBy.visible = true;
+						return;
+					}
+					abc();
+				}
+				
+				function TextfocusInHandler(event:FocusEvent):void
+				{
+					event.currentTarget.text = o[event.currentTarget.id.split("item2").join("item")].text;
+				}
+				
+				function ReuqiredLabel():void
+				{
+					if(Where[i].hasOwnProperty('r'))
+						if(Where[i].r == '1')
+					FlexGlobals.topLevelApplication.F_RequiredLabel([o['l'+i]]);
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				var a:Array;
+				for(i=0;i<Where.length;i++)
+				{
+					if(('item'+[i]) == target)
+					{
+						a = Where[i].p.split(sptField);
+						paket = a[1];
+						if(String(a[3]).length > 0)
+							wsfilter = a[3]+" AND ";
+						wsfilter += a[2]+" = '"+o['item'+[i]].text+"'";
+						csfilter = a[3];
+						if(a.length > 4)
+							sort = a[4];
+						if(sort == "0")
+							sort = "";
+						break; 
+					}else if('item2'+[i] == target)
+					{
+						a = Where[i].p.split(sptField);
+						paket = a[1];
+						if(String(a[3]).length > 0)
+							wsfilter = a[3]+" AND ";
+						wsfilter += a[2]+" = '"+o['item2'+[i]].text+"'";
+						csfilter = a[3];
+						if(a.length > 4)
+							sort = a[4];
+						if(sort == "0")
+							sort = "";
+						break;
+					}
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var m:Object, s:String = parentApplication.subject, i:int;
+				if(parentApplication.wsSuccess )
+				{
+					if(parentApplication.wsArrUtama.getItemAt.length >= 0)
+						m = parentApplication.wsArrUtama.getItemAt(0);
+					for(i=0;i<Where.length;i++)
+					{
+						if(('item'+[i]) == s)
+						{
+							o['item'+[i]].text = m[Where[i].p.split(sptField)[2]];
+							o['item'+[i]].selectRange(0, o['item'+[i]].text.length);
+							if(o.hasOwnProperty('item2'+[i]))
+								o['item2'+[i]].text = m[Where[i].p.split(sptField)[2]];
+							break;
+						}else if('item2'+[i] == s)
+						{
+							o['item2'+[i]].text = m[Where[i].p.split(sptField)[2]];
+							o['item2'+[i]].selectRange(0, o['item2'+[i]].text.length);
+							break;
+						}
+					}
+				}else{
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) )
+					{
+					}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				for(i=0;i<Where.length;i++)
+				{
+					if(('item'+[i]) == target)
+					{
+						o['item'+[i]].text = '';
+						if(o.hasOwnProperty('item2'+[i]))
+						o['item2'+[i]].text = '';
+						break;
+					}else if(('item2'+[i]) == target)
+					{
+						o['item2'+[i]].text = '';
+						break;
+					}
+				}
+			}
+			
+			protected function cmbreport_changeHandler(event:IndexChangeEvent):void
+			{
+				o.d = cmbreport.dataProvider[cmbreport.selectedIndex].rid;
+				if(parentApplication.m.laporan.hasOwnProperty(o.i))
+				{
+					if(parentApplication.m.laporan[o.i].hasOwnProperty(o.d))
+					{
+						Where = parentApplication.m.laporan[o.i][o.d][0].property;
+						OrderBy = parentApplication.m.laporan[o.i][o.d][1];
+						GroupBy = parentApplication.m.laporan[o.i][o.d][2];
+						f_add();
+					}else{
+						grpWhere.removeAllElements();
+						grpOrderBy.removeAllElements();
+						grpGroupBy.removeAllElements();
+					}
+				}else{
+					grpWhere.removeAllElements();
+					grpOrderBy.removeAllElements();
+					grpGroupBy.removeAllElements();
+				}
+			
+			}
+			
+		]]>
+	</fx:Script> 
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Cetak" icon="tbprint"/>
+					<topmenu label="Export To" icon="tbexport">
+						<topmenu label="Excel" icon="tbexcel" data="1"/>
+						<topmenu label="HTML" icon="tbhtml" data="2"/>
+						<topmenu label="Doc" icon="tbword" data="3"/>
+						<topmenu label="Txt" icon="tbtxt" data="4"/>
+						<topmenu label="Jpg" icon="tbtif" data="5"/>
+						<topmenu label="Excel Data" icon="tbexcel" data="6"/>
+					</topmenu>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>	
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:Label x="10" y="44" text="Report : "/>
+	<s:ComboBox id="cmbreport" left="55" top="40" width="350" change="cmbreport_changeHandler(event)"/>
+	<s:Group id="grpWhere" visible="false"/>
+	<s:Group id="grpOrderBy" visible="false"/>
+	<s:Group id="grpGroupBy" visible="false"/>
+</s:Module>

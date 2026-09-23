@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:net="flash.net.*"
+		  width="700" height="400" creationComplete="f_Persiapan()"
+		  keyDown="f_keydown(event)">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			
+			public var module:String,inputuser:int,inputtgl:String,modifikasiuser:int,modifikasitgl:String
+			public var o:Object = {}, no:int, i:int, jum:int, arr:ArrayCollection, urutan:int, moduleid:int;
+			protected var sumber:String, idtransaksi:String, id2:String = '';
+			
+			public function f_Persiapan():void{
+				sumber = FlexGlobals.topLevelApplication.m.ArrFilter[0];
+				idtransaksi = FlexGlobals.topLevelApplication.m.ArrFilter[1];
+				moduleid = FlexGlobals.topLevelApplication.m.mod[parentApplication.idmodcurr].moduleid;
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbTambah);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbHapus);
+				FlexGlobals.topLevelApplication.F_RegGrid(0, 7, [dg1], 'transaksi');
+				o.FormFilter = FlexGlobals.topLevelApplication.FormFilter;
+				if(o.FormFilter == 'master'){
+					cmbDefault.dataProvider = new ArrayCollection;
+					FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbDefault]);
+					dg1.top = 70; 
+					lblDefault.visible = true;
+					cmbDefault.visible = true;
+					id2 = FlexGlobals.topLevelApplication.m.ArrFilter[2];
+					if(id2 != null || id2 != "null")
+						id2 = "";
+					if(id2.length == 0)
+						FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M1_FilesSearch', 0, 0, 'fsumber = "'+sumber+'" AND fidtransaksi = "'+idtransaksi+'"', 'finputtgl');
+					else
+						FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M1_FilesSearch', 0, 0, 'fsumber = "'+sumber+'" AND fidtransaksi = "'+idtransaksi+'" AND fidtransaksi2 = "'+id2+'"', 'finputtgl');
+				}else
+					FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M'+moduleid+'_FilesSearch', 0, 0, 'fsumber = "'+sumber+'" AND fidtransaksi = "'+idtransaksi+'"', 'finputtgl');
+				function f_mbSimpan():void{
+					f_simpan();
+				}
+				
+				function f_mbTambah():void{
+					FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg1);
+					if(dg1.dataProvider[0].fnamafile != '')
+						FlexGlobals.topLevelApplication.F_acAdd(dg1);
+					f_browseFile();
+				}
+				
+				function f_mbHapus():void{
+					f_hapus();
+				}
+			}
+			
+			protected function f_simpan():void{
+				var ob:Object, a:Array, s:String = '';
+				FlexGlobals.topLevelApplication.F_dgRefresh(dg1);
+				a = [];
+				for(i=0;i<dg1.dataProviderLength;i++){
+					if(dg1.dataProvider[i].edit == 'ya' && dg1.dataProvider[i].fnamafile_d == 0){
+						dg1.dataProvider[i].edit = '';
+						if(o.FormFilter == 'master'){
+							a[a.length] = [sumber, dg1.dataProvider[i].fnamafile, dg1.dataProvider[i].fidtransaksi, dg1.dataProvider[i].fidtransaksi2, dg1.dataProvider[i].fcatatan, dg1.dataProvider[i].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(dg1.dataProvider[i].ftanggal), dg1.dataProvider[i].finputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(dg1.dataProvider[i].ftanggal), dg1.dataProvider[i].fdefault];
+						}else
+							a[a.length] = [sumber, dg1.dataProvider[i].fidtransaksi, dg1.dataProvider[i].fnamafile, dg1.dataProvider[i].fcatatan, dg1.dataProvider[i].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(dg1.dataProvider[i].ftanggal), dg1.dataProvider[i].finputuser, FlexGlobals.topLevelApplication.F_tglFormatDB(dg1.dataProvider[i].ftanggal)];
+					}
+				}
+				s = FlexGlobals.topLevelApplication.F_splitWs(a);
+				o.e = true;
+				if(s == '')
+					f_simpan2();
+				else{
+					o.e = false;
+					FlexGlobals.topLevelApplication.F_wsSimpan('simpan', 'M'+moduleid+'_FilesSimpan', parentApplication.userid, true, s);
+				}
+				return;
+			}
+			
+			protected function f_simpan2():void{
+				FlexGlobals.topLevelApplication.vpFocusEvent = true;
+				FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg1);
+				if(dg1.dataProvider[0].fnamafile != '' || dg1.dataProvider[0].fnamafile != undefined){
+					jum = 0;
+					arr = new ArrayCollection;
+					for(i=0;i<dg1.dataProviderLength;i++)
+						if(dg1.dataProvider[i].status == 'Belum'){
+							jum++;
+							arr.addItem(dg1.dataProvider[i]);
+						}
+					if(jum == 0){
+						//if(o.edit )
+							//Alert.show(FlexGlobals.topLevelApplication.l('File sudah terupload semua'), FlexGlobals.topLevelApplication.l('Validasi'));
+						return;
+					}
+					no = 0;
+					FlexGlobals.topLevelApplication.F_openProgressUpload(jum);
+					FlexGlobals.topLevelApplication.F_sendProgress(arr[no].fnamafile, true);
+					if(o.FormFilter == 'master'){
+						FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, sumber, arr[no].type, arr[no].file, idtransaksi, arr[no].fnamafile, arr[no].fcatatan, arr[no].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(arr[no].ftanggal), 0, 0, '', 'finputtgl', id2, arr[no].fdefault);
+					}else
+						FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, sumber, arr[no].type, arr[no].file, idtransaksi, arr[no].fnamafile, arr[no].fcatatan, arr[no].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(arr[no].ftanggal), 0, 0, '', 'finputtgl');
+				}else Alert.show(FlexGlobals.topLevelApplication.l('DataGrid Kosong', FlexGlobals.topLevelApplication.l('Informasi')));
+
+			} 
+			
+			protected function f_hapus():void{
+				if(dg1.selectedCell != null){
+					no = dg1.selectedCell.rowIndex;
+					if(o.FormFilter == 'master')
+						FlexGlobals.topLevelApplication.F_wsDelete('tampil', 'M'+moduleid+'_FilesDelete', FlexGlobals.topLevelApplication.userid, dg1.dataProvider[no].fsumber+'△'+dg1.dataProvider[no].fidtransaksi+'△'+dg1.dataProvider[no].fnamafile+'△'+id2, 0, 0, '', 'finputtgl');
+					else
+						FlexGlobals.topLevelApplication.F_wsDelete('tampil', 'M'+moduleid+'_FilesDelete', FlexGlobals.topLevelApplication.userid, dg1.dataProvider[no].fsumber+'△'+dg1.dataProvider[no].fidtransaksi+'△'+dg1.dataProvider[no].fnamafile, 0, 0, '', 'finputtgl');
+					if(dg1.dataProvider[no].fnamafile_d == 1){
+						dg1.dataProvider.removeItemAt(no)
+					}
+				}else Alert.show(FlexGlobals.topLevelApplication.l('Pilih data dulu', FlexGlobals.topLevelApplication.l('Informasi')));
+			}
+			
+			public function f_keydown(e:KeyboardEvent):void{
+				switch(e.keyCode){
+					case Keyboard.F12:
+						FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg1);
+						FlexGlobals.topLevelApplication.F_acAdd(dg1);
+						f_browseFile();
+						break;
+					case Keyboard.N:
+						if(e.ctrlKey){
+							FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg1);
+							FlexGlobals.topLevelApplication.F_acAdd(dg1);
+							f_browseFile();
+						}
+						break;
+//					case Keyboard.D:
+//						if(e.ctrlKey)
+//							f_hapus();
+//						break;
+					case Keyboard.DELETE:
+						o.arr = new ArrayCollection([dg1.dataProvider[dg1.selectedCell.rowIndex]]);
+						break;
+					case Keyboard.S:
+						if(e.ctrlKey)
+							f_simpan();
+						break;
+				}
+			}
+			
+			public function f_kondisiAwal():void{
+				
+			}
+			
+			public function f_wsHasil():void
+			{
+				if(FlexGlobals.topLevelApplication.wsSuccess ){
+					if(FlexGlobals.topLevelApplication.subject == 'simpan'){
+						f_simpan2();
+					}else if(FlexGlobals.topLevelApplication.subject == 'tampil'){
+						dg1.dataProvider = FlexGlobals.topLevelApplication.wsArrUtama;
+						for(i=0;i<dg1.dataProviderLength;i++){
+							dg1.dataProvider[i].status = 'sudah';
+							dg1.dataProvider[i].fnamafile_d = 0;
+							dg1.dataProvider[i].fdownload_d = 1;
+							FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg1, i);
+						}
+						dg1.setSelectedCell(dg1.dataProviderLength-1, 1);
+						parentApplication.F_dgscrolling(dg1);
+						
+						cmbDefault.dataProvider = new ArrayCollection;
+						for(i=0;i<dg1.dataProviderLength;i++){
+							if(int(dg1.dataProvider[i].fdefault) == 1)
+								cmbDefault.selectedIndex = i;
+							cmbDefault.dataProvider.addItem({l:dg1.dataProvider[i].fnamafile});
+						}
+					}else if(FlexGlobals.topLevelApplication.subject == 'Uploading'){
+						no++;
+						if(no == arr.length){
+							FlexGlobals.topLevelApplication.subject = 'tampil';
+							f_wsHasil();
+							FlexGlobals.topLevelApplication.F_sendProgress('end', true);
+							return;
+						}
+						dg1.dataProvider[arr[no].no-1].status = 'sudah';
+						FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg1, arr[no].no-1);
+						FlexGlobals.topLevelApplication.F_sendProgress(arr[no].fnamafile, true);
+						if(o.FormFilter == 'master')
+							FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, sumber, arr[no].type, arr[no].file, idtransaksi, arr[no].fnamafile, arr[no].fcatatan, arr[no].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(arr[no].ftanggal), 0, 0, '', 'finputtgl', id2, arr[no].fdefault);
+						else
+							FlexGlobals.topLevelApplication.F_wsUpload('Uploading', 'UploadFile', FlexGlobals.topLevelApplication.userid, sumber, arr[no].type, arr[no].file, idtransaksi, arr[no].fnamafile, arr[no].fcatatan, arr[no].fukuranfile, FlexGlobals.topLevelApplication.F_tglFormatDB(arr[no].ftanggal), 0, 0, '', 'finputtgl');
+					}
+				}else{
+					if(FlexGlobals.topLevelApplication.subject == 'tampil'){
+						dg1.dataProvider.removeAll();
+						FlexGlobals.topLevelApplication.F_acAdd(dg1);
+					}else if(FlexGlobals.topLevelApplication.subject == 'Uploading'){
+						Alert.show('Upload Failed');
+						FlexGlobals.topLevelApplication.F_sendProgress(arr[no].fnamafile, false);
+					}
+				}
+			}
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				switch (components){
+					case "uploadfile":
+						if(dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile_d == 1)
+							f_browseFile();
+						break;
+					case "date":
+						dg1.dataProvider[dg1.selectedCell.rowIndex].edit = 'ya';
+						break;
+					case "download":
+						if(dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile_d == 0)
+						navigateToURL(new URLRequest("../files/f"+moduleid+"/"+sumber+"/"+dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile), "_blank");
+						break;
+				}
+			}
+			
+			private function f_browseFile():void
+			{
+				var arr:Array = [];
+				arr.push(new FileFilter("all","*.*"));
+				fileReference.browse(arr);
+			}
+			
+			private function fileReference_select(evt:Event):void {
+				if(fileReference.size > 2000000){Alert.show(FlexGlobals.topLevelApplication.l('Kapasitas File tidak boleh lebih dari 2 MB !', 1), FlexGlobals.topLevelApplication.l('Informasi'));}
+				else {fileReference.load();}
+			}
+			
+			private function fileReference_complete(evt:Event):void {
+				f_hasil(fileReference.size, fileReference.name);
+			}
+			
+			public function f_hasil(size:Number, namafile:String):void
+			{
+				var satuan:String; var sizefile:String;
+				
+				if (size >= 1000000){ size=size/1000000; satuan = 'MB';}
+				else if (size >= 1000){size=size/1000; satuan = 'KB';}	
+				else{ satuan = 'Byte';}
+				
+				sizefile = FlexGlobals.topLevelApplication.m.nfNominal.format(size)+" "+satuan;
+				//Set Nilai dg
+				dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile = namafile;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile_d = 1;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].fdownload_d = 0;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].fukuranfile = sizefile;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].fcatatan = '';
+				dg1.dataProvider[dg1.selectedCell.rowIndex].ftanggal = FlexGlobals.topLevelApplication.DefaultTanggal;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].file =  fileReference.data;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].type =  fileReference.type;
+				dg1.dataProvider[dg1.selectedCell.rowIndex].status = 'Belum';
+				if(o.FormFilter == 'master')
+					dg1.dataProvider[dg1.selectedCell.rowIndex].fdefault = 0;
+				dg1.dataProvider.setItemAt(dg1.dataProvider[dg1.selectedCell.rowIndex], dg1.selectedCell.rowIndex);
+				
+				cmbDefault.dataProvider = new ArrayCollection;
+				for(i=0;i<dg1.dataProviderLength;i++){
+					if(int(dg1.dataProvider[i].fdefault) == 1)
+						cmbDefault.selectedIndex = i;
+					cmbDefault.dataProvider.addItem({l:dg1.dataProvider[i].fnamafile});
+				}
+			}
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{
+				o.a = column.split('|');
+				if(column == 'add' || o.a[0] == 'add')
+				{
+					if(o.a.length > 1)
+					{
+						dg1.dataProvider[o.a[1]].fdownload_d = 0;
+						dg1.dataProvider[o.a[1]].fnamafile_d = 1;
+					}
+					else
+					{
+						dg1.dataProvider[dg1.dataProviderLength-1].fdownload_d = 0;
+						dg1.dataProvider[dg1.dataProviderLength-1].fnamafile_d = 1;
+					}
+				}
+				else if(column == 'del'){
+					cmbDefault.dataProvider = new ArrayCollection;
+					for(i=0;i<dg1.dataProviderLength;i++){
+						if(int(dg1.dataProvider[i].fdefault) == 1)
+							cmbDefault.selectedIndex = i;
+						cmbDefault.dataProvider.addItem({l:dg1.dataProvider[i].fnamafile});
+					}
+					no = 0;
+					if(o.arr[no].fnamafile_d != 1)
+						FlexGlobals.topLevelApplication.F_wsDelete('tampil', 'M'+moduleid+'_FilesDelete', FlexGlobals.topLevelApplication.userid, o.arr[no].fsumber+'△'+o.arr[no].fidtransaksi+'△'+o.arr[no].fnamafile+'△'+id2, 0, 0, '', 'finputtgl');
+				}else if(column == 'fcatatan' || column == 'ftanggal')
+					if(dg1.dataProvider[dg1.selectedCell.rowIndex].fnamafile_d == 0){
+						dg1.dataProvider[dg1.selectedCell.rowIndex].edit = 'ya';
+					}
+			}
+			
+			protected function cmbDefault_changeHandler(event:IndexChangeEvent):void
+			{
+				for(i=0;i<dg1.dataProviderLength;i++)
+					dg1.dataProvider[i].fdefault = 0;
+				if(cmbDefault.selectedIndex >= 0)
+					dg1.dataProvider[cmbDefault.selectedIndex].fdefault = 1;
+				for(i=0;i<dg1.dataProviderLength;i++)
+					dg1.dataProvider[i].edit = 'ya';
+				FlexGlobals.topLevelApplication.F_dgRefresh(dg1);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan" icon="tbsave" enabled="true"/>
+					<topmenu label="Tambah" icon="tbadd" enabled="true"/>
+					<topmenu label="Hapus" icon="tbdelete" enabled="true"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+		<net:FileReference id="fileReference" select="fileReference_select(event)" complete="fileReference_complete(event)" />
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:Label id="lblDefault" x="10" y="43" text="Default" visible="false"/>
+	<s:ComboBox id="cmbDefault" x="57" y="38" visible="false" change="cmbDefault_changeHandler(event)"/>
+	<s:DataGrid id="dg1" left="0" right="0" top="40" bottom="0"/>
+</s:Module>

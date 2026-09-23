@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="158" 
+		  creationComplete="f_persiapan();">
+	<fx:Script source="KeyNavigator.as"/>
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			
+			public var vUserId:int, vUserIdEdit:int=0, vDefDt:String, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String, kodepenyusutan:String='';
+			public var vKeyOut:Boolean = true, p:Object, o:Object = {}, dg:DataGrid;
+			
+			private function f_persiapan():void{
+				p = parentApplication;
+				dg = p.m[p.idmodcurr].child.dg;
+				FlexGlobals.topLevelApplication.F_TranslateLabel([lblkode, lblnama, lblmetode, lblumur, lblpenyusutan]);
+				FlexGlobals.topLevelApplication.F_RequiredLabel([lblkode, lblnama, lblmetode, lblumur, lblpenyusutan]);
+				F_TextInputNumberOnlyMode([txtumur, txtpenyusutan]);
+				FlexGlobals.topLevelApplication.F_txtInOut(txtkode,'','M7_Asset_Category_TaxCekId');
+				F_txtpencarian([txtmetode]);
+				
+				parentApplication.F_configMasterInput();
+				F_SetNavigasiKeyboard([txtkode, txtnama]);
+				if(p.FormFilter != ''){
+					isUpdate = true;
+					txtkode.enabled = false;
+					o.txtumur = dg.dataProvider[dg.selectedCell.rowIndex].actumur;
+					o.txtpenyusutan = dg.dataProvider[dg.selectedCell.rowIndex].actpenyusutan;
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].actkode;
+					txtnama.text = dg.dataProvider[dg.selectedCell.rowIndex].actnama;
+					txtumur.text = parentApplication.m.nfNumber.format(o.txtumur);
+					txtpenyusutan.text = parentApplication.m.nfNumber.format(o.txtpenyusutan);
+					txtmetode.text = dg.dataProvider[dg.selectedCell.rowIndex].actmetodenama;
+					kodepenyusutan = dg.dataProvider[dg.selectedCell.rowIndex].actmetode;
+					vUserIdEdit = parentApplication.userid;
+					//if (dg.dataProvider[dg.selectedCell.rowIndex].itaktif=="0"){chkaktif.selected = false;}else {chkaktif.selected = true;}
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				parentApplication.F_KosongkanText([txtkode,txtnama,txtumur,txtpenyusutan]);
+				kodepenyusutan = FlexGlobals.topLevelApplication.getSetting(7, 'aset', 'Metode');
+				txtmetode.text = FlexGlobals.topLevelApplication.getSetting(7, 'aset', 'MetodeNama');
+				o.txtumur = FlexGlobals.topLevelApplication.getSetting(7, 'aset', 'Umur');
+				o.txtpenyusutan = FlexGlobals.topLevelApplication.getSetting(7, 'aset', 'Tarif');
+				txtumur.text = parentApplication.m.nfNumber.format(o.txtumur);
+				txtpenyusutan.text = parentApplication.m.nfNumber.format(o.txtpenyusutan);
+				//chkaktif.selected = true;
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtmetode':
+						paket = 'CdM7_Depreciation_Category';
+						wsfilter = 'aktif=1 AND nama ="'+txtmetode.text.split('"').join('\\"')+'"';
+						csfilter = 'aktif=1';
+						sort = 'kode asc';
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var obj:Object, s:String = parentApplication.subject;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){				
+						case 'txtmetode':
+							obj = parentApplication.wsArrUtama.getItemAt(0);
+							txtmetode.text = obj.nama;
+							kodepenyusutan = obj.kode;
+							break;
+					}
+				}else{					
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtmetode':txtmetode.text=''; kodepenyusutan = ''; break;
+				}
+			}
+			
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtkode, n:'Kode', e:'Code'}, {t:txtnama, n:'Nama', e:'Name'}]) == true){
+					/* actkode, actnama, actmetode, actumur, actpenyusutan, actinputuser, actinputtgl, 
+					actmodifikasiuser, actmodifikasitgl, actcustomtext1, actcustomtext2, actcustomtext3, actcustomtext4, actcustomtext5, 
+        			actcustomint1, actcustomint2, actcustomint3, actcustomdbl1, actcustomdbl2, actcustomdbl3, actcustomdate1, 
+        			actcustomdate2, actcustomdate3 */
+					arr = [txtkode.text,txtnama.text,kodepenyusutan,o.txtumur,o.txtpenyusutan,vUserId,
+						vDefDt,vUserIdEdit,vDefDt,'','','','','',0,0,0,0,0,0,vDefDt,vDefDt,vDefDt];
+					utama = parentApplication.F_splitArrayToString(arr);
+					parentApplication.F_MasterSimpan(baru, 'M7_Asset_Category_TaxSimpan', utama, 'actkode')
+					vUserIdEdit = 0;
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/savenew.png")]  public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>	
+	<s:Label id="lblkode" left="10" top="46" text="Kode"/>
+	<s:Label id="lblnama" left="10" top="68" text="Nama"/>
+	<s:Label id="lblmetode" left="10" top="89" text="Metode"/>
+	<s:Label id="lblumur" left="10" top="110" text="Umur Ekonomis"/>
+	<s:Label id="lblpenyusutan" left="10" top="130" text="Tarif Penyusutan"/>
+	<s:Label y="130" left="233" height="12" text="%"/>
+	<s:Label y="110" left="233" height="12" text="Bulan"/>
+	<s:TextInput id="txtkode" y="40" left="114" width="116" maxChars="3"/>
+	<s:TextInput id="txtnama" left="114" right="10" top="61"/>
+	<s:TextInput id="txtmetode" left="114" right="170" top="82"/>
+	<s:ComboBox id="cmbmetode" left="114" top="82" width="104" selectedIndex="0" labelField="label" visible="false">
+		<s:ArrayList>
+			<fx:Object label="Garis Lurus" nilai="1"></fx:Object>
+		</s:ArrayList>
+	</s:ComboBox>
+	<s:TextInput id="txtumur" left="114" top="103" width="116" textAlign="right"/>
+	<s:TextInput id="txtpenyusutan" y="124" left="114" width="116" maxChars="50" textAlign="right"/>
+	
+	
+	<!--<s:ComboBox id="cmbmetode" labelField="dbulan" left="396" top="196" selectedIndex="0" width="124" height="13" tabIndex="3" dataProvider="{isicombo}">
+		<s:itemRenderer>
+			<fx:Component>
+				<mx:HBox height="20" top="20" left="10">
+					<s:Label text="{data.dbulan}" width="90%" top="20"/> <mx:VRule/>
+					<s:Label text="{data.dnumber}" width="10%" visible="false" top="20"/> 
+				</mx:HBox>
+			</fx:Component>
+		</s:itemRenderer>
+	</s:ComboBox>-->
+</s:Module>

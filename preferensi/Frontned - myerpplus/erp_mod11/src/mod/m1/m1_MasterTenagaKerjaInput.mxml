@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  creationComplete="f_persiapan();">
+	<fx:Script>
+		<![CDATA[
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.hamcrest.collection.array;
+			
+			import spark.components.DataGrid;
+			import spark.events.IndexChangeEvent;
+			
+			public var vUserId:int, vUserIdEdit:int=0, vDefDt:String, rid:int=0, isUpdate:Boolean=false,vcekId:Boolean=false, arr:Array, vCurr:String;
+			public var vKeyOut:Boolean = true, p:Object, o:Object = {}, dg:DataGrid;
+			
+			private function f_persiapan():void{
+				p = parentApplication;
+				if(p.m[p.idmodcurr].child.hasOwnProperty('dg'))
+					dg = p.m[p.idmodcurr].child.dg;
+				else
+					dg = p.m[p.idmodcurr].child.dghistory;
+				FlexGlobals.topLevelApplication.F_ComboBoxStandard([cmbTipe]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtakunD,txtakunK,txtSatuanWaktu]);
+				chkaktif.label = FlexGlobals.topLevelApplication.l(chkaktif.label);
+				parentApplication.F_TranslateLabel([tkode, tnama, ttipe, takund, takunk, tharga, twaktu, tsatuanwaktu, tcatatan]);
+				FlexGlobals.topLevelApplication.F_TextInputNumberOnlyMode([txtWaktu]);
+				FlexGlobals.topLevelApplication.F_TextInputCurrency([txtHarga]);
+				parentApplication.F_RequiredLabel([tkode, tnama, ttipe, takunk]);
+				parentApplication.F_txtInOut(txtkode,'','M1_Labour_CostCekId');
+				parentApplication.F_configMasterInput();
+				parentApplication.F_SetNavigasiKeyboard([txtkode, txtnama, txtcatatan]);
+				if(p.FormFilter != ''){
+					cmbTipe.dataProvider = new ArrayCollection([{l:'Masuk HPP Barang Jadi'},{l:'Langsung Biaya'}]); 
+					isUpdate = true;
+					txtkode.enabled = false;
+					txtkode.text = dg.dataProvider[dg.selectedCell.rowIndex].lckode;
+					txtnama.text = dg.dataProvider[dg.selectedCell.rowIndex].lcnama;
+					cmbTipe.selectedIndex = dg.dataProvider[dg.selectedCell.rowIndex].lctipe;
+					if(cmbTipe.selectedIndex == 0)tbintang.visible = false;
+					else tbintang.visible = true;
+					txtakunD.text = dg.dataProvider[dg.selectedCell.rowIndex].lcakundebet;
+					txtakunK.text = dg.dataProvider[dg.selectedCell.rowIndex].lcakunkredit;
+					o.txtHarga = dg.dataProvider[dg.selectedCell.rowIndex].lcharga;
+					txtHarga.text = FlexGlobals.topLevelApplication.F_formatNominal(o.txtHarga);
+					txtWaktu.text = dg.dataProvider[dg.selectedCell.rowIndex].lcwaktu;
+					txtSatuanWaktu.text = dg.dataProvider[dg.selectedCell.rowIndex].lcsatuanwaktu;
+					txtcatatan.text = dg.dataProvider[dg.selectedCell.rowIndex].lccatatan;
+					lblNamaAkunD.text = dg.dataProvider[dg.selectedCell.rowIndex].lcakundebetnama;
+					lblNamaAkunK.text = dg.dataProvider[dg.selectedCell.rowIndex].lcakunkreditnama;
+					lblNamaSatuan.text = dg.dataProvider[dg.selectedCell.rowIndex].lcsatuanwaktunama;
+					//rid = dg.dataProvider[dg.selectedCell.rowIndex].iid;
+					vUserIdEdit = parentApplication.userid;
+					if (dg.dataProvider[dg.selectedCell.rowIndex].lcaktif=="0"){chkaktif.selected = false;}else {chkaktif.selected = true;}
+					if(parentApplication.m.ArrFilter != null){
+						mb.menuBarItems[0].enabled = false;
+						mb.menuBarItems[1].enabled = false;
+					}
+				}else f_kondisi_awal();
+			}
+			
+			public function f_kondisi_awal():void
+			{
+				cmbTipe.dataProvider = new ArrayCollection([{l:"Masuk HPP Barang Jadi"},{l:"Langsung Biaya"}]);
+				parentApplication.F_KosongkanText([txtkode, txtnama, txtakunD, txtakunK, txtHarga, txtWaktu, txtSatuanWaktu, txtcatatan, lblNamaAkunD, lblNamaAkunK, lblNamaSatuan]);
+				o.txtHarga = 0;
+				txtHarga.text = FlexGlobals.topLevelApplication.F_formatNominal(o.txtHarga);
+				chkaktif.selected = true;
+				tbintang.visible = false;
+			}
+			
+			public function f_simpan(baru:Boolean):void{
+				var arr:Array, utama:String;
+				if (parentApplication.F_cekKosong([{t:txtkode, n:'Kode', e:'Code'}, {t:txtnama, n:'Nama', e:'Name'}, {t:txtakunK, n:'Akun K', e:'Account'}]) == true){
+					if(cmbTipe.textInput.text == ""){
+						cmbTipe.setFocus();
+						Alert.show("Tipe harus dipilih terlebih dahulu");
+					}
+					else if(cmbTipe.selectedIndex == 1 && txtakunD.text == ""){
+						txtakunD.setFocus();
+						Alert.show("Akun [D] tidak boleh kosong");
+					}
+					else{
+						//akode, anama, acatatan, aaktif, ainputuser, ainputtgl, amodifikasiuser, amodifikasitgl
+						arr = [txtkode.text,txtnama.text,cmbTipe.selectedIndex,txtakunD.text,txtakunK.text,o.txtHarga,Number(txtWaktu.text),
+							txtSatuanWaktu.text,txtcatatan.text,int(chkaktif.selected),vUserId,vDefDt,vUserIdEdit,vDefDt];
+						utama = parentApplication.F_splitArrayToString(arr);
+						parentApplication.F_MasterSimpan(baru, 'M1_Labour_CostSimpan', utama, 'lckode')
+						vUserIdEdit = 0;
+					}
+				}
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtakunD':
+						paket = 'CdM1_Coa';
+						csfilter = 'cgd="d" and caktif = 1';
+						wsfilter = 'cgd="d" and caktif = 1 and cnomor= "'+ txtakunD.text.split('"').join('\\"') +'"';
+						break;
+					case 'txtakunK':
+						paket = 'CdM1_Coa';
+						csfilter = 'cgd="d" and caktif = 1';
+						wsfilter = 'cgd="d" and caktif = 1 and cnomor= "'+ txtakunK.text.split('"').join('\\"') +'"';
+						break;
+					case 'txtSatuanWaktu':
+						paket = 'CdM1_Unit';
+						wsfilter = 'uaktif = 1 AND ukode = "'+txtSatuanWaktu.text.split('"').join('\\"')+'"';
+						csfilter = 'uaktif = 1';
+						sort = "ukode asc";
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = parentApplication.subject;
+				parentApplication.F_configMasterInputHasil();
+				if(parentApplication.wsSuccess == true){
+					switch(s){			
+						case 'txtakunD':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtakunD.text = o.cnomor; 
+							lblNamaAkunD.text = o.cnama;
+							break;
+						case 'txtakunK':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtakunK.text = o.cnomor; 
+							lblNamaAkunK.text = o.cnama;
+							break;
+						case 'txtSatuanWaktu':
+							o = parentApplication.wsArrUtama.getItemAt(0);
+							txtSatuanWaktu.text = o.ukode; 
+							lblNamaSatuan.text = o.unama;
+							break;
+					}
+				}else{					
+					// 9.2 Result WS False		
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							// 9.2.1 Result untuk WS False apa saja
+							case 'txtakunD':parentApplication.F_KosongkanText([txtakunD, lblNamaAkunD]);break;
+							case 'txtakunK':parentApplication.F_KosongkanText([txtakunK, lblNamaAkunK]);break;
+							case 'txtSatuanWaktu':parentApplication.F_KosongkanText([txtSatuanWaktu, lblNamaSatuan]);break;
+						}
+				}
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					case 'txtakunD':parentApplication.F_KosongkanText([txtakunD, lblNamaAkunD]);break;
+					case 'txtakunK':parentApplication.F_KosongkanText([txtakunK, lblNamaAkunK]);break;
+					case 'txtSatuanWaktu':parentApplication.F_KosongkanText([txtSatuanWaktu, lblNamaSatuan]);break;
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/savenew.png")]  public var tbsavenew:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/close.png")]  public var tbclose:Class;
+			
+			protected function cmbTipe_changeHandler(event:IndexChangeEvent):void
+			{
+				if(cmbTipe.selectedIndex == 0)tbintang.visible = false;
+				else tbintang.visible = true;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="tombol">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Simpan Baru" icon="tbsavenew"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Batal" icon="tbclose"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="-1" top="-1" right="1" width="100%" height="30" cornerRadius="0" dataProvider="{tombol}" iconField="@icon" labelField="@label"/>
+	<s:Label id="tkode" left="10" top="46" text="Kode"/>
+	<s:Label id="tnama" left="10" top="68" text="Nama"/>
+	<s:Label id="takund" left="10" top="110" text="Akun [D]"/>
+	<s:Label id="tcatatan" left="10" top="214" text="Catatan"/>
+	<s:TextInput id="txtkode" left="95" top="40" width="149" maxChars="25"/>
+	<s:TextInput id="txtnama" left="95" right="10" top="61" maxChars="100" />
+	<s:ComboBox id="cmbTipe" left="95" top="82" width="166" change="cmbTipe_changeHandler(event)"/>
+	<s:TextInput id="txtakunD" left="95" top="104" width="148" maxChars="100"/>
+	<s:TextInput id="txtakunK" left="95" top="125" width="148" maxChars="100"/>
+	<s:TextInput id="txtHarga" left="95" top="146" width="148" maxChars="100"/>
+	<s:TextInput id="txtWaktu" left="95" top="167" width="148" maxChars="100"/>
+	<s:TextInput id="txtSatuanWaktu" left="95" top="188" width="148" maxChars="100"/>
+	<s:TextArea id="txtcatatan" left="95" right="10" top="209" bottom="10" maxChars="250"/>	
+	<s:CheckBox id="chkaktif" y="41" left="250" label="Aktif" selected="true"/>
+	<s:Label id="ttipe" left="10" top="89" text="Tipe"/>
+	<s:Label id="takunk" left="10" top="131" text="Akun [K]"/>
+	<s:Label id="tharga" left="10" top="152" text="Harga"/>
+	<s:Label id="twaktu" left="10" top="173" text="Waktu"/>
+	<s:Label id="tsatuanwaktu" left="10" top="194" text="Satuan Waktu"/>
+	<s:Label id="lblNamaAkunD" left="268" right="10" top="110"/>
+	<s:Label id="lblNamaAkunK" left="268" right="10" top="131"/>
+	<s:Label id="lblNamaSatuan" left="268" right="10" top="192"/>
+	<s:Label left="57" id="tbintang" top="108" color="red" text="*"/>
+</s:Module>

@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()">
+	
+	<fx:Script>
+		<![CDATA[
+			import flashx.textLayout.factory.TruncationOptions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.MenuEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.GridSelectionEvent;
+			
+			public var arr:Array, obj:Object={}, o:Object = {}, dg:DataGrid, idbarang:int, n:Object = {}, modul:String = '', sumber:String = '', menuid:int = 0;
+			protected var arrMenuBar:ArrayCollection;
+			
+			public function f_focusOnMe():void
+			{
+				dg2.setFocus();
+				dg2.setSelectedCell(0,0);
+			}
+			
+			protected function f_persiapan():void
+			{
+				parentApplication.F_TranslateLabel([tkodebarang,tnamabarang]);
+				parentApplication.F_RequiredLabel([]);
+				parentApplication.F_DateFieldStandard([]);
+				parentApplication.F_ComboBoxStandard([]);
+				parentApplication.F_txtpencarian([]);
+				parentApplication.F_SetNavigasiKeyboard([]);
+				
+				FlexGlobals.topLevelApplication.F_setGridJson(1, 72);
+				FlexGlobals.topLevelApplication.registerGrid([dg2], 'data');
+				dg = parentApplication.m.ArrFilter[0];
+				modul = parentApplication.m.ArrFilter[1];
+				sumber = parentApplication.m.ArrFilter[2];
+				idbarang = dg.dataProvider[dg.selectedCell.rowIndex].bid;
+				
+				// Config Paging
+				dg2.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_KEY_DOWN);
+				txtpaging.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, f_pagingKEY_DOWN);
+				txtpaging.restrict = "0-9";
+				txtpaging.setStyle("textAlign","center");
+				txtpaging.text = '0';
+				txtpaging.maxChars = 4;
+				imgfirst.addEventListener(MouseEvent.CLICK, f_firstCLICK);
+				imgprevious.addEventListener(MouseEvent.CLICK, f_previousCLICK);
+				imgnext.addEventListener(MouseEvent.CLICK, f_nextCLICK);
+				imglast.addEventListener(MouseEvent.CLICK, f_lastCLICK);
+				
+				// fungsi menubar
+				arrMenuBar = new ArrayCollection([
+					{label:"Tampilkan", icon:"tbpreview"}]);
+				parentApplication.F_settingmb(mb, arrMenuBar);
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbTampilkan);
+				
+				function f_mbTampilkan():void
+				{
+					if(int(txtpaging.text) == 0)
+						f_formDataTampil();
+					else
+						f_formDataTampil(int(txtpaging.text));
+				}
+				
+				function f_pagingKEY_DOWN(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.ENTER)
+						if(int(txtpaging.text)>0)
+							f_formDataTampil(int(txtpaging.text));
+				}
+				function f_firstCLICK():void
+				{
+					f_formDataTampil();
+				}
+				function f_previousCLICK():void
+				{
+					f_formDataTampil(int(txtpaging.text)-1);
+				}
+				function f_nextCLICK():void
+				{
+					f_formDataTampil(int(txtpaging.text)+1);
+				}
+				function f_lastCLICK():void
+				{
+					f_formDataTampil(int(-1));
+				}
+				function f_KEY_DOWN(e:KeyboardEvent):void
+				{
+					switch(e.keyCode){
+						case Keyboard.HOME:
+							if(int(txtpaging.text)>1)
+								f_formDataTampil();
+							break;
+						case Keyboard.PAGE_UP:
+							if(int(txtpaging.text)-1>0)
+								f_formDataTampil(int(txtpaging.text)-1);
+							break;
+						case Keyboard.PAGE_DOWN:
+							f_formDataTampil(int(txtpaging.text)+1);
+							break;
+						case Keyboard.END:
+							f_formDataTampil(-1);
+							break;
+					}
+				}
+				
+				if(parentApplication.FormFilter != ''){
+					t1.text = ': '+dg.dataProvider[dg.selectedCell.rowIndex].bkode;
+					t2.text = ': '+dg.dataProvider[dg.selectedCell.rowIndex].bnama;
+					FlexGlobals.topLevelApplication.F_wsSearch('GetById', 'M'+modul+'_'+sumber+'_Detail_VSearch', 1, 20, '(idbarang = '+idbarang+') AND ('+sumber.toLowerCase()+'status IN(2,3,4,7))', sumber.toLowerCase()+'tgl desc');
+				}else{
+					f_kondisiAwal();
+				}
+			}
+			
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+			}
+			
+			public function f_formDataTampil(page:int = 1):void
+			{
+				dg2.dataProvider.removeAll();
+				FlexGlobals.topLevelApplication.F_wsSearch('Tampilkan', 'M'+modul+'_'+sumber+'_Detail_VSearch', page, 20, '(idbarang = '+idbarang+') AND ('+sumber.toLowerCase()+'status IN(2,3,4,7))', sumber.toLowerCase()+'tgl desc');
+			}
+			
+			public function f_setProperty(components:String, dataField:String, data:Object, info:String = ''):void
+			{
+				if(sumber == 'Po'){
+					menuid = 7;
+				}else if(sumber == 'So'){
+					menuid = 4;
+				}else if(sumber == 'Ri'){
+					menuid = 11;
+				}else if(sumber == 'Si'){
+					menuid = 10;
+				}
+				FlexGlobals.topLevelApplication.openForm(modul, menuid, dg2.dataProvider.getItemAt(dg2.selectedCell.rowIndex).id);
+			}
+			
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case '':
+						
+						break;
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			public function f_wsHasil():void
+			{
+				function abc(i:int):Object
+				{
+					if(sumber == 'So' || sumber == 'Si'){
+						return parentApplication.wsArrUtama[i][sumber.toLowerCase()+'customernama']
+					}else{
+						return parentApplication.wsArrUtama[i][sumber.toLowerCase()+'suppliernama']
+					}
+				}
+				if (dg2.dataProvider != null && parentApplication.rowIndex < dg2.dataProviderLength)
+				var ob:Object={};
+				var s:String = parentApplication.subject, i:int;
+				if(parentApplication.wsSuccess == true){
+					switch(s){
+						case 'GetById':
+							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+								obj = parentApplication.wsArrUtama[i];
+								dg2.dataProvider.addItem({
+									notransaksi : obj[sumber.toLowerCase()+'notransaksi'],
+									tanggal : obj[sumber.toLowerCase()+'tgl'],
+									kontak : abc(i),
+									jumlah : obj.jml,
+									harga : obj.harga,
+									diskon : obj.diskon,
+									id : obj['id'+sumber.toLowerCase()]
+								});
+							}
+							imgfirst.enabled = parentApplication.wsIsPrev;
+							imgprevious.enabled = parentApplication.wsIsPrev;
+							imgnext.enabled = parentApplication.wsIsNext;
+							imglast.enabled = parentApplication.wsIsNext;
+							txtpaging.text = parentApplication.wsCurPage;
+							f_focusOnMe();
+							break;
+						case 'Tampilkan':
+							for(i=0;i<parentApplication.wsArrUtama.length;i++){
+								obj = parentApplication.wsArrUtama[i];
+								dg2.dataProvider.addItem({
+									notransaksi : obj[sumber.toLowerCase()+'notransaksi'],
+									tanggal : obj[sumber.toLowerCase()+'tgl'],
+									kontak : abc(i),
+									jumlah : obj.jml,
+									harga : obj.harga,
+									diskon : obj.diskon,
+									id : obj['id'+sumber.toLowerCase()]
+								});
+							}
+							imgfirst.enabled = parentApplication.wsIsPrev;
+							imgprevious.enabled = parentApplication.wsIsPrev;
+							imgnext.enabled = parentApplication.wsIsNext;
+							imglast.enabled = parentApplication.wsIsNext;
+							txtpaging.text = parentApplication.wsCurPage;
+							f_focusOnMe();
+							break;
+					}
+				}else{
+					if(parentApplication.F_validasiFalse(s) == true)
+						switch(s){
+							case 'GetById':
+							case 'Tampilkan':
+								dg2.dataProvider.removeAll();
+								Alert.show(parentApplication.wsErrmessage, 'Information');
+								break;
+						}
+				}
+				parentApplication.F_dgRefresh(dg2);
+			}
+			
+			public function f_kosongkanText(target:String):void
+			{
+				parentApplication.vpFocusEvent = true;
+				switch(target){
+					case '':	break;
+				}
+			}
+			
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class;
+			
+		]]>
+	</fx:Script>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30"/>
+	<s:Group right="5" top="5">
+		<s:Image id="imgfirst" left="1" bottom="3" source="{navf}"/>
+		<s:Image id="imgprevious" left="18" bottom="3" source="{navp}"/>
+		<s:TextInput id="txtpaging" left="35" bottom="0" width="42"/>
+		<s:Image id="imgnext" left="78" bottom="3" source="{navn}"/>
+		<s:Image id="imglast" left="96" bottom="3" source="{navl}"/>
+	</s:Group>
+	<s:Label id="tkodebarang" left="10" top="42" fontWeight="bold" text="Kode Barang"/>
+	<s:Label id="tnamabarang" left="10" top="65" fontWeight="bold" text="Nama Barang"/>
+	<s:Label id="t1" left="120" top="42" fontWeight="bold" text=":"/>
+	<s:Label id="t2" left="120" top="65" fontWeight="bold" text=":"/>
+	<s:DataGrid id="dg2" left="10" right="10" top="90" bottom="10"/>
+</s:Module>

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="f_persiapan()" initialize="p = parentApplication">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.MenuEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			public var a:Array = new Array;
+			public var arr:Array, arrColumn:Array;
+			public var p :Object;
+			public var o:Object = {};
+			public var i:int
+			public var sumber:String
+			public var jmltgl : int = 0, looptgl:int = 0, sqlname:String = "", tglfilter:ArrayCollection, siid:String = "", num:Number, j:int, close:Boolean;; 
+			
+			// fokus ke no txtnotransaksi saat form pertama dibuka ======================================
+			public function f_focusOnMe():void
+			{
+				dttgl1.setFocus();
+			}
+			
+			// persiapan persiapan ======================================================================	
+			public function f_persiapan():void
+			{
+				p=parentApplication;
+				FlexGlobals.topLevelApplication.F_DateFieldStandard([dttgl1, dttgl2]);
+				FlexGlobals.topLevelApplication.F_txtpencarian([txtlokasi])
+				
+				// Config Grid
+				
+				var arrMenuBar:ArrayCollection = new ArrayCollection([
+					{label:"Upload", icon:"tbupload"}]);
+				FlexGlobals.topLevelApplication.F_settingmb(mb, arrMenuBar);
+				
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_tampilkan); // tampil
+				
+				function f_tampilkan():void
+				{
+					
+					f_GetDate();
+				}
+				
+				f_kondisiAwal()
+				
+			}
+			
+			// set kondisi awal ketika form dibuka ======================================
+			public function f_kondisiAwal():void
+			{
+				f_focusOnMe();
+				num = 0;
+				j = 0;
+				close = false;
+				p.F_SetNilaiText([dttgl1, dttgl2], p.DefaultTanggal);
+				txtlokasi.text = FlexGlobals.topLevelApplication.ulokasi;
+			}
+			
+			
+			// set kondisi untuk filter =============================================
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					
+					case 'txtlokasi':
+						paket = 'CdM1_Location';
+						csfilter = 'laktif=1';
+						wsfilter = 'laktif=1 AND lkode ="'+txtlokasi.text.split('"').join('\\"')+'"';
+						sort = 'lkode asc';
+						break;
+					
+					
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			
+			// set kondisi saat set ketika selesai pencarian ==================================
+			// set ketika benar ====================================
+			public var customer1:String, customer2:String, salesman:String, inputuser:String;
+			
+			public function f_wsHasil():void
+			{
+				var o:Object, s:String = p.subject, i:int;
+				if(p.wsSuccess == true){
+					
+					switch(s){
+						case 'GetDate': 
+							num = 0;
+							looptgl = 0;
+							sqlname = FlexGlobals.topLevelApplication.wsArrDetail[0].sqlname;
+							jmltgl = FlexGlobals.topLevelApplication.wsArrUtama.length;
+							tglfilter = FlexGlobals.topLevelApplication.wsArrUtama;
+							f_GetUtama()
+							break;
+						case 'GetUtama': 
+							siid = FlexGlobals.topLevelApplication.wsArrUtama[0].siid;
+							f_GetDetail();
+							break;
+						case 'GetDetail': 
+							f_GetPay();
+							break;
+						case 'GetPay': 
+							f_SetUploaded();
+							break;
+						case 'SetUploaded': 
+							looptgl++;
+							if(jmltgl > looptgl){
+								f_GetUtama();
+							}else{
+								f_sendProgress('Upload Done', true);
+								Alert.show("Data Berhasil Terupload", "Informasi")
+							}
+							break;
+						case 'txtlokasi':
+							FlexGlobals.topLevelApplication.wsArrUtama.getItemAt(0)
+							txtlokasi.text = o.lkode;
+							break;
+						
+						
+					}
+				}else{			
+					// set ketika salah ====================================		
+					if(p.F_validasiFalse(s) == true)
+						switch(s){
+							case 'GetDate': Alert.show(FlexGlobals.topLevelApplication.wsErrmessage, "Informasi"); break;
+							case 'GetUtama': 
+								looptgl++;
+								if(jmltgl > looptgl){
+									f_GetUtama();
+								}else{
+									f_sendProgress('Upload Done', true);
+									Alert.show("Data berhasil terupload", "Informasi");
+								}
+								break;
+							case 'GetDetail': 
+								f_GetPay();
+								break;
+							case 'GetPay': 
+								looptgl++;
+								if(jmltgl > looptgl){
+									f_GetUtama();
+								}else{
+									f_sendProgress('Upload Done', true);
+									Alert.show("Data berhasil terupload", "Informasi");
+								}
+								
+								break;
+							case 'costcenter':
+								txtlokasi.text = "";
+								break;
+						}
+				}
+			}
+			
+			// pengosongan textinput ketika pencarian tidak ditemukan ================================
+			public function f_kosongkanText(target:String):void
+			{
+				switch(target){
+					
+				}
+			}
+			
+			// pengisian filter untuk report =========================================================
+			public function f_filterdata():String{
+				var f:String="sistatus in (2,3,4,7) AND siuploaded = 0";
+//				if(dttgl1.text != '' && dttgl2.text != '')
+//					f = FlexGlobals.topLevelApplication.TambahFilter(f, 'sitgl BETWEEN "'+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl1.text)+'" AND "'+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl2.text)+'"'); 
+//				else if(dttgl1.text != '') 
+//					f = FlexGlobals.topLevelApplication.TambahFilter(f, 'sitgl >= "'+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl1.text)+'"'); 
+//				else if(dttgl2.text != '')
+//					f = FlexGlobals.topLevelApplication.TambahFilter(f, 'sitgl <= "'+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl2.text)+'"'); 
+//				
+				if(txtlokasi.text != '')
+					f = FlexGlobals.topLevelApplication.TambahFilter(f, 'silokasi = "'+txtlokasi.text+'"');
+				
+				
+				return f;
+			}
+			//Tampilkan data
+			public function f_GetDate():void
+			{
+					FlexGlobals.topLevelApplication.F_wsSearch("GetDate", 'M12_SiGetDate', 0, 0, "", "", "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", 0, txtlokasi.text+"|"+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl1.text)+"^"+FlexGlobals.topLevelApplication.F_tglFormatDB(dttgl2.text));
+			}
+			public function f_GetUtama():void
+			{
+				f_sendProgress('Tanggal : '+tglfilter[looptgl].tglfilter, true);
+				FlexGlobals.topLevelApplication.F_wsSearch("GetUtama", 'M12_SiGetDataUploadUtama', 0, 0, "si.sistatus in (2,3,4,7) AND si.siuploaded = 0 AND si.silokasi = '"+txtlokasi.text+"' AND si.sitgl = '"+tglfilter[looptgl].tglfilter+"'", "", "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", 0, sqlname);
+			}
+			public function f_GetDetail():void
+			{
+				FlexGlobals.topLevelApplication.F_wsSearch("GetDetail", 'M12_SiGetDataUploadDetail', 0, 0, "idsi in "+siid+"", "", "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", 0, sqlname);
+			}
+			public function f_GetPay():void
+			{
+				FlexGlobals.topLevelApplication.F_wsSearch("GetPay", 'M12_SiGetDataUploadPay', 0, 0, "idsi in "+siid+"", "", "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", 0, sqlname);
+			}
+			public function f_SetUploaded():void
+			{
+				FlexGlobals.topLevelApplication.F_wsUpdateStatus("SetUploaded", 'M12_SetSiUploaded', FlexGlobals.topLevelApplication.uid, 0, "", false, 0, 0, "si.sistatus in (2,3,4,7) AND si.siuploaded = 0 AND si.silokasi = '"+txtlokasi.text+"' AND si.sitgl = '"+tglfilter[looptgl].tglfilter+"'", "", "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", 0);
+			}
+			
+			public function f_sendProgress(data:String, status:Boolean):void
+			{
+				j++;
+				if(status == true){
+					if(j > jmltgl){
+						close = true;
+						return;
+					}
+					lbltgl.text = data;
+				}else{
+					lbltgl.text = parentApplication.l("Upload failed")+" "+data;
+					close = true;
+					return;
+				}
+				num += 100/jmltgl;
+				pb.setProgress(num, 100);
+				lblPersen.text = String(uint(num))+" %";
+			}
+			
+			
+			// set untuk icon-icon ======================================================================
+			[Bindable] [Embed(source="assets/nav/f.png")]  public var navf:Class;
+			[Bindable] [Embed(source="assets/nav/p.png")]  public var navp:Class;
+			[Bindable] [Embed(source="assets/nav/n.png")]  public var navn:Class;
+			[Bindable] [Embed(source="assets/nav/l.png")]  public var navl:Class;
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/reset.png")]  public var tbreset:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/print.png")]  public var tbprint:Class;
+			[Bindable] [Embed(source="assets/tb/pdf.png")]  public var tbpdf:Class;
+			[Bindable] [Embed(source="assets/tb/excel.png")]  public var tbexcel:Class;
+			[Bindable] [Embed(source="assets/tb/html.png")]  public var tbhtml:Class;
+			[Bindable] [Embed(source="assets/tb/word.png")]  public var tbword:Class;
+			[Bindable] [Embed(source="assets/tb/txt.png")]  public var tbtxt:Class;
+			[Bindable] [Embed(source="assets/tb/tif.png")]  public var tbtif:Class;
+			[Bindable] [Embed(source="assets/tb/others.png")]  public var tbothers:Class; 
+			[Bindable] [Embed(source="assets/tb/help.png")]  public var tbhelp:Class;
+			[Bindable] [Embed(source="assets/tb/edit.png")]  public var tbedit:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			[Bindable] [Embed(source="assets/tb/related.png")]  public var tbrelated:Class;
+			[Bindable] [Embed(source="assets/tb/jurnal.png")]  public var tbjurnal:Class;
+			[Bindable] [Embed(source="assets/tb/close_unclose.png")]  public var tbclose_unclose:Class;
+			[Bindable] [Embed(source="assets/tb/history.png")]  public var tbhistory:Class;
+			[Bindable] [Embed(source="assets/tb/draft.png")] public var tbdraft:Class;
+			[Bindable] [Embed(source="assets/tb/export.png")] public var tbexport:Class;
+			[Bindable] [Embed(source="assets/tb/uploaddata.png")]  public var tbupload:Class;
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0"/>
+	<s:Group left="10" top="29">
+		<s:Label id="ttanggal" left="0" top="10" width="78" text="Tanggal"/>
+		<s:Label id="lbltgl" left="2" top="54" width="412"/>
+		<mx:DateField id="dttgl1" left="91" top="4" width="153"/>
+		<mx:DateField id="dttgl2" left="271" top="4" width="153"/>
+		<s:Label x="246" y="12" text="s/d"/>
+		<s:Label id="tuser2" left="0" top="29" width="78" text="Lokasi"/>
+		<s:TextInput id="txtlokasi" left="91" top="26"/>
+		<s:Label id="lblPersen" right="2" top="98" fontWeight="bold" text="0 %"/>
+		<mx:ProgressBar id="pb" left="0" right="0" top="75" label=" " direction="right" labelPlacement="center" mode="manual" barSkin="skins.progressBar"/>
+	</s:Group>
+	
+</s:Module>

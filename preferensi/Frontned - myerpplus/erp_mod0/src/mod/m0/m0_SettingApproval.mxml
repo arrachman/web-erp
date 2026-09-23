@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="100%" height="100%" creationComplete="module1_creationCompleteHandler()">
+	<fx:Script> 
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.containers.Box;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals; 
+			
+			[Bindable] [Embed(source="assets/tb/preview.png")]  public var tbpreview:Class;
+			[Bindable] [Embed(source="assets/tb/save.png")]  public var tbsave:Class;
+			[Bindable] [Embed(source="assets/tb/add.png")]  public var tbadd:Class;
+			[Bindable] [Embed(source="assets/tb/delete.png")]  public var tbdelete:Class;
+			
+			public var o:Object = {};
+			protected var i:int;
+			
+			protected function module1_creationCompleteHandler():void
+			{
+				parentApplication.F_RegGrid(0, 46, [dg], 'transaksi');
+				parentApplication.F_txtpencarian([txtuser1, txtusermail]);
+				dg.contextMenu = new ContextMenu;
+				dg.contextMenu.hideBuiltInItems();
+				o.arr = new ArrayCollection;
+				mb.menuBarItems[0].addEventListener(MouseEvent.CLICK, f_mbTampil);
+				mb.menuBarItems[1].addEventListener(MouseEvent.CLICK, f_mbSimpan);
+				mb.menuBarItems[2].addEventListener(MouseEvent.CLICK, f_mbTambah);
+				mb.menuBarItems[3].addEventListener(MouseEvent.CLICK, f_mbDelete);
+				dg.addEventListener(KeyboardEvent.KEY_DOWN, f_dgKeyDown);
+				function f_mbTampil():void
+				{
+					f_tampil();
+				}
+				
+				function f_mbSimpan():void
+				{
+					if(parentApplication.apaBisaAkses(0, 46, 1)){
+						var s:String = '';
+						o.a = [];
+						for(i=0;i<dg.dataProviderLength;i++)
+							if(dg.dataProvider[i].simpan )
+								with(dg.dataProvider[i])
+									o.a[o.a.length] = [smodule, sgrup, skode, snama, suraian, surutan, snilai, stipedata, sjenisinputan, scombodata];
+						if(o.a.length > 0)
+							FlexGlobals.topLevelApplication.F_wsSimpan('tampil', 'M0_SettingSimpan', parentApplication.userid, false, FlexGlobals.topLevelApplication.F_splitWs(o.a), '', 0, 0, parentApplication.ubahasa+FlexGlobals.topLevelApplication.sptField+f_filterdata());
+						else Alert.show('Data tidak ada yang di update atau di tambahkan', 'Validasi');
+					}
+				}
+				
+				function f_mbTambah():void
+				{
+					if(parentApplication.apaBisaAkses(0, 46, 1)){
+						FlexGlobals.topLevelApplication.F_hapusBarisKosongGrid(dg);
+						FlexGlobals.topLevelApplication.F_acAdd(dg);
+						dg.setSelectedCell(dg.dataProviderLength-1, 0);
+						dg.setFocus();
+					}
+				}
+				
+				function f_mbDelete():void
+				{
+					if(FlexGlobals.topLevelApplication.apaBisaAkses(0, 46, 3))
+						f_delete();
+				}
+				
+				function f_dgKeyDown(e:KeyboardEvent):void
+				{
+					if(e.keyCode == Keyboard.DELETE){
+						o.mod = dg.dataProvider[dg.selectedCell.rowIndex].smodule+parentApplication.sptSubParam+dg.dataProvider[dg.selectedCell.rowIndex].sgrup+parentApplication.sptSubParam+dg.dataProvider[dg.selectedCell.rowIndex].sgrup;
+						f_delete();
+					}
+				}
+			}
+			public function f_filter(target:String):Array
+			{
+				var paket:String='', wsfilter:String='', sort:String='', wspagenumber:int=0, wsitemlimit:int=0, csfilter:String="", csfield:int=0, checkbox:Boolean = false;
+				switch(target){
+					case 'txtlokasi': //kategoripos
+						
+						break;
+					
+				}
+				return [paket, wsfilter, sort, wspagenumber, wsitemlimit, csfilter, csfield, checkbox];
+			}
+			protected function f_filterdata():String
+			{
+				var filter:String = ""; 
+				if(txtmenu.text != "")
+					filter = FlexGlobals.topLevelApplication.TambahFilter(filter, "moduleid = "+txtmenu.text);
+				if(txtuser1.text.length > 0)
+					filter = FlexGlobals.topLevelApplication.TambahFilter(filter, 'userid = "'+txtuser1.text+'"');
+				if(txtusermail.text.length > 0)
+					filter = FlexGlobals.topLevelApplication.TambahFilter(filter, 'userid = "'+txtusermail.text+'"');
+				
+				return filter;
+			}
+			protected function f_tampil():void
+			{
+				if(parentApplication.apaBisaAkses(0, 11, 4))
+					FlexGlobals.topLevelApplication.F_wsSearch('tampil', 'M0_ApprovalSimpan', 0, 0, parentApplication.ubahasa+FlexGlobals.topLevelApplication.sptField+f_filterdata(), 'moduleid, menuid, userid ASC');
+			}
+			
+			protected function f_delete():void
+			{
+				if(parentApplication.apaBisaAkses(0, 11, 3)){
+					if(dg.selectedCell)
+						if(dg.dataProvider[dg.selectedCell.rowIndex].tambah )
+							dg.dataProvider.removeItemAt(dg.selectedCell.rowIndex);
+						else
+							Alert.show(parentApplication.l('Apakah Anda yakin akah hapus data ini ?'), parentApplication.l('Konfirmasi'), 3, null, function(e:Object):void{	
+								if(e.detail == Alert.YES){
+									FlexGlobals.topLevelApplication.F_wsDelete('tampil', 'M0_ApprovalDelete', parentApplication.userid, dg.dataProvider[dg.selectedCell.rowIndex].moduleid+parentApplication.sptSubParam+dg.dataProvider[dg.selectedCell.rowIndex].menuid+parentApplication.sptSubParam+dg.dataProvider[dg.selectedCell.rowIndex].statusnotifikasi+dg.dataProvider[dg.selectedCell.rowIndex].userid+dg.dataProvider[dg.selectedCell.rowIndex].useridmail, 0, 0, parentApplication.ubahasa+FlexGlobals.topLevelApplication.sptField+f_filterdata(), 'moduleid ASC, menuid ASC');
+								}
+							});
+						else
+							Alert.show('Pilih data dalu', 'Validasi');
+				}
+			}
+			
+			public function f_wsHasil():void
+			{
+				if(FlexGlobals.topLevelApplication.wsSuccess ){
+					switch(parentApplication.subject){
+						case "tampil":  
+							dg.dataProvider = parentApplication.wsArrUtama;
+//							cmbmodule.dataProvider.removeAll();
+//							for(i=0;i<parentApplication.wsArrDetail.length;i++){
+//								cmbmodule.dataProvider.addItem({l:parentApplication.wsArrDetail[i].mname, v:parentApplication.wsArrDetail[i].mid})
+//							}
+							break;
+					}
+				}else{
+					switch(parentApplication.subject){
+						case "tampil":
+							dg.dataProvider = new ArrayCollection;
+							Alert.show(FlexGlobals.topLevelApplication.wsErrmessage);
+							break;
+					}
+				}
+			}
+			
+			public function f_grid(dg:DataGrid, column:String):void
+			{
+				o.a = column.split('|');
+				if(column == 'add' || o.a[0] == 'add'){
+					o.o = dg.dataProvider[parentApplication.rowIndex];
+					o.o.tambah = true;
+					o.o.sgrup = '';
+					o.o.skode = '';
+					o.o.snama = 'ex Nama';
+					o.o.suraian = '';
+					o.o.surutan = 99;
+					o.o.snilai = '-';
+					o.o.stipedata = 't';
+					o.o.sjenisinputan = 't';
+					o.o.scombodata = '';
+					FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg, parentApplication.rowIndex);	
+				}else if(column == 'del'){
+					if(dg.dataProvider[dg.selectedCell.rowIndex].tambah == undefined)
+						FlexGlobals.topLevelApplication.F_wsDelete('tampil', 'M0_ApprovalDelete', parentApplication.userid, o.mod, 0, 0, parentApplication.ubahasa, 'smodule ASC, sgrup ASC');
+				}else if(column == 'moduleid' || column == 'menuid'){
+					o.b = true;
+					for(i=0;i<dg.dataProviderLength;i++)
+						if(dg.dataProvider[i].sgrup == dg.dataProvider[parentApplication.rowIndex].sgrup && dg.dataProvider[i].skode == dg.dataProvider[parentApplication.rowIndex].skode && dg.dataProvider[i].smodule == dg.dataProvider[parentApplication.rowIndex].smodule && i != parentApplication.rowIndex){
+							Alert.show("Module dan Menu tidak boleh sama", "Validasi");
+							o.b = false;
+							break;
+						}
+					if(o.b == false){
+						dg.dataProvider[parentApplication.rowIndex][column] = FlexGlobals.topLevelApplication.vpVarCurrent;
+						FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg, parentApplication.rowIndex);
+					}else{
+						dg.dataProvider[parentApplication.rowIndex].simpan = true;
+						FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg, parentApplication.rowIndex);
+					}
+				}else{
+					dg.dataProvider[parentApplication.rowIndex].simpan = true;
+					FlexGlobals.topLevelApplication.F_dgColumnRefresh(dg, parentApplication.rowIndex);
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:XMLListCollection id="xmlListColl">
+			<s:source>
+				<fx:XMLList xmlns="">
+					<topmenu label="Tampilkan" icon="tbpreview"/>
+					<topmenu label="Simpan" icon="tbsave"/>
+					<topmenu label="Tambah" icon="tbadd"/>
+					<topmenu label="Hapus" icon="tbdelete"/>
+				</fx:XMLList>
+			</s:source>
+		</s:XMLListCollection>
+	</fx:Declarations>
+	<mx:MenuBar id="mb" left="0" right="0" top="0" height="30" cornerRadius="0" dataProvider="{xmlListColl}" iconField="@icon" labelField="@label"/>
+	<s:Group left="10" top="40">
+		<s:Label id="tmodule" left="0" top="8" text="Module"/>
+		<s:Label id="tgrup" left="0" top="28" text="User Input"/>
+		<s:Label id="tkode" left="0" top="50" text="Email ke User"/>
+		<s:TextInput id="txtmenu" left="86" top="22"/>
+		<s:TextInput id="txtuser1" left="86" top="22"/>
+		<s:TextInput id="txtusermail" left="86" top="43" width="128"/>
+	</s:Group>
+	<s:DataGrid id="dg" left="0" right="0" top="134" bottom="0"/>
+</s:Module>
