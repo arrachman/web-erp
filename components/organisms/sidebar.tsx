@@ -21,6 +21,12 @@ interface SidebarProps {
 
 type SidebarMode = SidebarProps['sidebarMode'];
 
+/** Minimum visible width (px) of the horizontal flyout when clamped near the right viewport edge. */
+const H_FLYOUT_MIN_VISIBLE = 180;
+
+/** Gap (px) between the horizontal nav bar and its fixed dropdown submenu. */
+const H_FLYOUT_GAP = 4;
+
 /** Builds a navigable href for a route id so browsers can offer right-click / Ctrl+click. */
 function leafHref(id: string, workspaceId?: string): string {
   const base = workspaceId ? `/${workspaceId}` : '';
@@ -32,6 +38,9 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
   const isHorizontal = sidebarMode === 'horizontal';
   const [open, setOpen] = React.useState<string | null>(null);
   const [openTop, setOpenTop] = React.useState(0);
+  // Horizontal hover-dropdown pos (viewport coords) — `position: fixed`
+  // escapes the nav bar's overflow-x scroll clip that would clip `absolute`.
+  const [hFly, setHFly] = React.useState({ top: 0, left: 0 });
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Accordion state — tracks which module is expanded
@@ -98,6 +107,20 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
     });
   };
 
+  const currentTop = nav.find(
+    (i) =>
+      !i.divider &&
+      (i.id === current ||
+        (i.children &&
+          (isNavGroupArray(i.children)
+            ? i.children.some((g) => g.items.some((s) => s.id === current))
+            : i.children.some((c) => c.id === current)))),
+  );
+  const [expandedId, setExpandedId] = React.useState<string | null>(() =>
+    // Horizontal bar is hover-driven — never auto-open on load (accordion keeps auto-expand).
+    sidebarMode === 'horizontal' ? null : (currentTop?.id ?? null),
+  );
+
   // Close expanded horizontal submenu when clicking outside the sidebar.
   const navElRef = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
@@ -109,25 +132,17 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
     return () => document.removeEventListener('click', onOutside);
   }, [isHorizontal]);
 
-  const currentTop = nav.find(
-    (i) =>
-      !i.divider &&
-      (i.id === current ||
-        (i.children &&
-          (isNavGroupArray(i.children)
-            ? i.children.some((g) => g.items.some((s) => s.id === current))
-            : i.children.some((c) => c.id === current)))),
-  );
-  const [expandedId, setExpandedId] = React.useState<string | null>(
-    () => currentTop?.id ?? null,
-  );
-
   // When navigating to a different module, auto-expand that module in accordion mode
   React.useEffect(() => {
-    if (sidebarMenuMode === 'accordion' && currentTop?.id) {
+    if (!isHorizontal && sidebarMenuMode === 'accordion' && currentTop?.id) {
       setExpandedId(currentTop.id);
     }
-  }, [currentTop?.id, sidebarMenuMode]);
+  }, [currentTop?.id, sidebarMenuMode, isHorizontal]);
+
+  // Switching to the horizontal menu bar at runtime: close any expanded dropdown.
+  React.useEffect(() => {
+    if (isHorizontal) setExpandedId(null);
+  }, [isHorizontal]);
 
   // Flyout handlers
   const handleEnter = (e: React.MouseEvent<HTMLElement>, item: NavItem) => {
@@ -214,7 +229,6 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
       >
         {nav.map((item, i) => {
           if (item.divider)
-            // eslint-disable-next-line react/no-array-index-key
             return <div key={`div-${i}`} className="nav-divider" />;
 
           const isActive = !!currentTop && currentTop.id === item.id;
@@ -246,19 +260,21 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
             );
           }
 
-// Horizontal mode: top bar with dropdown submenu below (appears on hover)
+// Horizontal mode: top bar with hover dropdown. Rendered `position: fixed`
+          // at viewport coords to escape the nav bar's overflow-x scroll clip.
           if (isHorizontal) {
             const isExpanded = expandedId === item.id;
             return (
               <div
                 key={item.id}
                 className={cn('nav-item', isActive && 'active')}
-                style={{ cursor: 'pointer', position: 'relative' }}
+                style={{ cursor: 'pointer' }}
                 onMouseEnter={(e) => {
                   if (item.children) {
                     if (timer.current) clearTimeout(timer.current);
                     const rect = e.currentTarget.getBoundingClientRect();
-                    setOpenTop(rect.top);
+                    const left = Math.max(8, Math.min(rect.left, window.innerWidth - H_FLYOUT_MIN_VISIBLE - 8));
+                    setHFly({ top: rect.bottom, left });
                     setExpandedId(item.id ?? null);
                   }
                 }}
@@ -277,7 +293,18 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
                   <Icon name={isExpanded ? 'chevup' : 'chevdown'} size={12} stroke={1.6} style={{ opacity: 0.5, flexShrink: 0 }} />
                 )}
                 {isExpanded && item.children && (
-                  <div className="accordion-submenu" style={{ position: 'absolute', top: '100%', left: 0, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 2, padding: '4px 0 8px 0', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: 'var(--shadow-flyout)', zIndex: 100 }}>
+                  <div
+                    className="accordion-submenu"
+                    style={{
+                      position: 'fixed',
+                      top: hFly.top + H_FLYOUT_GAP,
+                      left: hFly.left,
+                      maxHeight: `calc(100vh - ${hFly.top + H_FLYOUT_GAP + 8}px)`,
+                      maxWidth: `calc(100vw - ${hFly.left}px - 8px)`,
+                    }}
+                    onMouseEnter={keepOpen}
+                    onMouseLeave={handleLeaveAll}
+                  >
                     {renderAccordionChildren(item)}
                   </div>
                 )}
