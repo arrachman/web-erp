@@ -4,17 +4,17 @@ import { Icon } from '@/components/ui/icons';
 import { confirmAction } from '@/lib/feedback';
 import {
   LivePreviewCard,
+  ThemeLanguageCard,
+  AccentColorCard,
+  FontScaleCard,
+  DensityCard,
+  type Translator,
+} from './appearance-cards';
+import {
   SidebarModeCard,
   UrlRoutingCard,
   SWATCHES,
 } from './appearance-parts';
-import {
-  AccentColorCard,
-  DensityCard,
-  FontScaleCard,
-  ThemeLanguageCard,
-  type Translator,
-} from './appearance-cards';
 import { useAppearance } from './use-appearance';
 
 interface AppearancePageProps {
@@ -73,8 +73,10 @@ export function AppearancePage(_props: AppearancePageProps) {
         <SidebarModeCard
           sidebar={tw.sidebar}
           sidebarMenu={tw.sidebarMenu}
+          menubarTemplate={tw.menubarTemplate}
           onChange={(v) => applyTweak('sidebar', v)}
           onMenuMode={(v) => applyTweak('sidebarMenu', v)}
+          onMenubarTemplate={(v) => applyTweak('menubarTemplate', v)}
           t={t}
         />
 
@@ -111,7 +113,7 @@ export function AppearancePage(_props: AppearancePageProps) {
           {t('Ukuran')} {fontScale} · {t(tw.density === 'compact' ? 'Compact' : 'Comfortable')} ·{' '}
           {t('Menu Sidebar')}{' '}
           {tw.sidebar === 'horizontal'
-            ? t('Horizontal')
+            ? `${t('Horizontal')} · ${t((tw.menubarTemplate || 'label') === 'icon' ? 'Ikon' : 'Ikon + Label')} · ${t((tw.sidebarMenu || 'flyout') === 'flyout' ? 'Flyout' : 'Accordion')}`
             : `${t('Vertical')} · ${t((tw.sidebar || 'icon') === 'icon' ? 'Ikon' : 'Ikon + Label')} · ${t((tw.sidebarMenu || 'flyout') === 'flyout' ? 'Flyout' : 'Accordion')}`}{' '}
           ·{' '}
           {t('URL')} {tw.urlRouting ? t('Per-halaman URL') : t('Internal')}

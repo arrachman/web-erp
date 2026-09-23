@@ -15,6 +15,7 @@ import {
   type Density,
   type FontScale,
   type Lang,
+  type MenubarTemplate,
   type SidebarMode,
   type SidebarMenuMode,
   type Tweaks,
@@ -44,6 +45,7 @@ export function useAppearance(): UseAppearanceResult {
     el.setAttribute('data-fontscale', next.fontScale);
     el.setAttribute('data-sidebar', next.sidebar);
     el.setAttribute('data-sidebar-menu', next.sidebarMenu || 'flyout');
+    el.setAttribute('data-menubar', next.menubarTemplate || 'label');
   }, []);
 
   // Sync local state from the DOM / localStorage / API after mount.
@@ -76,6 +78,10 @@ export function useAppearance(): UseAppearanceResult {
         (stored.sidebarMenu as SidebarMenuMode) ??
         (el.getAttribute('data-sidebar-menu') as SidebarMenuMode) ??
         DEFAULTS.sidebarMenu,
+      menubarTemplate:
+        (stored.menubarTemplate as MenubarTemplate) ??
+        (el.getAttribute('data-menubar') as MenubarTemplate) ??
+        DEFAULTS.menubarTemplate,
       lang: (stored.lang as Lang) ?? DEFAULTS.lang,
       urlRouting: stored.urlRouting ?? DEFAULTS.urlRouting,
     };
@@ -95,6 +101,7 @@ export function useAppearance(): UseAppearanceResult {
           fontScale: (meta.fontScale as FontScale) ?? baseline.fontScale,
           sidebar: (meta.sidebar as SidebarMode) ?? baseline.sidebar,
           sidebarMenu: (meta.sidebarMenu as SidebarMenuMode) ?? baseline.sidebarMenu,
+          menubarTemplate: (meta.menubarTemplate as MenubarTemplate) ?? baseline.menubarTemplate,
           lang: (prefs.language as Lang) ?? baseline.lang,
           urlRouting: meta.urlRouting ?? baseline.urlRouting,
         };
@@ -132,6 +139,7 @@ export function useAppearance(): UseAppearanceResult {
       el.setAttribute('data-fontscale', next.fontScale);
       el.setAttribute('data-sidebar', next.sidebar);
       el.setAttribute('data-sidebar-menu', next.sidebarMenu || 'flyout');
+      el.setAttribute('data-menubar', next.menubarTemplate || 'label');
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {
@@ -164,6 +172,7 @@ export function useAppearance(): UseAppearanceResult {
           fontScale: tw.fontScale,
           sidebar: tw.sidebar,
           sidebarMenu: tw.sidebarMenu,
+          menubarTemplate: tw.menubarTemplate,
           urlRouting: tw.urlRouting,
         },
       }).catch((err) => {
@@ -188,6 +197,7 @@ export function useAppearance(): UseAppearanceResult {
     el.setAttribute('data-fontscale', DEFAULTS.fontScale);
     el.setAttribute('data-sidebar', DEFAULTS.sidebar);
     el.setAttribute('data-sidebar-menu', DEFAULTS.sidebarMenu);
+    el.setAttribute('data-menubar', DEFAULTS.menubarTemplate);
     window.dispatchEvent(new CustomEvent('erp-set-sidebar-menu', { detail: { mode: DEFAULTS.sidebarMenu } }));
     window.dispatchEvent(new CustomEvent('erp-set-sidebar', { detail: { mode: DEFAULTS.sidebar } }));
     try {

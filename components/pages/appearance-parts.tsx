@@ -4,14 +4,15 @@
 // Split out of `appearance.tsx` to keep each file ≤400 lines.
 import * as React from 'react';
 import { Icon, type IconName } from '@/components/ui/icons';
-import { Sparkline } from '@/components/ui/sparkline';
-import { KPI_SERIES, type Translator } from '@/lib/mock';
+import { type Translator } from '@/lib/mock';
 
 export type Lang = 'id' | 'en' | 'ja';
 export type FontScale = 'sm' | 'base' | 'lg' | 'xl';
 export type Density = 'compact' | 'comfortable';
 export type SidebarMode = 'icon' | 'label' | 'horizontal';
 export type SidebarMenuMode = 'flyout' | 'accordion';
+/** Layout of the horizontal top menu bar (icon-only or icon+label). */
+export type MenubarTemplate = 'icon' | 'label';
 
 export const STORAGE_KEY = 'erp-appearance';
 
@@ -21,6 +22,8 @@ export interface Tweaks {
   fontScale: FontScale;
   sidebar: SidebarMode;
   sidebarMenu: SidebarMenuMode;
+  /** Horizontal menubar: icon-only or icon+label. Only consumed when sidebar==='horizontal'. */
+  menubarTemplate: MenubarTemplate;
   lang: Lang;
   urlRouting: boolean;
 }
@@ -31,6 +34,7 @@ export const DEFAULTS: Tweaks = {
   fontScale: 'base',
   sidebar: 'icon',
   sidebarMenu: 'flyout',
+  menubarTemplate: 'label',
   lang: 'id',
   urlRouting: false,
 };
@@ -197,22 +201,34 @@ const PREVIEW_ITEMS = [
 ] as const;
 
 /** Sidebar mode SetCard — extracted to keep appearance.tsx ≤400 lines.
- * Orientation (vertical/horizontal) is the primary knob; icon-vs-label
- * template and flyout-vs-accordion menu mode apply to vertical only. */
+ * Orientation (vertical/horizontal) is the primary knob; the icon-vs-label
+ * template and flyout-vs-accordion menu mode apply to BOTH orientations
+ * (vertical = sidebar template / flyout panel; horizontal = menubar layout /
+ * dropdown style). */
 export function SidebarModeCard({
   sidebar,
   sidebarMenu,
+  menubarTemplate,
   onChange,
   onMenuMode,
+  onMenubarTemplate,
   t,
 }: {
   sidebar: SidebarMode;
   sidebarMenu: SidebarMenuMode;
+  menubarTemplate: MenubarTemplate;
   onChange: (v: SidebarMode) => void;
   onMenuMode: (v: SidebarMenuMode) => void;
+  onMenubarTemplate: (v: MenubarTemplate) => void;
   t: Translator;
 }) {
   const isHorizontal = sidebar === 'horizontal';
+  // Template value: vertical → sidebar (icon/label); horizontal → menubarTemplate.
+  const templateValue = isHorizontal ? menubarTemplate : (sidebar || 'icon');
+  const onTemplate = (v: string) => {
+    if (isHorizontal) onMenubarTemplate(v as MenubarTemplate);
+    else onChange(v as SidebarMode);
+  };
   return (
     <SetCard icon="database" title={t('Menu Sidebar')} sub={t('Template navigasi samping')}>
       <SetRow label={t('Posisi Menu')} hint={t('Vertical: sidebar kiri · Horizontal: menu bar di atas')}>
@@ -225,48 +241,50 @@ export function SidebarModeCard({
           ]}
         />
       </SetRow>
-      {!isHorizontal && (
-        <SetRow label={t('Template')} hint={t('Ikon saja atau dengan label teks')}>
-          <Seg
-            value={sidebar || 'icon'}
-            onChange={(v) => onChange(v as SidebarMode)}
-            options={[
-              { v: 'icon', label: t('Ikon'), icon: 'boxes' },
-              { v: 'label', label: t('Ikon + Label'), icon: 'database' },
-            ]}
-          />
-        </SetRow>
-      )}
-      {/* Mode Menu only shown when sidebar is vertical (icon/label) */}
-      {!isHorizontal && (
-        <SetRow label={t('Mode Menu')} hint={t('Flyout: submenu muncul di kanan saat hover · Accordion: submenu expand di bawah modul')}>
-          <Seg
-            value={sidebarMenu || 'flyout'}
-            onChange={(v) => onMenuMode(v as SidebarMenuMode)}
-            options={[
-              { v: 'flyout', label: t('Flyout'), icon: 'layers' },
-              { v: 'accordion', label: t('Accordion'), icon: 'chevdown' },
-            ]}
-          />
-        </SetRow>
-      )}
+      <SetRow
+        label={t('Template')}
+        hint={isHorizontal ? t('Ikon saja atau ikon + label di menu bar atas') : t('Ikon saja atau dengan label teks')}
+      >
+        <Seg
+          value={templateValue}
+          onChange={onTemplate}
+          options={[
+            { v: 'icon', label: t('Ikon'), icon: 'boxes' },
+            { v: 'label', label: t('Ikon + Label'), icon: 'database' },
+          ]}
+        />
+      </SetRow>
+      <SetRow label={t('Mode Menu')} hint={t('Flyout: submenu muncul di kanan saat hover · Accordion: submenu expand di bawah modul')}>
+        <Seg
+          value={sidebarMenu || 'flyout'}
+          onChange={(v) => onMenuMode(v as SidebarMenuMode)}
+          options={[
+            { v: 'flyout', label: t('Flyout'), icon: 'layers' },
+            { v: 'accordion', label: t('Accordion'), icon: 'chevdown' },
+          ]}
+        />
+      </SetRow>
       <SetRow label={t('Pratinjau')}>
         <div style={{ display: 'inline-flex', flexDirection: sidebar === 'horizontal' ? 'row' : 'column', gap: 3, border: '1px solid var(--border)', borderRadius: 8, padding: 8, background: 'var(--panel-2)', minWidth: sidebar === 'horizontal' ? 'auto' : sidebar === 'label' ? 170 : 'auto', ...(sidebar === 'horizontal' ? { alignItems: 'center', gap: 4 } : {}) }}>
-          {PREVIEW_ITEMS.map(({ ic, lb }, i) => (
-            <React.Fragment key={ic}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, fontSize: 'calc(12px * var(--font-scale, 1))', background: i === 0 ? 'var(--primary-soft)' : 'transparent', color: i === 0 ? 'var(--primary-soft-fg)' : 'var(--fg-muted)' }}>
-                <Icon name={ic} size={14} />
-                {sidebar === 'horizontal' && <span style={{ marginLeft: 2 }}>{t(lb)}</span>}
-                {sidebar === 'label' && <span style={{ flex: 1 }}>{t(lb)}</span>}
-                {sidebar === 'label' && i === 0 && sidebarMenu === 'accordion' && <Icon name="chevdown" size={10} />}
-              </span>
-              {i === 0 && sidebarMenu === 'accordion' && sidebar !== 'horizontal' && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 28px', fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--primary)' }}>
-                  <Icon name="dot" size={8} /> {sidebar === 'label' && <span>{t('Sub Menu')}</span>}
+          {PREVIEW_ITEMS.map(({ ic, lb }, i) => {
+            const showLabel = sidebar !== 'horizontal' || menubarTemplate === 'label';
+            const isAccordionH = sidebar === 'horizontal' && sidebarMenu === 'accordion';
+            return (
+              <React.Fragment key={ic}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, fontSize: 'calc(12px * var(--font-scale, 1))', background: i === 0 ? 'var(--primary-soft)' : 'transparent', color: i === 0 ? 'var(--primary-soft-fg)' : 'var(--fg-muted)' }}>
+                  <Icon name={ic} size={14} />
+                  {showLabel && <span style={{ marginLeft: 2 }}>{t(lb)}</span>}
+                  {sidebar === 'label' && i === 0 && sidebarMenu === 'accordion' && <Icon name="chevdown" size={10} />}
                 </span>
-              )}
-            </React.Fragment>
-          ))}
+                {i === 0 && sidebarMenu === 'accordion' && (sidebar === 'label' || isAccordionH) && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px 3px 28px', fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--primary)' }}>
+                    <Icon name="dot" size={8} /> {sidebar === 'label' && <span>{t('Sub Menu')}</span>}
+                    {isAccordionH && <span>{t('Grup A')}</span>}
+                  </span>
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </SetRow>
     </SetCard>
@@ -299,120 +317,3 @@ export function UrlRoutingCard({
   );
 }
 
-/** Static "Pratinjau Langsung" card — reflects live tweaks via CSS vars. */
-export function LivePreviewCard({ t }: { t: Translator }) {
-  return (
-    <div className="card" style={{ gridColumn: 'span 12' }}>
-      <div className="card-h">
-        <span
-          style={{
-            display: 'inline-flex',
-            width: 24,
-            height: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--primary-soft)',
-            color: 'var(--primary-soft-fg)',
-            borderRadius: 5,
-          }}
-        >
-          <Icon name="eye" size={13} />
-        </span>
-        <div>
-          <div className="title">{t('Pratinjau Langsung')}</div>
-          <div className="sub" style={{ marginTop: 1 }}>
-            {t('Perubahan diterapkan seketika')}
-          </div>
-        </div>
-      </div>
-      <div
-        className="card-b"
-        style={{
-          display: 'flex',
-          gap: 14,
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-        }}
-      >
-        <div
-          style={{
-            flex: '1 1 220px',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: 14,
-          }}
-        >
-          <div className="kpi" style={{ padding: 0 }}>
-            <div className="label">{t('Pendapatan bulan ini')}</div>
-            <div className="value">Rp 487,5jt</div>
-            <div className="delta up">
-              <Icon name="arrow-tr" size={11} /> +12,4%
-            </div>
-            <div className="spark">
-              <Sparkline
-                data={[...KPI_SERIES.kasMasuk]}
-                color="var(--primary)"
-              />
-            </div>
-          </div>
-        </div>
-        <div
-          style={{
-            flex: '1 1 240px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn primary">
-              <Icon name="plus" size={12} /> {t('Tambah')}
-            </button>
-            <button className="btn">
-              <Icon name="download" size={12} /> {t('Export')}
-            </button>
-            <button className="btn ghost">{t('Batal')}</button>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <span className="pill success">
-              <span className="dot" />
-              Approved
-            </span>
-            <span className="pill warn">
-              <span className="dot" />
-              Need Approve
-            </span>
-            <span className="pill primary">
-              <span className="dot" />
-              Posted
-            </span>
-          </div>
-          <table
-            className="tbl"
-            style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-          >
-            <thead>
-              <tr>
-                <th>{t('No')}</th>
-                <th>{t('Nama')}</th>
-                <th className="col-num">{t('Total')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="mono">CR-2605-2400</td>
-                <td>PT Sumber Rejeki</td>
-                <td className="num">4.250.000,00</td>
-              </tr>
-              <tr className="selected">
-                <td className="mono">CR-2605-2399</td>
-                <td>CV Cahaya Abadi</td>
-                <td className="num">1.875.000,00</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}

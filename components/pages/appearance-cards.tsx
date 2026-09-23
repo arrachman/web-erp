@@ -4,6 +4,8 @@
 // Extracted from appearance.tsx to keep each file ≤400 lines.
 import * as React from 'react';
 import { Icon } from '@/components/ui/icons';
+import { Sparkline } from '@/components/ui/sparkline';
+import { KPI_SERIES, type Translator } from '@/lib/mock';
 import {
   FONT_PX,
   PALETTE_PACKS,
@@ -16,7 +18,6 @@ import {
   type Lang,
   type Tweaks,
 } from './appearance-parts';
-import type { Translator } from '@/lib/mock';
 
 // Re-export Translator so appearance.tsx doesn't need to import directly from @/lib/mock.
 export type { Translator };
@@ -198,5 +199,123 @@ export function DensityCard({
         />
       </SetRow>
     </SetCard>
+  );
+}
+
+/** Static "Pratinjau Langsung" card — reflects live tweaks via CSS vars. */
+export function LivePreviewCard({ t }: { t: Translator }) {
+  return (
+    <div className="card" style={{ gridColumn: 'span 12' }}>
+      <div className="card-h">
+        <span
+          style={{
+            display: 'inline-flex',
+            width: 24,
+            height: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--primary-soft)',
+            color: 'var(--primary-soft-fg)',
+            borderRadius: 5,
+          }}
+        >
+          <Icon name="eye" size={13} />
+        </span>
+        <div>
+          <div className="title">{t('Pratinjau Langsung')}</div>
+          <div className="sub" style={{ marginTop: 1 }}>
+            {t('Perubahan diterapkan seketika')}
+          </div>
+        </div>
+      </div>
+      <div
+        className="card-b"
+        style={{
+          display: 'flex',
+          gap: 14,
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            flex: '1 1 220px',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: 14,
+          }}
+        >
+          <div className="kpi" style={{ padding: 0 }}>
+            <div className="label">{t('Pendapatan bulan ini')}</div>
+            <div className="value">Rp 487,5jt</div>
+            <div className="delta up">
+              <Icon name="arrow-tr" size={11} /> +12,4%
+            </div>
+            <div className="spark">
+              <Sparkline
+                data={[...KPI_SERIES.kasMasuk]}
+                color="var(--primary)"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            flex: '1 1 240px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn primary">
+              <Icon name="plus" size={12} /> {t('Tambah')}
+            </button>
+            <button className="btn">
+              <Icon name="download" size={12} /> {t('Export')}
+            </button>
+            <button className="btn ghost">{t('Batal')}</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span className="pill success">
+              <span className="dot" />
+              Approved
+            </span>
+            <span className="pill warn">
+              <span className="dot" />
+              Need Approve
+            </span>
+            <span className="pill primary">
+              <span className="dot" />
+              Posted
+            </span>
+          </div>
+          <table
+            className="tbl"
+            style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+          >
+            <thead>
+              <tr>
+                <th>{t('No')}</th>
+                <th>{t('Nama')}</th>
+                <th className="col-num">{t('Total')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="mono">CR-2605-2400</td>
+                <td>PT Sumber Rejeki</td>
+                <td className="num">4.250.000,00</td>
+              </tr>
+              <tr className="selected">
+                <td className="mono">CR-2605-2399</td>
+                <td>CV Cahaya Abadi</td>
+                <td className="num">1.875.000,00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }

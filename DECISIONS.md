@@ -253,12 +253,31 @@ mengatasi skenario cross-device / localStorage cleared.
 
 **Posisi Menu Vertical/Horizontal (2026-09-23).** Kartu "Menu Sidebar" di
 Tampilan direstrukturisasi: knob utama = **Posisi Menu** (`Vertical` /
-`Horizontal`); row **Template** (`Ikon` / `Ikon + Label`) + row **Mode Menu**
-(`Flyout` / `Accordion`) hanya tampil saat Vertical. Nilai persist tetap satu
-field `metadata.sidebar` = `'icon' | 'label' | 'horizontal'` (tidak ada
-migrasi): Vertical = `icon`/`label`, Horizontal = `horizontal` — kartu hanya
-mepresentasikan ulang knob lama. Saat pindah Horizontal → Vertical kembali,
-template default ke `icon` (nilai template sebelumnya tidak disimpan terpisah).
+`Horizontal`). Nilai persist tetap satu field `metadata.sidebar` =
+`'icon' | 'label' | 'horizontal'` (tidak ada migrasi): Vertical = `icon`/
+`label`, Horizontal = `horizontal` — kartu hanya mempresentasikan ulang knob
+lama. Saat pindah Horizontal → Vertical kembali, template default ke `icon`
+(nilai template sebelumnya tidak disimpan terpisah).
+
+**Template & Mode Menu berlaku di KEDUA orientasi (2026-09-23).** Row
+**Template** (`Ikon` / `Ikon + Label`) dan **Mode Menu** (`Flyout` /
+`Accordion`) tetap tampil saat Horizontal dan fungsinya aktif:
+
+- **Template saat Vertical** = `metadata.sidebar` (`icon`/`label`) seperti
+  semula. **Template saat Horizontal** = field baru
+  **`metadata.menubarTemplate`** (`icon`/`label`, default `label`) → attr
+  `data-menubar` di `<html>`; CSS `html[data-sidebar='horizontal'][data-
+  menubar='icon'] .sidebar .nav-item` menyembunyikan label + center ikon.
+  Field murni CSS-driven — tanpa state React; di-set di blocking script
+  (`app/layout.tsx`), `use-appearance.ts` (applyTweak/hydrate/reset/save),
+  dan `apply-server-prefs.ts` (attr + localStorage). `metadata` backend =
+  free-form Json (`Record<string, unknown>`) — tanpa perubahan API/DB.
+- **Mode Menu saat Vertical** = `sidebarMenuMode` seperti semula (flyout
+  panel kanan vs accordion expand inline). **Mode Menu saat Horizontal**
+  memakai state `sidebarMenuMode` yang sama: `accordion` = dropdown dengan
+  grup bisa expand/collapse (`renderAccordionChildren`), `flyout` = dropdown
+  daftar rata semua item per grup tanpa collapse (`renderFlyoutChildren`) —
+  keduanya di panel fixed-position yang sama di `sidebar.tsx`.
 
 **Layout horizontal diperbaiki (2026-09-23).** Sebelumnya `html[data-
 sidebar='horizontal'] .app` hanya punya 1 row `'topbar' 'main'` dan

@@ -35,9 +35,9 @@ export const viewport = {
 };
 
 // Inline script content — runs synchronously before first paint so
-// data-primary / data-sidebar / data-sidebar-menu / data-density / data-fontscale are never
+// data-primary / data-sidebar / data-sidebar-menu / data-menubar / data-density / data-fontscale are never
 // missing on the initial frame (prevents flash / FOUC).
-const APPEARANCE_INIT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem('erp-appearance')||'{}');var e=document.documentElement;e.setAttribute('data-density',s.density||'compact');e.setAttribute('data-fontscale',s.fontScale||'base');e.setAttribute('data-sidebar',s.sidebar||'icon');e.setAttribute('data-sidebar-menu',s.sidebarMenu||'flyout');e.setAttribute('data-primary',s.primary||'blue');}catch(x){}})();`;
+const APPEARANCE_INIT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem('erp-appearance')||'{}');var e=document.documentElement;e.setAttribute('data-density',s.density||'compact');e.setAttribute('data-fontscale',s.fontScale||'base');e.setAttribute('data-sidebar',s.sidebar||'icon');e.setAttribute('data-sidebar-menu',s.sidebarMenu||'flyout');e.setAttribute('data-menubar',s.menubarTemplate||'label');e.setAttribute('data-primary',s.primary||'blue');}catch(x){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

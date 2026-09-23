@@ -219,6 +219,23 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
     return item.children.map(renderAccordionLeaf);
   };
 
+  // Horizontal flyout mode: flat dropdown — every group rendered expanded,
+  // group labels are static (no collapse chevron/toggle).
+  const renderFlyoutChildren = (item: NavItem) => {
+    if (!item.children) return null;
+    if (isNavGroupArray(item.children)) {
+      return item.children.map((grp) => (
+        <div key={grp.group} className="accordion-group">
+          <div className="accordion-group-label">
+            <span>{t(grp.group)}</span>
+          </div>
+          {grp.items.map(renderAccordionLeaf)}
+        </div>
+      ));
+    }
+    return item.children.map(renderAccordionLeaf);
+  };
+
   return (
     <>
       <nav
@@ -305,7 +322,9 @@ export function Sidebar({ nav, current, onNavigate, t, workspaceId, sidebarMenuM
                     onMouseEnter={keepOpen}
                     onMouseLeave={handleLeaveAll}
                   >
-                    {renderAccordionChildren(item)}
+                    {sidebarMenuMode === 'accordion'
+                      ? renderAccordionChildren(item)
+                      : renderFlyoutChildren(item)}
                   </div>
                 )}
               </div>
