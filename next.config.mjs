@@ -1,11 +1,7 @@
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Monorepo root (two levels up: apps/web-erp -> repo root) where npm
-// workspaces hoist node_modules. Turbopack must be scoped here so it can
-// resolve hoisted deps; scoping to the app dir breaks `next build`.
-const __repoRoot = resolve(__dirname, '..', '..');
 
 // Internal api-gateway URL (server-side only — not exposed to browser).
 // In production set ERP_INTERNAL_API_URL to wherever api-gateway is reachable
@@ -18,10 +14,8 @@ const nextConfig = {
   output: 'standalone',
   // Shared workspace package consumed as TS source (not a built dist).
   transpilePackages: ['@sentient-factory/ui-kit'],
-  // Scope Turbopack to the monorepo root so it resolves hoisted workspace
-  // node_modules. The repo has multiple lockfiles (incl. a stray one in this
-  // app), so the root must be pinned explicitly or inference picks the app dir.
-  turbopack: { root: __repoRoot },
+  // Scope Turbopack to the app root so it resolves local node_modules.
+  turbopack: { root: __dirname },
   devIndicators: false,
 
   // Proxy /api/erp/* → api-gateway so same-origin calls from the browser
