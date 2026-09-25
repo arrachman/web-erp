@@ -49,16 +49,7 @@ Domain yang berlaku:
 > (otoritatif). Legacy **m11 = vertical klinik** → milik `apps/web-althea`, **bukan**
 > ERP (jangan diserap). m9 tidak ada; m10 perlu studi sebelum dipetakan.
 
-Contoh benar:
-
-| Entitas | Domain | Nama tabel |
-| --- | --- | --- |
-| User | adm | `adm_users` |
-| Role | adm | `adm_roles` |
-| Document Numbering | sys | `sys_document_numberings` |
-| Item | md | `md_items` |
-| Partner Address | md | `md_partner_addresses` |
-| Account (CoA) | md | `md_accounts` |
+Contoh: `User`→`adm_users`, `Account (CoA)`→`md_accounts`, `Document Numbering`→`sys_document_numberings`, `Partner Address`→`md_partner_addresses`.
 
 Aturan turunan:
 
@@ -80,31 +71,16 @@ Aturan turunan:
   menumpang/reuse tabel platform.
 
 > Dokumen desain DB otoritatif = `opt/web-erp/db-design/` (`README.md` hub +
-> `entities-m0-administrator.md` + `entities-m1-master-data.md` +
-> `entities-m2-finance.md` + `entities-m2-finance-enterprise.md` +
-> `entities-m3-inventory.md` + `entities-m4-purchasing.md`
-> + `entities-m5-sales.md` + `entities-m6-manufacturing.md` + `entities-m7-fixed-assets.md`
-> + `entities-m12-pos.md` + `entities-pln-planning.md` + `legacy-mapping.md` + `module-roadmap.md`). MVP pakai
-> `sys_`/`adm_`/`md_`; modul pasca-MVP (m2–m12) dipetakan di `module-roadmap.md`
-> (decision §8 #14–17). **m2 `fin` + m3 `inv` + m4 `pur` + m5 `sls` + m6 `mfg`
-> + m7 `fa` + m12 `pos` + `pln` (baru) sudah katalog field-level** (periode reuse
-> `sys_fiscal_periods`; dimensi pakai master `md_*`; pembayaran AP/AR reuse
-> `fin_ap_payments`/`fin_ar_receipts`; sale POS reuse `sls_invoices`).
-> Sisa terakhir: m8 `bi`. Top-level
-> `DB-DESIGN.md` lama sudah **dihapus** (redundan). **Semua open decision sudah
-> RESOLVED dengan user (2026-05-17)** — log keputusan otoritatif di
-> `db-design/README.md §8` (13 keputusan). Yang berubah dari draft: PK = **BigInt**,
-> **audit-log (`sys_audit_logs`) masuk MVP**, **`CurrencyRate` bertanggal**,
-> **`legacyCode` di tiap master**; `ErpUser` tetap terpisah dari User klinik.
-> **MVP = 31 tabel** (14 `sys_*`/`adm_*` + 17 `md_*`). **PRISMA SUDAH DITULIS &
-> DIMIGRASI (2026-05-18):** atas go-ahead user, seluruh katalog pasca-MVP
-> diterjemahkan ke `apps/api-gateway/prisma/schema.prisma` + migrasi
-> `20260518_003_erp_modules_fin_inv_pur_sls_mfg_fa_pos_pln` (additive: 156 tabel
-> ERP `fin`/`inv`/`pur`/`sls`/`mfg`/`fa`/`pos`/`pln` + master GL-dim `md_*`, 53
-> enum baru; 0 DROP, clinic/`m0_*`/`m1_*` aman). **Catatan desain:** referensi
-> lintas-domain = scalar `BigInt` FK + `@@index` **tanpa** `@relation`/FK DB
-> (domain decoupled); FK intra-domain ditegakkan. `inv_stock_balances` = derived
-> view. `bi`/m8 **dikecualikan** — belum ada katalog field.
+> `entities-m*.md` per modul + `module-roadmap.md` + `legacy-mapping.md`).
+> MVP pakai `sys_`/`adm_`/`md_`; modul pasca-MVP (m2–m12) dipetakan di
+> `module-roadmap.md`. **Semua open decision RESOLVED (2026-05-17)** — log di
+> `db-design/README.md §8`. Perubahan kunci: PK = **BigInt**, **`sys_audit_logs`
+> masuk MVP**, **`CurrencyRate` bertanggal**, **`legacyCode` di tiap master**;
+> `ErpUser` terpisah dari User klinik. **MVP = 31 tabel** (14 `sys_*`/`adm_*`
+> + 17 `md_*`). **Prisma sudah ditulis & dimigrasi (2026-05-18):** 156 tabel
+> ERP `fin`/`inv`/`pur`/`sls`/`mfg`/`fa`/`pos`/`pln` + 53 enum (additive, 0 DROP).
+> Referensi lintas-domain = scalar `BigInt` FK + `@@index` **tanpa** `@relation`
+> (domain decoupled); FK intra-domain ditegakkan. `bi`/m8 **dikecualikan**.
 
 ---
 
@@ -142,30 +118,17 @@ urutan wajib di atas:
 
 Aturan:
 
-- Komponen baru → tentukan tingkatnya dulu; taruh di folder per tingkat
-  (`atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/` atau setara
-  struktur prototype).
-- Primitif yang di-reexport dari `@sentient-factory/ui-kit` tetap bagian dari
-  design system ERP; Tailwind source web-ERP **wajib** mencakup
-  `packages/ui-kit/src` agar utility class pada primitive (Select, Dropdown,
-  Tooltip, Dialog, dll) ter-compile. Jika tidak, flyout/dropdown bisa tampil
-  transparan karena `bg-popover`/`border-*` tidak pernah di-generate.
-- **Dilarang** membangun tingkat lebih tinggi sebelum tingkat di bawahnya
-  ada sebagai komponen reusable (page tidak menulis ulang atom/molecule
-  ad-hoc).
-- Atom/molecule **tanpa** business logic & **tanpa** style hardcode — hanya
-  token + props. Logic naik ke organism/page.
-- Konsisten dengan batas 400 baris (§3): komponen besar dipecah per tingkat,
-  bukan jadi satu file gendut.
+- Komponen baru → tentukan tingkatnya; taruh di folder per tingkat (`atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`).
+- Primitif dari `@sentient-factory/ui-kit` tetap bagian design system ERP; Tailwind source web-ERP **wajib** mencakup `packages/ui-kit/src` agar utility class primitive (Select, Dropdown, Tooltip, Dialog) ter-compile — jika tidak, flyout bisa transparan karena `bg-popover`/`border-*` tidak di-generate.
+- **Dilarang** membangun tingkat lebih tinggi sebelum tingkat di bawahnya ada sebagai reusable (page tidak menulis ulang atom/molecule ad-hoc).
+- Atom/molecule **tanpa** business logic & **tanpa** style hardcode — hanya token + props; logic naik ke organism/page.
+- Konsisten batas 400 baris (§3): komponen besar dipecah per tingkat.
 
 Konsekuensi:
 
-- Kalau saat slicing butuh elemen UI yang belum ada di design system →
-  **stop**, tambahkan dulu sebagai komponen reusable di tingkat atomic yang
-  tepat, baru lanjut.
-- Tidak ada style/warna/spacing hardcode di halaman; selalu lewat token.
-- Konfirmasi ke user kalau scope design system belum jelas — jangan asal
-  mulai halaman.
+- Butuh elemen UI belum ada di design system → **stop**, tambahkan dulu sebagai reusable di tingkat atomic yang tepat, baru lanjut.
+- Tidak ada style/warna/spacing hardcode di halaman — selalu lewat token.
+- Scope design system belum jelas → konfirmasi ke user, jangan asal mulai halaman.
 
 ---
 
@@ -345,14 +308,9 @@ bukan ditulis ulang ad-hoc per halaman.
 hanya menampilkan badge + filter, tidak memutuskan transisi.
 
 **Konsekuensi vibe coding:**
-- Bikin list page baru → mulai dari organism `erp-list-layout.tsx` + turunan
-  `generic-list*` / `data-list*`. **Dilarang** start dari blank `<table>`.
-- Butuh fitur list yang belum di organism (mis. grouping, pinned columns)
-  → **stop**, tambahkan ke organism reusable dulu (§2.1 atomic design),
-  baru pakai di halaman.
-- Checklist di atas adalah **definition of done** untuk list page;
-  declare selesai = semua poin A–G terpenuhi atau eskalasi alasan
-  pengecualian ke user.
+- List page baru → mulai dari organism `erp-list-layout.tsx` + turunan `generic-list*`/`data-list*`. **Dilarang** start dari blank `<table>`.
+- Butuh fitur list belum di organism → **stop**, tambahkan ke organism reusable dulu (§2.1), baru pakai.
+- Checklist A–G = **definition of done** list page; declare selesai = semua terpenuhi atau eskalasi pengecualian.
 
 ---
 
@@ -406,140 +364,76 @@ sebelum cursor state-nya benar.
 
 ### 2.9 Spesifikasi detail behaviour halaman list (WAJIB, 2026-05-20)
 
-Detail implementasi yang melengkapi checklist §2.7. Semua poin ini **wajib
-konsisten** di setiap halaman list — bukan opsional.
+Detail yang melengkapi checklist §2.7 — semua wajib konsisten di setiap list.
 
-#### Row visual states (3 state, tidak boleh campur)
+#### Row visual states (tidak boleh campur)
 
 | State | Trigger | Visual |
 | --- | --- | --- |
-| **Normal** | Default | Latar default |
-| **Hovered** | Cursor di atas row | Latar `--bg-hover` (subtle) |
-| **Focused** (keyboard) | J/K navigation aktif | Border kiri 2px `--accent`, latar `--bg-focus` |
-| **Selected** (checkbox) | Checkbox ✓ atau X keyboard | Latar `--bg-selected`, checkbox terisi |
-| **Focused + Selected** | Keduanya aktif bersamaan | Gabung: border kiri + latar selected |
+| Normal | Default | Latar default |
+| Hovered | Cursor di atas row | `--bg-hover` |
+| Focused (keyboard) | J/K aktif | Border kiri 2px `--accent` + `--bg-focus` |
+| Selected (checkbox) | ✓ atau X keyboard | `--bg-selected`, checkbox terisi |
+| Focused + Selected | Keduanya | Gabung: border kiri + latar selected |
 
-Row focused ≠ row selected. Navigasi J/K **tidak otomatis** men-select baris
-— hanya memindahkan fokus visual. X / Space yang men-toggle selection. Ini
-penting agar user bisa navigate tanpa sengaja memilih banyak baris.
+Focused ≠ selected. J/K hanya memindahkan fokus visual; X / Space men-toggle selection (navigate tanpa sengaja memilih).
 
-#### Column alignment & format angka (standard)
+#### Column alignment & format angka
 
 | Tipe data | Alignment | Format |
 | --- | --- | --- |
 | Teks (kode, nama, kota, NPWP) | Kiri | — |
 | Numerik (uang, qty, %) | **Kanan** + `tabular-nums` | `46.666.000,00` |
-| Badge / status | Kiri (dalam cell) | `● Approved` |
-| Tombol aksi inline | Kanan | `Edit Hapus` |
+| Badge / status | Kiri | `● Approved` |
+| Aksi inline | Kanan | `Edit Hapus` |
 | Checkbox | Tengah | ☐ |
 
-Format angka Rupiah: `Intl.NumberFormat('id-ID', { minimumFractionDigits: 2 })`
-— ribuan titik, desimal koma, 2 digit desimal. **Tidak ada simbol Rp di kolom
-tabel** (hanya di label header atau tooltip bila perlu). Implementasi sekali di
-helper `lib/format.ts`, dipakai oleh semua halaman — tidak boleh inline per
-halaman.
+Format Rupiah: `Intl.NumberFormat('id-ID', { minimumFractionDigits: 2 })` (titik ribuan, koma desimal). **Tidak ada simbol Rp di kolom tabel.** Implementasi sekali di `lib/format.ts` — tidak boleh inline per halaman.
 
 #### Tinggi baris/tabel = density token (WAJIB, 2026-05-20)
 
-Tabel list **wajib** mengikuti knob `density` di Setting → Tampilan
-(`compact` / `comfortable`). Implementasi sudah ada di
-[`components/organisms/table.tsx`](components/organisms/table.tsx):
+Tabel list **wajib** ikut knob `density` Setting → Tampilan (`compact`/`comfortable`) via [`components/organisms/table.tsx`](components/organisms/table.tsx): `TableHead` `h-[var(--header-h)]`, `TableCell` `h-[var(--row-h)]`, token di [`styles/erp-tokens.css`](styles/erp-tokens.css) (`[data-density=…]`). App-shell hydrate `data-density` (localStorage `erp-appearance` lalu override server `getMyPreferences()`). **DILARANG** hardcode `data-density` di mount effect. List baru: pakai organism `Table*` — density otomatis.
 
-- `TableHead` pakai `h-[var(--header-h)]` → 28px compact / 34px comfortable.
-- `TableCell` pakai `h-[var(--row-h)]` → 28px compact / 36px comfortable.
-- Token didefinisikan di [`styles/erp-tokens.css`](styles/erp-tokens.css)
-  pada selector `[data-density='compact']` / `[data-density='comfortable']`
-  (data-attribute di-set di `<html>`).
+#### Approval status — token color mapping (jangan hardcode)
 
-App-shell (`components/templates/app-shell.tsx`) hydrate `data-density`
-(juga `data-fontscale`/`data-sidebar`/`data-primary`) saat mount: pertama
-dari localStorage `erp-appearance`, lalu di-override server SSOT lewat
-`getMyPreferences()` (metadata Json). **DILARANG** hardcode `data-density`
-ke literal di mount effect — dulu force-set `compact` membuat preferensi
-user tidak persist saat reload. Pengubahan density di AppearancePage
-otomatis apply ke semua tabel tanpa remount karena listener CSS variable.
-
-Saat membuat halaman list baru: cukup pakai organism `Table*` dari
-`components/organisms/table.tsx` — density mengikuti otomatis.
-
-#### Approval status — token color mapping (WAJIB, jangan hardcode)
-
-| Status value | Badge variant | Label tampil |
+| Status | Badge variant | Label |
 | --- | --- | --- |
-| `DRAFT` | `default` (abu-abu) | Draft |
-| `NEED_APPROVE` | `warning` (oranye) | Need Approve |
-| `APPROVED` | `success` (hijau) | Approved |
-| `REJECTED` | `danger` (merah) | Rejected |
-| `POSTED` | `info` (biru) | Posted |
+| `DRAFT` | `default` | Draft |
+| `NEED_APPROVE` | `warning` | Need Approve |
+| `APPROVED` | `success` | Approved |
+| `REJECTED` | `danger` | Rejected |
+| `POSTED` | `info` | Posted |
 
-Mapping dipetakan **sekali** di `lib/status.ts` (fungsi `statusBadgeVariant` /
-`statusLabel`). Setiap halaman import fungsi ini — **tidak boleh** ada
-switch/if per halaman yang mendefinisikan warna sendiri.
+Mapping **sekali** di `lib/status.ts` (`statusBadgeVariant`/`statusLabel`); import, jangan switch/if per halaman.
 
-#### H. Bulk action toolbar (WAJIB bila entitas punya operasi batch)
+#### H. Bulk action toolbar (WAJIB bila ada operasi batch)
 
-Tampil di atas tabel **hanya saat ≥ 1 baris dipilih**; hilang bila selection
-kembali ke 0. Animasi slide-in (jangan langsung muncul tanpa transisi).
+Tampil di atas tabel **hanya saat ≥1 baris dipilih**; hilang saat 0. Slide-in. Teks `X baris dipilih` + tombol batch sesuai entitas + **Batal pilihan** (kanan). Aksi destruktif → confirmation dialog. Setelah batch → reload + clear selection + toast. Implementasi via slot `toolbar` `ErpListLayout` / organism `bulk-action-bar.tsx` — **dilarang** inline.
 
-- Teks: `X baris dipilih` (X = jumlah selection)
-- Tombol aksi batch sesuai entitas (contoh: Aktifkan, Nonaktifkan, Hapus)
-- Tombol **Batal pilihan** di kanan — clear semua selection
-- Aksi destruktif batch → **wajib** confirmation dialog sebelum eksekusi
-- Setelah batch selesai → reload list + clear selection + toast notifikasi
+#### Post-action feedback (toast via `notify()`)
 
-Implementasi lewat slot `toolbar` di `ErpListLayout` atau organism
-`bulk-action-bar.tsx`. **Dilarang** inline ad-hoc per halaman.
-
-#### Post-action feedback (toast/notifikasi)
-
-Setiap operasi CRUD dan batch **wajib** memberikan feedback via `notify()`:
-
-| Operasi | Variant | Contoh pesan |
+| Operasi | Variant | Contoh |
 | --- | --- | --- |
-| Create sukses | `success` | `"Customer dibuat"` |
-| Update sukses | `success` | `"Customer diperbarui"` |
-| Delete sukses | `success` | `"Customer dihapus"` |
-| Batch sukses | `success` | `"3 customer diaktifkan"` |
+| Create/Update/Delete | `success` | `"Customer dibuat"` |
+| Batch | `success` | `"3 customer diaktifkan"` |
 | Error API | `danger` | Pesan dari `error.message` |
 | Fitur belum tersedia | `warn` | `"Export belum tersedia"` |
 
-Tidak ada operasi **silent** (tanpa feedback) — user harus selalu tahu apakah
-aksi berhasil atau gagal. Toast error harus meneruskan pesan asli dari API,
-bukan pesan generik "Terjadi kesalahan".
+Tidak ada operasi **silent**. Error wajib meneruskan pesan asli API, bukan generik.
 
-#### Confirmation dialog untuk aksi destruktif
+#### Confirmation dialog (aksi destruktif / undo)
 
-Setiap aksi yang **tidak bisa di-undo** (hapus, batch-hapus, reject) **wajib**
-menampilkan dialog konfirmasi via `confirmAction()` sebelum eksekusi:
-
-- **Title**: `Hapus <Entitas>?`
-- **Pesan single**: `<kode> — <nama> akan dihapus permanen.`
-- **Pesan batch**: `X <entitas> akan dihapus permanen.`
-- **Tombol confirm**: variant `danger`, label eksplisit (`Hapus`, bukan `OK`)
-- **Tombol batal**: ghost/secondary
+Aksi tidak-undo (hapus, batch-hapus, reject) **wajib** `confirmAction()`: title `Hapus <Entitas>?`, pesan `<kode> — <nama> akan dihapus permanen` (batch: `X <entitas>…`), tombol confirm `danger` label eksplisit (`Hapus`), batal ghost/secondary.
 
 #### Empty / loading / error state
 
 | State | Tampilan |
 | --- | --- |
-| **Loading** | Teks `Memuat...` di tengah area tabel |
-| **Error** | Teks merah `Gagal memuat data: <pesan>` di atas tabel |
-| **Empty (no data)** | `TableEmpty` colspan penuh: `Tidak ada data` |
-| **Empty (filtered)** | `TableEmpty`: `Tidak ada hasil untuk filter ini` |
+| Loading | `Memuat...` di tengah area tabel |
+| Empty (no data) | `TableEmpty` colspan: `Tidak ada data` |
+| Empty (filtered) | `TableEmpty`: `Tidak ada hasil untuk filter ini` |
 
-`TableEmpty` (`components/organisms/table.tsx`) adalah komponen standar untuk
-semua empty state tabel — **jangan** biarkan `<tbody>` kosong tanpa keterangan.
-Empty saat filter aktif harus dibedakan dari empty tanpa filter (pesan beda).
-
-**Error state = molecule `ErrorState` (2026-05-20).** Pesan error mentah dari
-backend (mis. HTTP `Not Found`, `Failed to fetch`, `Unauthorized`) **dilarang**
-ditampilkan apa adanya. `ErpListLayout` me-render
-[`components/molecules/error-state.tsx`](components/molecules/error-state.tsx)
-yang mengkategorikan pesan jadi: tidak terhubung / data tidak ditemukan /
-akses ditolak / server bermasalah / fallback — masing-masing dengan ikon,
-judul, deskripsi user-friendly, dan tombol **Coba lagi** (memanggil
-`onRefresh`). Saat membuat halaman list baru: cukup oper `error` dari
-`useErpList` ke `ErpListLayout` — jangan rakit teks error ad-hoc.
+`TableEmpty` (`components/organisms/table.tsx`) untuk semua empty state — jangan biarkan `<tbody>` kosong. **Error = molecule `ErrorState` (2026-05-20):** pesan backend mentah (`Not Found`, `Failed to fetch`, `Unauthorized`) **dilarang** ditampilkan apa adanya; `ErpListLayout` render [`components/molecules/error-state.tsx`](components/molecules/error-state.tsx) (kategori: tidak terhubung/tidak ditemukan/akses ditolak/server/fallback + tombol Coba lagi). Cukup oper `error` dari `useErpList`.
 
 ---
 
@@ -627,25 +521,9 @@ return (
 
 ### 2.12 Server-driven pagination + search + filter + sort (WAJIB, 2026-05-20)
 
-**Setiap** list page **wajib** mengirim `page`, `limit`, `search`, `sortBy`,
-`sortDir`, (+`isActive` bila ada filter status) ke API. **DILARANG** filter
-atau slice di klien atas data hasil API — backend default `limit=10`, kalau
-FE pakai client-side filter → user cuma lihat 10 baris pertama walau footer
-bilang "Tampilkan 25".
+**Setiap** list page **wajib** kirim `page`, `limit`, `search`, `sortBy`, `sortDir` (+`isActive` bila ada) ke API. **DILARANG** filter/slice di klien — backend default `limit=10` → client-side filter bikin user cuma lihat 10 baris walau footer bilang "Tampilkan 25".
 
-Bug history (2026-05-20): branches page hanya menampilkan 10 baris walau
-seed 500 dummy ada — penyebab: `listBranches({ sortBy, sortDir })` tidak
-kirim `limit`, backend default 10, FE lalu `rows.filter(...).slice(page-1,
-page)`. Quick fix-nya menaikkan limit hanya menunda masalah; refactor
-proper diterapkan ke semua list page.
-
-Bug history (2026-05-20, lanjutan): FE pakai server-driven pagination tapi
-DTO `warehouses`/`partners`/`locations` belum punya `sortBy`/`sortDir` →
-`ValidationPipe({ forbidNonWhitelisted: true })` lempar 400
-`"property sortBy should not exist"`. Fix: tambah `sortBy`/`sortDir`
-(whitelist `IsIn(SORTABLE_FIELDS)`) ke ketiga DTO + wire `orderBy: [{
-[sortBy]: sortDir }]` di service. Setiap kali nambah list page baru, sync
-DTO query dulu sebelum FE diarahkan ke server-side sort.
+> Bug history (2026-05-20): branches cuma tampil 10 baris (FE kirim tanpa `limit` + `rows.filter().slice()`); lanjutan: DTO `warehouses`/`partners`/`locations` belum punya `sortBy`/`sortDir` → `forbidNonWhitelisted` lempar 400. Pelajaran: **sync DTO query dulu sebelum FE server-side sort/pagination**.
 
 **Pola kanonik** (lihat [components/pages/branches-page.tsx](components/pages/branches-page.tsx)):
 
@@ -653,7 +531,7 @@ DTO query dulu sebelum FE diarahkan ke server-side sort.
 const [sortBy, setSortBy] = useState('createdAt');
 const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
 const [search, setSearch] = useState('');
-const [statusFilter, setStatusFilter] = useState('active'); // default: tampilkan aktif saja
+const [statusFilter, setStatusFilter] = useState('active'); // default: aktif saja
 const { page, pageSize, setPage, setPageSize } = useListPagination('branches');
 
 // Debounce search 300ms
@@ -667,80 +545,63 @@ const isActiveParam = statusFilter === 'active' ? true
   : statusFilter === 'inactive' ? false : undefined;
 
 const { rows, meta, loading, error, reload } = useErpList(
-  () => listBranches({
-    page, limit: pageSize, search: debouncedSearch || undefined,
-    sortBy, sortDir, isActive: isActiveParam,
-  }),
+  () => listBranches({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy, sortDir, isActive: isActiveParam }),
   [page, pageSize, debouncedSearch, sortBy, sortDir, isActiveParam],
 );
 
-// Reset page 1 saat filter/search/sort/pageSize berubah
-useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, sortBy, sortDir, pageSize]);
+useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, sortBy, sortDir, pageSize]); // reset page 1
 
-const paged = rows;  // server sudah paginasi
-const totalRows = meta?.total ?? 0;
-const pageCount = meta?.totalPages ?? 1;
+const paged = rows, totalRows = meta?.total ?? 0, pageCount = meta?.totalPages ?? 1;
 ```
 
 Aturan turunan:
 
-- `useErpList` (`lib/use-erp-list.ts`) **harus** dipanggil dengan
-  **deps array** kedua — fetcher closure di-cache via ref, hanya deps yang
-  trigger refetch.
-- `meta.total`/`meta.totalPages` dari backend = SSOT untuk pagination footer.
-- **Dilarang** memo `filtered = rows.filter(...)` di list page lagi —
-  filter ke backend.
-- Backend DTO **wajib** support minimal `page`, `limit`, `sortBy`, `sortDir`
-  + `search` (bila ada kolom teks). Filter status (`isActive`) bila entitas
-  punya. Kalau DTO belum lengkap → tambahkan dulu di
-  `apps/api-gateway/src/erp-<feature>/dto/query-*.dto.ts` sebelum FE
-  menggantungkan diri ke server-side.
-- Pengecualian sah saat ini (DTO memang tidak paginasi, list selalu kecil):
-  `settings`, `fiscal-periods`, `menus`, `permissions` (enum-like). Kalau
-  list-nya tumbuh, tambahkan paginasi backend dulu.
+- `useErpList` (`lib/use-erp-list.ts`) **harus** dipanggil dengan **deps array** kedua (fetcher closure di-cache via ref).
+- `meta.total`/`meta.totalPages` backend = SSOT pagination footer. **Dilarang** memo `filtered = rows.filter(...)`.
+- Backend DTO **wajib** support `page`/`limit`/`sortBy`/`sortDir` + `search`; tambah `isActive` bila perlu. DTO belum lengkap → tambah dulu di `apps/api-gateway/src/erp-<feature>/dto/query-*.dto.ts`.
+- Pengecualian (list kecil enum-like, tanpa paginasi): `settings`, `fiscal-periods`, `menus`, `permissions`. Tumbuh → tambah paginasi backend dulu.
 
 ---
 
 ### Aturan turunan lintas-fitur (ringkas — detail di `DECISIONS.md`)
 
-Rule yang lahir dari keputusan per-fitur **tapi berlaku saat membangun apa pun
-yang baru**. Satu baris di sini = index; detail + rasional ada di section ber-`§`
-di [`DECISIONS.md`](DECISIONS.md).
+Index rule lintas-fitur: satu baris = invariant + ref; detail + rasional di
+section ber-`§` [`DECISIONS.md`](DECISIONS.md).
 
-- **Halaman master `code+name+isActive`** → pakai organism `SimpleMasterPage`; jangan fork. Validation standard WAJIB (`validate` prop, `aria-invalid`, `error` prop, auto-focus error pertama). → §2.15/§2.16
-- **Tree hierarkis + DnD** (CoA tree, kategori berjenjang, menu) → reuse `TreeDndMasterPage`; jangan bikin organism tree baru. → §2.22
-- **Tab strip / sortable list** → `@dnd-kit/core`+`sortable`; dilarang HTML5 DnD / react-beautiful-dnd. → §2.14
+- **Master `code+name+isActive`** → organism `SimpleMasterPage` (jangan fork); validation WAJIB (`validate`, `aria-invalid`, `error`, auto-focus error pertama). → §2.15/§2.16
+- **Tree + DnD** (CoA/kategori/menu) → `TreeDndMasterPage`; jangan bikin organism tree baru. → §2.22
+- **Tab strip / sortable** → `@dnd-kit/core`+`sortable`; dilarang HTML5 DnD / react-beautiful-dnd. → §2.14
 - **Master `code`** = bare semantic, **tanpa** prefix entity-scope (`CAT-`/`BRD-`/`UNT-`). → §2.27
-- **Search list endpoint** = `code` exact-match (insensitive) + `name` `contains`; dilarang `code: { contains }`. SearchSelect: exact-code auto-pick saat commit. → §2.29/§2.30
-- **`SearchSelect` modal** = stale-while-loading saat ganti halaman (jangan replace `<tbody>` dgn loader row); mode multi: **Enter = submit tombol Pilih**, Space/klik = toggle baris. → §2.28
-- **Input numerik** = `<NumInput>` (bukan `<Input type=number>`); **display angka** = `formatNumber/formatRupiah/formatQty` dari `lib/format.ts`. → §2.31
-- **Input tanggal** = `<DateInput>` (bukan `<Input type=date>` mentah; placeholder "Pilih tanggal", popover day-picker dgn caption bulan/tahun = dropdown `captionLayout="dropdown"`, rentang dari `calendarNavBounds()`); **display tanggal** = `formatDate()` dari `lib/date-format.ts` (format dinamis dari `sys_settings`). Pengecualian: grid-cell editor & date-range-picker. → §2.39
-- **Format kode akun & angka** = dinamis dari `sys_settings` (bukan hardcode locale); account-code = lock-after-data. → §2.24/§2.31
-- **Enum business-logic** (≥3 nilai, konsekuensi sistem beda) → info-icon di label + Radix Popover comparison. → §2.26
-- **Migrasi ERP** = hand-written SQL + `prisma migrate deploy` (bukan `migrate dev`) + `prisma generate` **di dalam container** lalu restart. → §2.32/§2.34
-- **Preferensi user** (theme/lang/density/font/sidebar/primary) → tabel `adm_user_preferences`; 3 bahasa UI `id/en/ja`. → §2.13
-- **Command palette & sidebar** = derived dari `sys_menus` role-filtered (`my-menus`); dilarang hardcode menu list. SSOT seed menu = `prisma/seed-erp.ts` (jangan seed ERP menu di `seed.ts`). → §2.4/§2.17
-- **Mode URL routing off/on** (`urlRoutingEnabled`) → ganti mode wajib `confirmAction`. → §2.19
-- **URL form transaksi** → sub-route `<base>/new` (create) & `<base>/:id` (edit) dari canonical list path; route = SSOT list-vs-form (tanpa state `mode`). Reuse `lib/trx-route.ts` + registry `TRX_FORM_PAGES`; jangan fork skema URL. → §2.3.1
-- **Layout form input transaksi** → kolom **kanan-atas** urutan baku: **Tanggal → No Transaksi → Uang/Kurs**. Kurs read-only inline di sebelah mata uang; `No Transaksi` + checkbox `Auto` satu baris. Field identitas (partner/akun/uraian) di kiri, dimensi (cabang/lokasi) di tengah. Label rata kiri, asterisk required di belakang teks. Berlaku semua form transaksi (CR/CD/BD/giro/jurnal). → §2.36 (DECISIONS.md)
-- **Transaksi kas/bank (CR/CD/BD)** → backend **shared** `erp-fin-cash-bank-transactions` (enum `direction`, `docNumber` auto + `fiscalPeriodId` diturunkan dari tanggal, posting GL balanced saat POST, state machine §2.7). Baris kontra = organism `cash-bank-lines.tsx` (**satu kolom Total**, bukan debit/kredit ala jurnal umum). Status read-only (badge) + transisi via aksi. → § Kas Masuk (DECISIONS.md)
-- **Status dokumen transaksi** = enum `ErpDocumentStatus` 7-nilai (`DRAFT/NEED_APPROVE/APPROVED/REJECTED/POSTED/VOID/CANCELLED`), sejalan `lib/status.ts`; jangan reintroduce varian 4-nilai lama. → § Kas Masuk (DECISIONS.md)
-- **Filter list transaksi** → **1 baris**: kontrol filter masuk slot `toolbar` `ErpListLayout` (gabung baris summary `Σ`). Inline = Status + Tanggal live; tombol **Filter** (badge jumlah filter lanjutan aktif) buka **drawer kanan** (staged draft → "Terapkan"); + Reset saat aktif. Tanpa chip terpisah. Drawer = organism reusable `components/organisms/drawer.tsx`; jangan rakit slide-over ad-hoc. → §2.40
-- **Tipe Partner** = master data `md_partner_types` (`code+name+isActive`; `kind` **derived dari code**, bukan input form: `CUST`→`CUSTOMER`, `SUP`→`SUPPLIER`, `SLS`→`SALESMAN`, lain→`GENERAL`) + FK `md_partners.partner_type_id`; **jangan** reintroduce boolean `isCustomer/isSupplier/isSalesman`. Lookup Customer/Supplier/Salesman filter via `partnerType.kind` / query `typeKind`; `md_partner_categories` tetap kategori/sub-segmen terpisah (`salesTier`). → DECISIONS.md "Master Data Partner — Tipe Partner sebagai master data"
-- **Master atribut item** (lookup spt Nozzle/OEM) → mirror `md_colors` (code+name+isActive) + FK di `md_items` + modul backend (guard `ErpJwtAuthGuard`) + seed `seed-erp.ts` + daftar di `ERP_PAGES`/`NAV`/`ERP_ROUTE_META`. Reuse master existing (Warna/Merk/Ukuran/Material/Section/Desainer); Vendor→`md_partners`, Satuan Lapangan→`md_units`. **Jangan** bikin tabel atribut generik. → §2.35
-- **Sumber lookup (Form Builder & Kustomisasi Grid)** = slug kanonik registry `lib/lookup-source-registry.ts` (`LOOKUP_SOURCE_OPTIONS`, 14 sumber: ditambah `items`/`units`/`taxes`/`payment-terms`). Grid live resolve loader/label via `lib/grid-lookup-loaders.ts` (slug lama `account`/`costCenter`/… di-alias). **Jangan** bikin kosakata slug baru. → § Kustomisasi Grid (DECISIONS.md)
-- **Field settings kolom grid (Kustomisasi Grid)** = **`GridColumnSettings`** gear di setiap kolom → dialog Placeholder + Nilai default (type-aware) + Lookup config (hanya tipe lookup). DB: `sys_transaction_grid_columns.placeholder/default_value/default_value_label`. Live grid: `applyColumnDefaults` (baris baru di `useGridNav`) + `useSeedLineDefaults` (baris awal saat form buka). Mirror `FieldSettingsPopover` Form Builder. → § Kustomisasi Grid (DECISIONS.md)
-- **Form Builder field** → konfigurasi per-field di `sys_form_fields`: label/tipe/visible/wajib/slot/urutan + (lookup) sumber/filter/sort + **placeholder/`defaultValue`/`isReadonly`**. UI = **satu** `FieldSettingsPopover` (gear, semua tipe) yang me-render `LookupConfigSection` untuk tipe lookup; read-only = `BooleanRadio`. Form konsumsi: `ph()`/`ro()` + `formDefaultsPatch()` (isi default sekali saat record baru, hanya field kosong). → § Form Builder (DECISIONS.md)
-- **Header form transaksi = render 100% dari config** (no hardcoded `<Field>`): satu loop config-ordered per slot (`slotFields` dari `useFormFields`), dispatch struktural→`CashBankStructuralField` (switch fieldKey = binding ke kolom DB, **tetap di source**) vs custom→`CashBankCustomField`; baris bersama `FormFieldRow`; fallback `DEFAULT_FORM_FIELDS`. **Tipe field sistem di-GUARD** (Select disabled di builder — terikat kolom DB+posting GL); label/sumber/slot/urutan/visible/wajib/placeholder/default/readonly editable. Custom = bebas penuh. → § Header form transaksi render dinamis (DECISIONS.md)
-- **Config transaksi baru = baseline version-controlled** (BUKAN live-DB-only seperti kurasi cash/bank): grid kolom + `lineTable` per famili di `seed-erp-transaction-grids.ts` (`GridFamily`: cashbank/journal/giro/giroClearing/inv*), header default per kode di `DEFAULTS_BY_CODE` (`erp-form-fields.service.ts`). Famili tanpa kolom kurasi → catalog + grid `main` kosong (toleran). Finance non-kas/bank (GJ/AJ/JM/RV/BB jurnal · RG/SG giro · RGC/SGC clearing) sudah di-setup config-only — **giro = grid instrumen (`fin_giros`), bukan baris jurnal Debit/Kredit**; halaman belum config-driven (follow-up). → § Setup config Form Builder + Kustomisasi Grid (DECISIONS.md)
-- **Grid baris transaksi = mesin generik model-agnostik** (`grid-line-core.ts` `GridModel<Row>` + `use-grid-nav.ts` `useGridNav<Row>` + `LineCell` row-agnostic). Transaksi baru → bikin `GridModel<Row>` + organism konsumen; **jangan fork** mesin nav/cell. Cash/bank = `cashBankGridModel`; sales item-based = `slsItemGridModel`. → § Sales Order (DECISIONS.md)
-- **Transaksi sales item-based (SO/SI/DO/…)** → pola persis cash/bank tapi baris = item (Item·Qty·Satuan·Harga·Disc·Pajak·Total): shared `sales-transaction-form.tsx` (header config-driven Form Builder) + `sls-item-lines.tsx` (grid config-driven Kustomisasi Grid) + wrapper tipis per-dokumen + backend `erp-sls-*`. **SO tidak posting GL** (komitmen, bukan peristiwa finansial; SI yang posting AR/revenue). 16 type `SLS.*` terdaftar di katalog; form kerja penuh baru **Sales Order** (`/sales/orders`, code `SLS.SO`). → § Sales Order (DECISIONS.md)
-- **Biaya item (tab Harga)** = system-managed dari pembelian: `purchasePrice` (Harga Beli Terakhir) + `lastHpp` (HPP Terakhir, kolom baru) di-stamp saat GRN POST (`PurGoodsReceiptPostingService`); `averageCost` seed bila 0 dan tetap data internal, tapi **tidak ditampilkan** di form (keputusan user 2026-07-11). Field biaya yang visible di tab Harga hanya `purchasePrice` + `lastHpp` (read-only). "HPP Update" (`standardCost`) **dihapus** dari UI. Diskon Pembelian item → **default baris PR/PO/RI/PRT** (editable, via `getItemForPurchaseAutoFill`). Pajak item punya 4 slot: **Pajak Beli 1/2** + **Pajak Jual 1/2** (`purchaseTaxId`/`purchaseTax2Id`/`saleTaxId`/`saleTax2Id`; slot 2 nullable additive, 2026-07-11). Tingkat Harga/Diskon Jual **dinamis/unlimited** (item baru mulai 1 tier, tambah/hapus hanya di akhir — keputusan user 2026-06-13) dipilih `md_partner_categories.sales_tier` (kategori pelanggan) → auto-fill harga+diskon baris jual. → § Item Harga tab (DECISIONS.md §2.32)
-- **Media item** = galeri `md_item_media` (max 8 gambar + 1 video, satu primary); file di `uploads/erp-items/` (gitignored), stream via endpoint ber-guard (bukan static publik); upload multipart pakai `apiUpload()` + organism `item-media-upload.tsx`; section form "Media" butuh item tersimpan (`ItemFormData.id`). → § Item Media (DECISIONS.md)
-- **Lampiran file (attachment)** = **per-modul** (keputusan user 2026-06-13: bukan `sys_attachments` generik). Pilot = Item: tabel `md_item_attachments` (`ErpItemAttachment`, generik tanpa kind/primary), modul `erp-item-attachments.*` ber-guard `ErpJwtAuthGuard` (`/erp/items/:itemId/attachments`, stream `Content-Disposition: inline`), whitelist mime (PDF/gambar/Office/CSV/teks/ZIP) max 20×10MB, file di `uploads/erp-items/` (`att-<itemId>-<uuid>`). FE: API di `lib/api/items.ts` + organism `item-attachment-upload.tsx` (dropzone + catatan editable + unduh/hapus) + section form **Lampiran** (butuh `ItemFormData.id`). Replikasi entitas lain = salin pola. **Impor file bulk CSV/XLSX = fase berikutnya (belum dikerjakan).** → § Item Lampiran (DECISIONS.md)
-- **Lampiran transaksi (fin/inv/pur/sls)** = **per-domain** (keputusan user 2026-06-13): 4 tabel generik `<domain>_transaction_attachments` berkunci `(doc_type, doc_id)` (polymorphic, tanpa FK). **Satu** module backend `erp-attachments` (controller `erp/:domain/attachments/:docType/:docId`, guard `ErpJwtAuthGuard`, service `delegate(domain)`), whitelist mime max 30×10MB, file di `uploads/erp-transactions/`. FE: `lib/api/transaction-attachments.ts` + organism `transaction-attachment-upload.tsx` (props domain/docType/docId), tab **Lampiran** dipasang sekali per shared form (`docType=transactionCode`, `docId=data.id`): cash-bank/journal/giro (fin), sales (sls), purchase (pur), inv-stock-adjustment/count/movement/opening/daily-check (inv). Form bespoke / pembayaran AP-AR = follow-up (backend siap). → § Lampiran Transaksi (DECISIONS.md)
-- **Dimensi multi-select master (Cabang/Gudang/Lokasi)** → pola junction `md_<entity>_dim_branches/_warehouses/_locations` + reuse molecule `MultiLookupField` (`items-form-parts.tsx`) & loader `loadBranchOptions/loadWarehouseOptions/loadLocationOptions` (`items-form-lookups.ts`); kolom tunggal lama (mis. `branch_id`) dipertahankan sebagai fallback = id pertama. Sudah dipakai **item** (`md_item_dim_*`) & **partner** (`md_partner_dim_*`, 2026-06-13). **Jangan** fork komponen/skema dim baru. → § Partner dimensi multi-select (DECISIONS.md)
-- **Report Studio** (route `/admin/report-designer`) = desainer laporan band-based ribbon-style, port fungsional penuh dari `Report-Designer-ERP-Profesional/ReportStudio.dc.html`. Logika di `lib/report-studio/*`, controller hook + `vals/*` (port `renderVals`) + organisms `components/organisms/report-studio/*`. **Pixel-faithful = pengecualian §2** (inline-style "designer surface", tema/aksen tetap lewat CSS var palette); helper `s()` parse CSS string→style, `Hov` utk hover/focus. Template di-list/load/simpan dari `lib/api/reports` (`templateJson`↔RsReport via `lib/report-studio/template-io.ts`; legacy/empty→starter layout per-module; tombol Simpan); rows preview masih sample in-file (`executeSqlQuery` utk lanjutan). Cluster designer lama (report-designer*/report-designer-mock/report-api) **dihapus**. → § Report Studio (DECISIONS.md)
+- **Search endpoint** = `code` exact-match (insensitive) + `name` `contains`; dilarang `code: { contains }`. SearchSelect: exact-code auto-pick saat commit. → §2.29/§2.30
+- **`SearchSelect` modal** = stale-while-loading saat ganti halaman; multi: Enter = submit Pilih, Space/klik = toggle. → §2.28
+- **Input numerik** = `<NumInput>` (bukan `<Input type=number>`); display = `formatNumber/formatRupiah/formatQty` (`lib/format.ts`). → §2.31
+- **Input tanggal** = `<DateInput>` (bukan `<Input type=date>` mentah; caption bulan/tahun = dropdown, rentang `calendarNavBounds()`); display = `formatDate()` (`lib/date-format.ts`, dinamis dari `sys_settings`). Pengecualian: grid-cell editor & date-range-picker. → §2.39
+- **Format kode akun & angka** = dinamis dari `sys_settings`; account-code = lock-after-data. → §2.24/§2.31
+- **Enum business-logic** (≥3 nilai) → info-icon label + Radix Popover comparison. → §2.26
+- **Migrasi ERP** = hand-written SQL + `prisma migrate deploy` (bukan `migrate dev`) + `prisma generate` **di container** lalu restart. → §2.32/§2.34
+- **Preferensi user** (theme/lang/density/font/sidebar/primary) → `adm_user_preferences`; 3 bahasa UI `id/en/ja`. → §2.13
+- **Command palette & sidebar** = derived `sys_menus` role-filtered (`my-menus`); dilarang hardcode. Seed menu SSOT = `prisma/seed-erp.ts` (jangan seed ERP menu di `seed.ts`). → §2.4/§2.17
+- **Mode URL routing** (`urlRoutingEnabled`) → ganti mode wajib `confirmAction`. → §2.19
+- **URL form transaksi** → `<base>/new` (create) & `<base>/:id` (edit); route = SSOT list-vs-form (tanpa state `mode`). Reuse `lib/trx-route.ts` + registry `TRX_FORM_PAGES`. → §2.3.1
+- **Layout form transaksi** → kanan-atas urutan: **Tanggal → No Transaksi → Uang/Kurs**; identitas (partner/akun/uraian) kiri, dimensi (cabang/lokasi) tengah. Label rata kiri, asterisk di belakang. Berlaku CR/CD/BD/giro/jurnal. → §2.36
+- **Kas/bank (CR/CD/BD)** → backend shared `erp-fin-cash-bank-transactions` (`direction`, `docNumber` auto, `fiscalPeriodId` dari tanggal, posting GL balanced saat POST). Baris = organism `cash-bank-lines.tsx` (satu kolom Total, bukan debit/kredit). Status read-only + transisi via aksi. → § Kas Masuk
+- **Status dokumen transaksi** = enum `ErpDocumentStatus` 7-nilai (`DRAFT/NEED_APPROVE/APPROVED/REJECTED/POSTED/VOID/CANCELLED`), sejalan `lib/status.ts`; jangan reintroduce varian 4-nilai lama. → § Kas Masuk
+- **Filter list transaksi** = 1 baris via slot `toolbar` `ErpListLayout` (gabung summary `Σ`); inline = Status + Tanggal; tombol **Filter** (badge jumlah aktif) → drawer kanan staged (`organisms/drawer.tsx`). Tanpa chip terpisah. → §2.40
+- **Tipe Partner** = master `md_partner_types` (`code+name+isActive`; `kind` derived dari code: `CUST`/`SUP`/`SLS`/lain → `CUSTOMER`/`SUPPLIER`/`SALESMAN`/`GENERAL`) + FK `md_partners.partner_type_id`; **jangan** reintroduce boolean `isCustomer`/dll. Kategori/sub-segmen = `md_partner_categories` (`salesTier`). → DECISIONS.md "Tipe Partner"
+- **Atribut item** (Nozzle/OEM/dll) → mirror `md_colors` (code+name+isActive) + FK `md_items` + modul ber-guard `ErpJwtAuthGuard` + seed `seed-erp.ts` + daftar `ERP_PAGES`/`NAV`/`ERP_ROUTE_META`. Reuse master existing; Vendor→`md_partners`, Satuan Lapangan→`md_units`. **Jangan** tabel atribut generik. → §2.35
+- **Sumber lookup** = slug kanonik `lib/lookup-source-registry.ts` (14 sumber); resolve via `lib/grid-lookup-loaders.ts` (slug lama di-alias). **Jangan** bikin slug baru. → § Kustomisasi Grid
+- **Field settings kolom grid** = `GridColumnSettings` gear → Placeholder + Nilai default (type-aware) + Lookup config. DB: `sys_transaction_grid_columns.placeholder/default_value/default_value_label`. Live: `applyColumnDefaults` + `useSeedLineDefaults`. → § Kustomisasi Grid
+- **Form Builder field** → config per-field di `sys_form_fields` (label/tipe/visible/wajib/slot/urutan + lookup + placeholder/`defaultValue`/`isReadonly`). UI = satu `FieldSettingsPopover`; form konsumsi `ph()`/`ro()` + `formDefaultsPatch()`. → § Form Builder
+- **Header form transaksi = render 100% config** (no hardcoded `<Field>`): loop config-ordered per slot, dispatch struktural→`CashBankStructuralField` vs custom→`CashBankCustomField`. Tipe sistem di-GUARD (Select disabled di builder); custom bebas. → § Header form transaksi
+- **Config transaksi baru = baseline version-controlled** (bukan live-DB-only): grid kolom + `lineTable` per famili di `seed-erp-transaction-grids.ts` (`GridFamily`: cashbank/journal/giro/giroClearing/inv*), header default per kode di `DEFAULTS_BY_CODE`. Finance non-kas/bank sudah config-only; **giro = grid instrumen (`fin_giros`), bukan baris jurnal**. → § Setup config
+- **Grid baris transaksi** = mesin generik (`grid-line-core.ts` `GridModel<Row>` + `use-grid-nav.ts` `useGridNav<Row>` + `LineCell`). Transaksi baru → bikin `GridModel<Row>` + organism; **jangan fork** mesin. Cash/bank=`cashBankGridModel`; sales=`slsItemGridModel`. → § Sales Order
+- **Sales item-based (SO/SI/DO)** → pola cash/bank, baris=item (Item·Qty·Satuan·Harga·Disc·Pajak·Total): shared `sales-transaction-form.tsx` + `sls-item-lines.tsx` + wrapper tipis. **SO tidak posting GL** (SI yang posting AR/revenue). → § Sales Order
+- **Biaya item (tab Harga)** = system-managed dari pembelian: visible hanya `purchasePrice`+`lastHpp` (read-only, di-stamp GRN POST); `standardCost` dihapus dari UI. Pajak = 4 slot (Beli 1/2 + Jual 1/2). Tingkat Harga/Diskon = dinamis/unlimited via `md_partner_categories.sales_tier`. → § Item Harga tab
+- **Media item** = galeri `md_item_media` (max 8 img + 1 video, satu primary); file `uploads/erp-items/`, stream via endpoint ber-guard; upload `apiUpload()` + organism `item-media-upload.tsx`. Butuh item tersimpan. → § Item Media
+- **Lampiran file = per-modul** (bukan `sys_attachments` generik). Pilot Item: `md_item_attachments` + `erp-item-attachments.*`. Pola: tabel generik + modul ber-guard + organism dropzone + section form. Salin untuk entitas lain. Bulk CSV/XLSX = follow-up. → § Item Lampiran
+- **Lampiran transaksi = per-domain**: 4 tabel `<domain>_transaction_attachments` polymorphic + **satu** modul `erp-attachments` (`:domain/attachments/:docType/:docId`). FE `transaction-attachment-upload.tsx`, tab Lampiran per shared form (fin/sls/pur/inv). → § Lampiran Transaksi
+- **Dimensi multi-select master** (Cabang/Gudang/Lokasi) → junction `md_<entity>_dim_*` + molecule `MultiLookupField` + loader `loadBranch/Warehouse/LocationOptions`. Sudah dipakai item & partner; **jangan fork**. → § Partner dimensi
+- **Report Studio** (`/admin/report-designer`) = desainer laporan band-based; logika di `lib/report-studio/*` + organisms `components/organisms/report-studio/*`. Template via `lib/api/reports` (`templateJson`↔RsReport). **Pixel-faithful = pengecualian §2** (inline-style "designer surface", aksen tetap CSS var). → § Report Studio
 
 ---
 
