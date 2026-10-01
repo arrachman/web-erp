@@ -4218,3 +4218,77 @@ disebutkan di §Aturan anti posting ganda) — itu tetap infra Fase 0 yang
 tertunda, dicatat berulang di tiap section agar tidak terlupa saat
 lanjut.
 
+### § AR Receipt (IP — Payment Receipt) — dibangun dari nol, bukan isi NO-OP (2026-10-01)
+
+Unit kerja beda level dari tujuh transaksi sebelumnya: `ErpFinArReceipt`
+sebelumnya **CRUD polos** (create/findAll/findOne/update/remove, tanpa
+`transition`/workflow/posting sama sekali — lihat temuan di § AS/IP di
+atas). Dibangun penuh atas konfirmasi user: workflow §2.7 + posting GL +
+allocation ke invoice.
+
+**File baru:**
+- `dto/transition-ar-receipt.dto.ts` — state machine standar (SUBMIT/
+  APPROVE/REJECT/POST/REOPEN), sama pola semua modul lain.
+- `ar-receipt.helpers.ts` — `NEXT`/`EDITABLE`/`buildArReceiptWhere`. **Beda
+  dari pola SI/DO/dkk: `NEXT` di sini PUNYA entry `POSTED: { REOPEN:
+  'DRAFT' }`.** Ditemukan saat testing: SI/DO/GRN/dkk TIDAK punya entry itu
+  (`NEXT['POSTED']` kosong di semua helper mereka) — artinya kalau dicoba,
+  REOPEN dari status POSTED di modul-modul itu akan selalu gagal
+  "Aksi REOPEN tidak valid dari status POSTED" kecuali call site transition()
+  mereka tidak pernah benar-benar mengandalkan guard `NEXT` untuk REOPEN
+  (cek lagi: transition() semua modul punya branch `if (dto.action ===
+  A.REOPEN)` TERPISAH SETELAH cek `next = NEXT[status]?.[action]` di awal
+  — jadi REOPEN **harus lolos cek NEXT dulu** sebelum branch itu jalan).
+  **Ini kemungkinan bug laten pre-existing di SI/DO/GRN/RNR/SR/PI/PRT**: REOPEN
+  dari POSTED akan ditolak di semua 7 modul yang dikerjakan sesi ini **kecuali**
+  `inv-stock-movement.helpers.ts` (satu-satunya yang punya `POSTED: {
+  REOPEN: 'DRAFT' }`). **Belum diperbaiki di 7 modul itu** — di luar scope AR
+  Receipt, tapi dicatat sebagai temuan untuk pass perbaikan berikutnya
+  (cukup tambah satu baris `POSTED: { [A.REOPEN]: 'DRAFT' }` di tiap
+  `*.helpers.ts` yang belum punya).
+- `ar-receipt-posting.service.ts` — GL + allocation.
+
+**Desain kunci — allocation sebagai draft-di-metadata, bukan row langsung:**
+`ErpFinSettlementAllocation.ledgerEntryId` adalah **NOT NULL**, jadi row
+alokasi tidak bisa dibuat sebelum ledger entry-nya ada. Solusi: intent
+alokasi (invoiceId+amount+lineNo) disimpan di `receipt.metadata.
+draftAllocations` saat `create()`/`update()` (pola yang sama dengan
+`metadata.sourceDocType/sourceId` di DO/GRN — simpan di JSON saat tidak ada
+kolom FK terstruktur). Row `ErpFinSettlementAllocation` **hanya dibuat saat
+POST** (materialize dari draft, linked ke `ledgerEntryId` baru), dan
+**dihapus saat REOPEN** (karena ledger-nya juga dihapus) — draft di metadata
+tetap ada untuk re-POST tanpa perlu re-input.
+
+**GL posting:** **Dr** Kas/Bank per instrument (`instrument.bankAccountId`,
+cara bayar CASH/TRANSFER/CARD/OTHER — **GIRO sengaja dikeluarkan dari DTO
+`ArReceiptInstrumentMethodDto`**, karena giro FR-FIN-02 "belum menambah
+saldo bank" sampai dicairkan via clearing terpisah, bukan instrumen kas/bank
+langsung) → **Cr** Piutang Usaha per allocation (`invoice.
+receivableAccountId`, fallback `customer.receivableAccountId`). Validasi:
+total instrument harus = total allocation = `header.amount`; alokasi ke
+satu invoice tidak boleh melebihi sisa outstanding (dihitung on-the-fly dari
+`SUM(allocations.amount WHERE invoiceRef = invoiceId)` lintas semua AR
+Receipt lain, **bukan** kolom tersimpan — belum ada `remainingAmount` di
+manapun, sama seperti semua gap outstanding-tracking sebelumnya).
+
+**Efek samping POST/REOPEN:** `ErpSlsInvoice.settlementStatus` otomatis
+di-resettle (`UNPAID`/`PARTIAL`/`PAID`) berdasar total alokasi lintas semua
+AR Receipt untuk invoice itu, bukan hanya receipt yang sedang diproses.
+
+**Di luar scope (belum dibangun):** AS (Customer Advance) masih terputus
+dari AR Receipt (`arReceiptId` di AS tetap tidak terisi otomatis) — AS perlu
+pass terpisah untuk membuat AR Receipt otomatis saat AS di-POST, lalu
+posting AS sendiri jadi reklasifikasi seperti PI dari GRN. PV (AR Payment,
+pelunasan multi-invoice dengan kurs) akan **reuse pola yang sama persis**
+(instrument+allocation+metadata-draft) — giliran berikutnya kalau mau
+lanjut pola ini.
+
+**Diverifikasi end-to-end terhadap database nyata, siklus penuh:** SI
+POSTED (grandTotal 100000) → AR Receipt dibuat (instrument TRANSFER 60000,
+alokasi ke SI 60000) → SUBMIT→APPROVE→POST → 2 baris ledger balanced (Dr
+60000 Bank/Cr 60000 AR) + 1 row allocation ter-link ke ledger row AR yang
+benar + SI `settlementStatus` jadi `PARTIAL` → REOPEN → ledger+allocation
+terhapus bersih + SI balik `UNPAID` → SUBMIT→APPROVE→POST lagi → ledger
+terbentuk ulang dari draft metadata (tanpa re-input) — membuktikan desain
+draft-di-metadata bekerja untuk siklus reopen/repost berulang.
+

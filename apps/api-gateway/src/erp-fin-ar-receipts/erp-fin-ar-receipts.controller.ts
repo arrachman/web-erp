@@ -15,6 +15,7 @@ import { ErpJwtAuthGuard } from '../erp-auth/guards/erp-jwt-auth.guard';
 import { CreateArReceiptDto } from './dto/create-ar-receipt.dto';
 import { QueryArReceiptDto } from './dto/query-ar-receipt.dto';
 import { UpdateArReceiptDto } from './dto/update-ar-receipt.dto';
+import { TransitionArReceiptDto } from './dto/transition-ar-receipt.dto';
 import { ErpFinArReceiptsService } from './erp-fin-ar-receipts.service';
 
 @ApiTags('ERP Fin AR Receipts')
@@ -56,5 +57,15 @@ export class ErpFinArReceiptsController {
   @ApiOperation({ summary: 'Delete AR receipt' })
   remove(@Param('id') id: string, @Request() req: any) {
     return this.service.remove(BigInt(id), req.user?.id);
+  }
+
+  @Post(':id/transition')
+  @ApiOperation({ summary: 'Transition AR receipt workflow status (§2.7)' })
+  transition(
+    @Param('id') id: string,
+    @Body() dto: TransitionArReceiptDto,
+    @Request() req: any,
+  ) {
+    return this.service.transition(BigInt(id), dto, req.user?.id);
   }
 }

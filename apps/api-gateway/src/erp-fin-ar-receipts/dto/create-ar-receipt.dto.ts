@@ -1,23 +1,28 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
-  IsNumberString,
   IsOptional,
   IsString,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+import { IsDecimalString } from '../../erp-common/decorators/is-decimal-string.decorator';
 
+/** Full Senti approval state machine (§2.7) — mirrors DB ErpDocumentStatus. */
 export enum ErpDocumentStatusDto {
   DRAFT = 'DRAFT',
+  NEED_APPROVE = 'NEED_APPROVE',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
   POSTED = 'POSTED',
   VOID = 'VOID',
   CANCELLED = 'CANCELLED',
-}
-
-export enum ErpPostingStatusDto {
-  UNPOSTED = 'UNPOSTED',
-  POSTED = 'POSTED',
 }
 
 export enum ErpSettlementStatusDto {
@@ -26,12 +31,65 @@ export enum ErpSettlementStatusDto {
   PAID = 'PAID',
 }
 
-export class CreateArReceiptDto {
-  @ApiProperty({ example: 'RCP-2026-000001' })
+/**
+ * Cara bayar yang didukung AR Receipt saat ini. GIRO sengaja TIDAK termasuk —
+ * giro punya alur sendiri (Receipt Giro → clearing, FR-FIN-02: "belum
+ * menambah saldo bank" sampai dicairkan), bukan cash/bank langsung. Kirim
+ * giro lewat modul fin-giro-entries, bukan di sini.
+ */
+export enum ArReceiptInstrumentMethodDto {
+  CASH = 'CASH',
+  TRANSFER = 'TRANSFER',
+  CARD = 'CARD',
+  OTHER = 'OTHER',
+}
+
+export class ArReceiptInstrumentDto {
+  @ApiProperty({ enum: ArReceiptInstrumentMethodDto })
+  @IsEnum(ArReceiptInstrumentMethodDto)
+  method!: ArReceiptInstrumentMethodDto;
+
+  @ApiProperty({ example: '1', description: 'Akun kas/bank (md_accounts) tujuan penerimaan' })
   @IsString()
   @IsNotEmpty()
-  docNumber!: string;
+  bankAccountId!: string;
 
+  @ApiProperty({ example: '500000.0000' })
+  @IsDecimalString()
+  amount!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() bankName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() bankAccountNo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+
+  @ApiProperty({ example: 1 })
+  @IsInt()
+  @Min(1)
+  lineNo!: number;
+}
+
+export class ArReceiptAllocationDto {
+  @ApiProperty({ example: '42', description: 'Sales Invoice (sls_invoices) id yang dilunasi' })
+  @IsString()
+  @IsNotEmpty()
+  invoiceId!: string;
+
+  @ApiProperty({ example: '500000.0000', description: 'Nominal yang dialokasikan ke invoice ini' })
+  @IsDecimalString()
+  amount!: string;
+
+  @ApiProperty({ example: 1 })
+  @IsInt()
+  @Min(1)
+  lineNo!: number;
+}
+
+export class CreateArReceiptDto {
+  @ApiPropertyOptional({ description: 'Auto-generate docNumber via sys_document_numberings', default: true })
+  @IsOptional()
+  auto?: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() docNumber?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() autoNumber?: string;
 
   @ApiProperty({ example: '1' })
@@ -46,18 +104,17 @@ export class CreateArReceiptDto {
   @IsDateString()
   transactionDate!: string;
 
-  @ApiProperty({ example: '1' })
+  @ApiPropertyOptional({ description: 'Fiscal period id; derived from transactionDate when omitted' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fiscalPeriodId!: string;
+  fiscalPeriodId?: string;
 
-  @ApiProperty({ example: '1' })
+  @ApiProperty({ example: '1', description: 'Pelanggan (md_partners) id' })
   @IsString()
   @IsNotEmpty()
   partnerId!: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() contactPerson?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() bankAccountId?: string;
 
   @ApiProperty({ example: 'Penerimaan dari pelanggan' })
   @IsString()
@@ -72,33 +129,30 @@ export class CreateArReceiptDto {
   currencyId!: string;
 
   @ApiProperty({ example: '1.000000' })
-  @IsNumberString()
+  @IsDecimalString()
   exchangeRate!: string;
 
-  @ApiProperty({ example: '500000.0000' })
-  @IsNumberString()
-  amount!: string;
+  @ApiProperty({ type: [ArReceiptInstrumentDto], description: 'Rincian cara bayar (minimal 1)' })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => ArReceiptInstrumentDto)
+  instruments!: ArReceiptInstrumentDto[];
 
-  @ApiPropertyOptional() @IsOptional() @IsNumberString() amountFx?: string;
-
-  @ApiProperty({ example: '0.0000' })
-  @IsNumberString()
-  allocatedAmount!: string;
-
-  @ApiPropertyOptional({ enum: ErpSettlementStatusDto })
-  @IsOptional()
-  @IsEnum(ErpSettlementStatusDto)
-  paymentStatus?: ErpSettlementStatusDto;
+  @ApiProperty({
+    type: [ArReceiptAllocationDto],
+    description: 'Alokasi ke invoice outstanding (minimal 1) — jumlah harus sama dengan total instruments',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => ArReceiptAllocationDto)
+  allocations!: ArReceiptAllocationDto[];
 
   @ApiPropertyOptional({ enum: ErpDocumentStatusDto })
   @IsOptional()
   @IsEnum(ErpDocumentStatusDto)
   status?: ErpDocumentStatusDto;
-
-  @ApiPropertyOptional({ enum: ErpPostingStatusDto })
-  @IsOptional()
-  @IsEnum(ErpPostingStatusDto)
-  postingStatus?: ErpPostingStatusDto;
 
   @ApiPropertyOptional() @IsOptional() @IsString() legacyCode?: string;
 }
