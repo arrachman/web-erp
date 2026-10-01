@@ -1,0 +1,101 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: PRTS — problem & issue tracking (Andon). Issue capture +
+// escalation; links to any execution record. Design source:
+// apps/web-mdp/db-design/entities-prts.md.
+//
+// Cross-DOMAIN refs (eam_assets/eam_work_centers/mes_production_orders) +
+// cross-APP refs (adm_users) = scalar BigInt + @@index, NO @relation.
+// Intra-`prt` FK (issue↔escalations) is enforced.
+// =====================================================================
+
+enum MdpPrtIssueType {
+  QUALITY
+  MACHINE
+  SAFETY
+  MATERIAL
+  PROCESS
+  OTHER
+}
+
+enum MdpPrtSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MdpPrtIssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum MdpPrtEscalationStatus {
+  PENDING
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model MdpPrtIssue {
+  id                BigInt            @id @default(autoincrement())
+  code              String            @unique
+  name              String
+  type              MdpPrtIssueType   @map("type")
+  severity          MdpPrtSeverity    @default(MEDIUM) @map("severity")
+  status            MdpPrtIssueStatus @default(OPEN) @map("status")
+  source            String?           @map("source")
+  assetId           BigInt?           @map("asset_id") // cross-domain -> eam_assets
+  workCenterId      BigInt?           @map("work_center_id") // cross-domain -> eam_work_centers
+  productionOrderId BigInt?           @map("production_order_id") // cross-domain -> mes_production_orders
+  description       String?           @map("description")
+  reportedById      BigInt?           @map("reported_by_id") // cross-app -> adm_users
+  assignedToId      BigInt?           @map("assigned_to_id") // cross-app -> adm_users
+  raisedAt          DateTime          @map("raised_at") @db.Timestamptz(6)
+  resolvedAt        DateTime?         @map("resolved_at") @db.Timestamptz(6)
+  resolution        String?           @map("resolution")
+  notes             String?           @map("notes")
+  isActive          Boolean           @default(true) @map("is_active")
+  metadata          Json?             @map("metadata")
+  deletedAt         DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?           @map("created_by_id")
+  updatedById       BigInt?           @map("updated_by_id")
+
+  escalations MdpPrtEscalation[]
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([assetId])
+  @@index([productionOrderId])
+  @@index([assignedToId])
+  @@map("prt_issues")
+}
+
+model MdpPrtEscalation {
+  id            BigInt                 @id @default(autoincrement())
+  issueId       BigInt                 @map("issue_id")
+  level         Int                    @default(1) @map("level")
+  escalatedToId BigInt?                @map("escalated_to_id") // cross-app -> adm_users
+  escalatedAt   DateTime               @map("escalated_at") @db.Timestamptz(6)
+  dueAt         DateTime?              @map("due_at") @db.Timestamptz(6)
+  status        MdpPrtEscalationStatus @default(PENDING) @map("status")
+  reason        String?                @map("reason")
+  notes         String?                @map("notes")
+  deletedAt     DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById   BigInt?                @map("created_by_id")
+  updatedById   BigInt?                @map("updated_by_id")
+
+  issue MdpPrtIssue @relation(fields: [issueId], references: [id])
+
+  @@index([issueId])
+  @@index([status])
+  @@map("prt_escalations")
+}

@@ -1,0 +1,969 @@
+// --- Requisition (legacy m4_pr) ---
+model ErpPurRequisition {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // requisition-specific
+  requestedById      BigInt    @map("requested_by_id") // FK -> adm_users (ErpUser)
+  requestedPartnerId BigInt?   @map("requested_partner_id") // FK -> md_partners (ErpPartner)
+  neededDate         DateTime? @map("needed_date") @db.Date
+  requestedTo        String?   @map("requested_to")
+  validFrom          DateTime? @map("valid_from") @db.Date
+  validTo            DateTime? @map("valid_to") @db.Date
+  salesQuotationId   BigInt?   @map("sales_quotation_id") // FK -> sls_quotations (ErpSlsQuotation)
+  workOrderId        BigInt?   @map("work_order_id") // FK -> mfg_work_orders (ErpMfgWorkOrder) — auto-PR (decision #39)
+
+  lines ErpPurRequisitionLine[]
+  rfqs  ErpPurRfq[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([locationId])
+  @@index([warehouseId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([requestedById])
+  @@index([salesQuotationId])
+  @@index([workOrderId])
+  @@map("pur_requisitions")
+}
+
+model ErpPurRequisitionLine {
+  id            BigInt @id @default(autoincrement())
+  requisitionId BigInt @map("requisition_id")
+  itemId        BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  sourceLineId BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes        String? @map("notes")
+  lineNo       Int     @map("line_no")
+
+  requisition ErpPurRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@index([requisitionId])
+  @@index([itemId])
+  @@map("pur_requisition_lines")
+}
+
+// --- RFQ (legacy m4_rfq + m4_rfq_detail) ---
+model ErpPurRfq {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // rfq-specific
+  requisitionId BigInt?   @map("requisition_id")
+  validFrom     DateTime? @map("valid_from") @db.Date
+  validTo       DateTime? @map("valid_to") @db.Date
+
+  requisition ErpPurRequisition?  @relation(fields: [requisitionId], references: [id])
+  suppliers   ErpPurRfqSupplier[]
+  quotations  ErpPurQuotation[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([requisitionId])
+  @@map("pur_rfqs")
+}
+
+model ErpPurRfqSupplier {
+  id         BigInt  @id @default(autoincrement())
+  rfqId      BigInt  @map("rfq_id")
+  supplierId BigInt  @map("supplier_id") // FK -> md_partners (ErpPartner)
+  notes      String? @map("notes")
+  lineNo     Int     @map("line_no")
+
+  rfq ErpPurRfq @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId])
+  @@index([supplierId])
+  @@map("pur_rfq_suppliers")
+}
+
+// --- Quotation (legacy m4_rq) ---
+model ErpPurQuotation {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // quotation-specific
+  rfqId      BigInt?   @map("rfq_id")
+  groupNo    String?   @map("group_no")
+  fulfilDate DateTime? @map("fulfil_date") @db.Date
+
+  rfq           ErpPurRfq?                    @relation(fields: [rfqId], references: [id])
+  lines         ErpPurQuotationLine[]
+  bidSelections ErpPurBidSelectionQuotation[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([rfqId])
+  @@map("pur_quotations")
+}
+
+model ErpPurQuotationLine {
+  id          BigInt @id @default(autoincrement())
+  quotationId BigInt @map("quotation_id")
+  itemId      BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  sourceLineId BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes        String? @map("notes")
+  lineNo       Int     @map("line_no")
+
+  quotation     ErpPurQuotation          @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  bidSelections ErpPurBidSelectionLine[]
+
+  @@index([quotationId])
+  @@index([itemId])
+  @@map("pur_quotation_lines")
+}
+
+// --- Bid Selection (legacy m4_bs + m4_bs_detail) ---
+model ErpPurBidSelection {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  lines      ErpPurBidSelectionLine[]
+  quotations ErpPurBidSelectionQuotation[]
+  orders     ErpPurOrder[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@map("pur_bid_selections")
+}
+
+model ErpPurBidSelectionQuotation {
+  id             BigInt @id @default(autoincrement())
+  bidSelectionId BigInt @map("bid_selection_id")
+  quotationId    BigInt @map("quotation_id")
+  rank           Int    @map("rank")
+
+  bidSelection ErpPurBidSelection @relation(fields: [bidSelectionId], references: [id], onDelete: Cascade)
+  quotation    ErpPurQuotation    @relation(fields: [quotationId], references: [id])
+
+  @@index([bidSelectionId])
+  @@index([quotationId])
+  @@map("pur_bid_selection_quotations")
+}
+
+model ErpPurBidSelectionLine {
+  id              BigInt  @id @default(autoincrement())
+  bidSelectionId  BigInt  @map("bid_selection_id")
+  quotationLineId BigInt  @map("quotation_line_id")
+  selected        Boolean @default(false) @map("selected")
+  priceRank       Int     @map("price_rank")
+  notes           String? @map("notes")
+  lineNo          Int     @map("line_no")
+
+  bidSelection  ErpPurBidSelection  @relation(fields: [bidSelectionId], references: [id], onDelete: Cascade)
+  quotationLine ErpPurQuotationLine @relation(fields: [quotationLineId], references: [id])
+
+  @@index([bidSelectionId])
+  @@index([quotationLineId])
+  @@map("pur_bid_selection_lines")
+}
+
+// --- Order (legacy m4_po) ---
+model ErpPurOrder {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // order-specific upstream links
+  requisitionId  BigInt?   @map("requisition_id")
+  quotationId    BigInt?   @map("quotation_id")
+  bidSelectionId BigInt?   @map("bid_selection_id")
+  fulfilDate     DateTime? @map("fulfil_date") @db.Date
+
+  bidSelection  ErpPurBidSelection?  @relation(fields: [bidSelectionId], references: [id])
+  lines         ErpPurOrderLine[]
+  goodsReceipts ErpPurGoodsReceipt[]
+  invoices      ErpPurInvoice[]
+  returns       ErpPurReturn[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([requisitionId])
+  @@index([quotationId])
+  @@index([bidSelectionId])
+  @@map("pur_orders")
+}
+
+model ErpPurOrderLine {
+  id      BigInt @id @default(autoincrement())
+  orderId BigInt @map("order_id")
+  itemId  BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  sourceLineId BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes        String? @map("notes")
+  lineNo       Int     @map("line_no")
+
+  order             ErpPurOrder              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  goodsReceiptLines ErpPurGoodsReceiptLine[]
+  invoiceLines      ErpPurInvoiceLine[]
+  returnLines       ErpPurReturnLine[]
+
+  @@index([orderId])
+  @@index([itemId])
+  @@map("pur_order_lines")
+}
+
+// --- Goods Receipt (legacy m4_grn) ---
+model ErpPurGoodsReceipt {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // goods-receipt-specific
+  orderId BigInt? @map("order_id")
+
+  order    ErpPurOrder?             @relation(fields: [orderId], references: [id])
+  lines    ErpPurGoodsReceiptLine[]
+  invoices ErpPurInvoice[]
+  returns  ErpPurReturn[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([orderId])
+  @@map("pur_goods_receipts")
+}
+
+model ErpPurGoodsReceiptLine {
+  id             BigInt @id @default(autoincrement())
+  goodsReceiptId BigInt @map("goods_receipt_id")
+  itemId         BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  // QC delta (resolved §8 #38)
+  acceptedQty   Decimal     @default(0) @map("accepted_qty") @db.Decimal(19, 4)
+  rejectedQty   Decimal     @default(0) @map("rejected_qty") @db.Decimal(19, 4)
+  quarantineQty Decimal     @default(0) @map("quarantine_qty") @db.Decimal(19, 4)
+  qcStatus      ErpQcStatus @default(PENDING) @map("qc_status")
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  orderLineId  BigInt? @map("order_line_id")
+  sourceLineId BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes        String? @map("notes")
+  lineNo       Int     @map("line_no")
+
+  goodsReceipt ErpPurGoodsReceipt  @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  orderLine    ErpPurOrderLine?    @relation(fields: [orderLineId], references: [id])
+  invoiceLines ErpPurInvoiceLine[]
+  returnLines  ErpPurReturnLine[]
+
+  @@index([goodsReceiptId])
+  @@index([itemId])
+  @@index([orderLineId])
+  @@map("pur_goods_receipt_lines")
+}
+
+// --- Invoice (legacy m4_ri; m4_ipc folded) ---
+model ErpPurInvoice {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // invoice-specific
+  taxInvoiceNo     String?             @map("tax_invoice_no")
+  taxPaid          Boolean             @default(false) @map("tax_paid")
+  taxPaidDate      DateTime?           @map("tax_paid_date") @db.Date
+  settlementStatus ErpSettlementStatus @map("settlement_status")
+  settledDate      DateTime?           @map("settled_date") @db.Date
+  advanceAmount    Decimal?            @map("advance_amount") @db.Decimal(19, 4)
+  advanceAccountId BigInt?             @map("advance_account_id") // FK -> md_accounts (ErpAccount)
+  isOpeningBalance Boolean             @default(false) @map("is_opening_balance")
+  matchStatus      ErpMatchStatus      @default(PENDING) @map("match_status")
+
+  orderId        BigInt? @map("order_id")
+  goodsReceiptId BigInt? @map("goods_receipt_id")
+
+  order        ErpPurOrder?        @relation(fields: [orderId], references: [id])
+  goodsReceipt ErpPurGoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
+  lines        ErpPurInvoiceLine[]
+  returns      ErpPurReturn[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([orderId])
+  @@index([goodsReceiptId])
+  @@map("pur_invoices")
+}
+
+model ErpPurInvoiceLine {
+  id        BigInt @id @default(autoincrement())
+  invoiceId BigInt @map("invoice_id")
+  itemId    BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  orderLineId        BigInt? @map("order_line_id")
+  goodsReceiptLineId BigInt? @map("goods_receipt_line_id")
+  sourceLineId       BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes              String? @map("notes")
+  lineNo             Int     @map("line_no")
+
+  invoice          ErpPurInvoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  orderLine        ErpPurOrderLine?        @relation(fields: [orderLineId], references: [id])
+  goodsReceiptLine ErpPurGoodsReceiptLine? @relation(fields: [goodsReceiptLineId], references: [id])
+  returnLines      ErpPurReturnLine[]
+
+  @@index([invoiceId])
+  @@index([itemId])
+  @@index([orderLineId])
+  @@index([goodsReceiptLineId])
+  @@map("pur_invoice_lines")
+}
+
+// --- Return / Debit Note (legacy m4_dnr + m4_prt) ---
+model ErpPurReturn {
+  id         BigInt  @id @default(autoincrement())
+  docNumber  String  @unique @map("doc_number")
+  autoNumber String? @map("auto_number")
+  legacyCode String? @map("legacy_code")
+
+  branchId          BigInt       @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId        BigInt?      @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId       BigInt?      @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  docDate           DateTime     @map("doc_date") @db.Date
+  fiscalPeriodId    BigInt       @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  supplierId        BigInt?      @map("supplier_id") // FK -> md_partners (ErpPartner)
+  supplierContactId BigInt?      @map("supplier_contact_id") // FK -> md_partner_contacts (ErpPartnerContact)
+  paymentTermId     BigInt?      @map("payment_term_id") // FK -> md_payment_terms (ErpPaymentTerm)
+  dueDate           DateTime?    @map("due_date") @db.Date
+  currencyId        BigInt       @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate      Decimal      @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode         ErpPriceMode @map("price_mode")
+
+  subtotal         Decimal  @map("subtotal") @db.Decimal(19, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount   Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Amount       Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Amount       Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  otherCostPercent Decimal? @map("other_cost_percent") @db.Decimal(9, 4)
+  otherCostAmount  Decimal? @map("other_cost_amount") @db.Decimal(19, 4)
+  grandTotal       Decimal  @map("grand_total") @db.Decimal(19, 4)
+
+  description   String?   @map("description")
+  notes         String?   @map("notes")
+  referenceNo   String?   @map("reference_no")
+  referenceDate DateTime? @map("reference_date") @db.Date
+  closedDate    DateTime? @map("closed_date") @db.Date
+
+  discountAccountId  BigInt? @map("discount_account_id") // FK -> md_accounts (ErpAccount)
+  tax1AccountId      BigInt? @map("tax1_account_id") // FK -> md_accounts (ErpAccount)
+  tax2AccountId      BigInt? @map("tax2_account_id") // FK -> md_accounts (ErpAccount)
+  otherCostAccountId BigInt? @map("other_cost_account_id") // FK -> md_accounts (ErpAccount)
+  payableAccountId   BigInt? @map("payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  sourceDocType  String?            @map("source_doc_type")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+
+  // return-specific
+  returnType              ErpPurchaseReturnType @map("return_type")
+  taxInvoiceNo            String?               @map("tax_invoice_no")
+  settlementStatus        ErpSettlementStatus   @map("settlement_status")
+  settledDate             DateTime?             @map("settled_date") @db.Date
+  returnPurchaseAccountId BigInt?               @map("return_purchase_account_id") // FK -> md_accounts (ErpAccount)
+  cogsAccountId           BigInt?               @map("cogs_account_id") // FK -> md_accounts (ErpAccount)
+  isOpeningBalance        Boolean               @default(false) @map("is_opening_balance")
+
+  orderId        BigInt? @map("order_id")
+  goodsReceiptId BigInt? @map("goods_receipt_id")
+  invoiceId      BigInt? @map("invoice_id")
+
+  order        ErpPurOrder?        @relation(fields: [orderId], references: [id])
+  goodsReceipt ErpPurGoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
+  invoice      ErpPurInvoice?      @relation(fields: [invoiceId], references: [id])
+  lines        ErpPurReturnLine[]
+
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@index([fiscalPeriodId])
+  @@index([supplierId])
+  @@index([orderId])
+  @@index([goodsReceiptId])
+  @@index([invoiceId])
+  @@map("pur_returns")
+}
+
+model ErpPurReturnLine {
+  id       BigInt @id @default(autoincrement())
+  returnId BigInt @map("return_id")
+  itemId   BigInt @map("item_id") // FK -> md_items (ErpItem)
+
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue    Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId   BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId   BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(19, 4)
+  fixedPrice   Decimal? @map("fixed_price") @db.Decimal(19, 4)
+
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(9, 4)
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  tax1Id          BigInt?  @map("tax1_id") // FK -> md_taxes (ErpTax)
+  tax1Amount      Decimal? @map("tax1_amount") @db.Decimal(19, 4)
+  tax2Id          BigInt?  @map("tax2_id") // FK -> md_taxes (ErpTax)
+  tax2Amount      Decimal? @map("tax2_amount") @db.Decimal(19, 4)
+  unitCost        Decimal? @map("unit_cost") @db.Decimal(19, 4)
+
+  warehouseId               BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  inventoryAccountId        BigInt? @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId BigInt? @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  accruedPayableAccountId   BigInt? @map("accrued_payable_account_id") // FK -> md_accounts (ErpAccount)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  orderLineId        BigInt? @map("order_line_id")
+  goodsReceiptLineId BigInt? @map("goods_receipt_line_id")
+  invoiceLineId      BigInt? @map("invoice_line_id")
+  sourceLineId       BigInt? @map("source_line_id") // FK -> prior chain line (traceability)
+  notes              String? @map("notes")
+  lineNo             Int     @map("line_no")
+
+  return           ErpPurReturn            @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderLine        ErpPurOrderLine?        @relation(fields: [orderLineId], references: [id])
+  goodsReceiptLine ErpPurGoodsReceiptLine? @relation(fields: [goodsReceiptLineId], references: [id])
+  invoiceLine      ErpPurInvoiceLine?      @relation(fields: [invoiceLineId], references: [id])
+
+  @@index([returnId])
+  @@index([itemId])
+  @@index([orderLineId])
+  @@index([goodsReceiptLineId])
+  @@index([invoiceLineId])
+  @@map("pur_return_lines")
+}
+
+/// Lampiran dokumen pendukung transaksi Purchasing — generik, berkunci
+/// (doc_type, doc_id). doc_id polymorphic lintas tabel transaksi pur
+/// (tanpa FK; index saja). File di uploads/erp-transactions (bind-mount host).
+model ErpPurTransactionAttachment {
+  id          BigInt   @id @default(autoincrement())
+  docType     String   @map("doc_type")
+  docId       BigInt   @map("doc_id")
+  fileName    String   @map("file_name")
+  storedName  String   @unique @map("stored_name")
+  mimeType    String   @map("mime_type")
+  sizeBytes   Int      @map("size_bytes")
+  note        String?  @map("note")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById BigInt?  @map("created_by_id")
+
+  @@index([docType, docId])
+  @@map("pur_transaction_attachments")
+}

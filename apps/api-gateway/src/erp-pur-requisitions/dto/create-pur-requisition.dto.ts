@@ -1,0 +1,243 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { IsDecimalString } from '../../erp-common/decorators/is-decimal-string.decorator';
+
+/** Full Senti approval state machine (§2.7) — mirrors DB ErpDocumentStatus. */
+export enum ErpDocumentStatusDto {
+  DRAFT = 'DRAFT',
+  NEED_APPROVE = 'NEED_APPROVE',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  POSTED = 'POSTED',
+  VOID = 'VOID',
+  CANCELLED = 'CANCELLED',
+}
+
+/** Harga termasuk / belum termasuk pajak — mirrors DB ErpPriceMode. */
+export enum ErpPriceModeDto {
+  TAX_INCLUSIVE = 'TAX_INCLUSIVE',
+  TAX_EXCLUSIVE = 'TAX_EXCLUSIVE',
+}
+
+/** One item line of a purchase requisition (header + detail = master/detail document). */
+export class PurRequisitionLineDto {
+  @ApiProperty({ example: '1001', description: 'Item (md_items) id' })
+  @IsString()
+  @IsNotEmpty()
+  itemId!: string;
+
+  @ApiProperty({ example: '10.0000', description: 'Quantity (transaction unit)' })
+  @IsDecimalString()
+  quantity!: string;
+
+  @ApiProperty({ example: '5', description: 'Unit (md_units) id' })
+  @IsString()
+  @IsNotEmpty()
+  unitId!: string;
+
+  @ApiPropertyOptional({ example: '150000.0000', description: 'Unit price (cost); defaults to 0' })
+  @IsOptional()
+  @IsDecimalString()
+  unitPrice?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Discount percent (line)' })
+  @IsOptional()
+  @IsDecimalString()
+  discountPercent?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Discount amount (line)' })
+  @IsOptional()
+  @IsDecimalString()
+  discountAmount?: string;
+
+  @ApiPropertyOptional({ description: 'Tax 1 (md_taxes) id' })
+  @IsOptional()
+  @IsString()
+  tax1Id?: string;
+
+  @ApiPropertyOptional({ example: '0.0000' })
+  @IsOptional()
+  @IsDecimalString()
+  tax1Amount?: string;
+
+  @ApiPropertyOptional({ description: 'Tax 2 (md_taxes) id' })
+  @IsOptional()
+  @IsString()
+  tax2Id?: string;
+
+  @ApiPropertyOptional({ example: '0.0000' })
+  @IsOptional()
+  @IsDecimalString()
+  tax2Amount?: string;
+
+  @ApiPropertyOptional({ description: 'Warehouse (md_warehouses) id — Gudang' })
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Inventory account (md_accounts) id' })
+  @IsOptional()
+  @IsString()
+  inventoryAccountId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() costCenterId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() divisionId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() subdivisionId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() projectId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+
+  @ApiProperty({ example: 1 })
+  @IsInt()
+  @Min(1)
+  lineNo!: number;
+}
+
+export class CreatePurRequisitionDto {
+  @ApiPropertyOptional({
+    description: 'Auto-generate docNumber via sys_document_numberings',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  auto?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Manual doc number; omit (or set auto=true) to server-generate',
+  })
+  @IsOptional()
+  @IsString()
+  docNumber?: string;
+
+  @ApiProperty({ example: '2026-06-02', description: 'Tanggal dokumen (YYYY-MM-DD)' })
+  @IsDateString()
+  docDate!: string;
+
+  @ApiPropertyOptional({
+    description: 'Fiscal period id; derived from docDate when omitted',
+  })
+  @IsOptional()
+  @IsString()
+  fiscalPeriodId?: string;
+
+  @ApiProperty({ example: '1', description: 'Branch (md_branches) id — Cabang' })
+  @IsString()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @ApiPropertyOptional({ description: 'Location (md_locations) id — Lokasi' })
+  @IsOptional()
+  @IsString()
+  locationId?: string;
+
+  @ApiPropertyOptional({ description: 'Warehouse (md_warehouses) id — Gudang' })
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Supplier (md_partners) id' })
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
+
+  @ApiPropertyOptional({ description: 'Payment term (md_payment_terms) id — Termin' })
+  @IsOptional()
+  @IsString()
+  paymentTermId?: string;
+
+  @ApiPropertyOptional({ example: '2026-07-02', description: 'Jatuh tempo (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
+
+  @ApiProperty({ example: '1', description: 'Currency (md_currencies) id — Uang' })
+  @IsString()
+  @IsNotEmpty()
+  currencyId!: string;
+
+  @ApiProperty({ example: '1.000000' })
+  @IsDecimalString()
+  exchangeRate!: string;
+
+  @ApiPropertyOptional({ enum: ErpPriceModeDto, default: ErpPriceModeDto.TAX_EXCLUSIVE })
+  @IsOptional()
+  @IsEnum(ErpPriceModeDto)
+  priceMode?: ErpPriceModeDto;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() referenceNo?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-01', description: 'Tgl referensi (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  referenceDate?: string;
+
+  @ApiPropertyOptional({ description: 'AP control account (md_accounts) id — Rek Hutang' })
+  @IsOptional()
+  @IsString()
+  payableAccountId?: string;
+
+  // Requisition-specific: requestedById is NOT NULL (user peminta). Defaults to
+  // the acting user when omitted; create() throws if neither resolves.
+  @ApiPropertyOptional({ description: 'Requesting user (adm_users) id — Peminta; defaults to actor' })
+  @IsOptional()
+  @IsString()
+  requestedById?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-10', description: 'Tanggal dibutuhkan (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  neededDate?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Header discount percent' })
+  @IsOptional()
+  @IsDecimalString()
+  discountPercent?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Header discount amount' })
+  @IsOptional()
+  @IsDecimalString()
+  discountAmount?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Header tax 1 amount' })
+  @IsOptional()
+  @IsDecimalString()
+  tax1Amount?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Header tax 2 amount' })
+  @IsOptional()
+  @IsDecimalString()
+  tax2Amount?: string;
+
+  @ApiPropertyOptional({ example: '0.0000', description: 'Other cost amount (Biaya Lain)' })
+  @IsOptional()
+  @IsDecimalString()
+  otherCostAmount?: string;
+
+  @ApiPropertyOptional({ enum: ErpDocumentStatusDto, default: ErpDocumentStatusDto.DRAFT })
+  @IsOptional()
+  @IsEnum(ErpDocumentStatusDto)
+  status?: ErpDocumentStatusDto;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() legacyCode?: string;
+
+  @ApiProperty({ type: [PurRequisitionLineDto] })
+  @IsArray()
+  @ArrayMinSize(0)
+  @ValidateNested({ each: true })
+  @Type(() => PurRequisitionLineDto)
+  lines!: PurRequisitionLineDto[];
+}

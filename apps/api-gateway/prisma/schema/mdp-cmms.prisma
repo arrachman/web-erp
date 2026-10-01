@@ -1,0 +1,168 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: CMMS — maintenance management (work orders, PM schedules, spare
+// parts, failure codes). Maintains eam_assets; spare consumption emits an ERP
+// inv_ issue (decision #3 outbox, stubbed). Design source:
+// apps/web-mdp/db-design/entities-cmms.md.
+//
+// Conventions (inherited from ERP): BigInt PK, soft-delete, audit quartet,
+// Decimal(19,4), timestamptz UTC, Postgres enums. Models prefixed `Mdp`.
+// Cross-DOMAIN refs (eam_assets/eam_work_centers — eam != mnt) + cross-APP refs
+// (md_items/adm_users/inv_*) = scalar BigInt + @@index, NO @relation. Intra-`mnt`
+// FKs (WO↔spare_parts, pm_schedule↔WO, failure_code↔WO) are enforced.
+// =====================================================================
+
+enum MdpMntWorkOrderType {
+  CORRECTIVE
+  PREVENTIVE
+  PREDICTIVE
+  INSPECTION
+}
+
+enum MdpMntWorkOrderStatus {
+  OPEN
+  SCHEDULED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum MdpMntPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MdpMntPmTriggerType {
+  TIME_BASED
+  METER_BASED
+}
+
+enum MdpMntFailureCodeType {
+  FAILURE
+  CAUSE
+  REMEDY
+}
+
+enum MdpMntPostingStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+model MdpMntFailureCode {
+  id          BigInt                @id @default(autoincrement())
+  code        String                @unique
+  name        String
+  type        MdpMntFailureCodeType @map("type")
+  description String?               @map("description")
+  isActive    Boolean               @default(true) @map("is_active")
+  metadata    Json?                 @map("metadata")
+  deletedAt   DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?               @map("created_by_id")
+  updatedById BigInt?               @map("updated_by_id")
+
+  workOrders MdpMntWorkOrder[]
+
+  @@index([type])
+  @@map("mnt_failure_codes")
+}
+
+model MdpMntPmSchedule {
+  id              BigInt              @id @default(autoincrement())
+  code            String              @unique
+  name            String
+  assetId         BigInt?             @map("asset_id") // cross-domain -> eam_assets
+  workCenterId    BigInt?             @map("work_center_id") // cross-domain -> eam_work_centers
+  triggerType     MdpMntPmTriggerType @default(TIME_BASED) @map("trigger_type")
+  intervalDays    Int?                @map("interval_days")
+  meterType       String?             @map("meter_type")
+  meterInterval   Decimal?            @map("meter_interval") @db.Decimal(19, 4)
+  lastServiceAt   DateTime?           @map("last_service_at") @db.Timestamptz(6)
+  nextDueAt       DateTime?           @map("next_due_at") @db.Timestamptz(6)
+  taskDescription String?             @map("task_description")
+  isActive        Boolean             @default(true) @map("is_active")
+  metadata        Json?               @map("metadata")
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?             @map("created_by_id")
+  updatedById     BigInt?             @map("updated_by_id")
+
+  workOrders MdpMntWorkOrder[]
+
+  @@index([assetId])
+  @@index([triggerType])
+  @@index([nextDueAt])
+  @@map("mnt_pm_schedules")
+}
+
+model MdpMntWorkOrder {
+  id               BigInt                @id @default(autoincrement())
+  code             String                @unique
+  name             String
+  type             MdpMntWorkOrderType   @default(CORRECTIVE) @map("type")
+  status           MdpMntWorkOrderStatus @default(OPEN) @map("status")
+  priority         MdpMntPriority        @default(MEDIUM) @map("priority")
+  assetId          BigInt?               @map("asset_id") // cross-domain -> eam_assets
+  workCenterId     BigInt?               @map("work_center_id") // cross-domain -> eam_work_centers
+  pmScheduleId     BigInt?               @map("pm_schedule_id")
+  failureCodeId    BigInt?               @map("failure_code_id")
+  description      String?               @map("description")
+  scheduledStartAt DateTime?             @map("scheduled_start_at") @db.Timestamptz(6)
+  scheduledEndAt   DateTime?             @map("scheduled_end_at") @db.Timestamptz(6)
+  actualStartAt    DateTime?             @map("actual_start_at") @db.Timestamptz(6)
+  actualEndAt      DateTime?             @map("actual_end_at") @db.Timestamptz(6)
+  downtimeMinutes  Decimal?              @map("downtime_minutes") @db.Decimal(19, 4)
+  reportedById     BigInt?               @map("reported_by_id") // cross-app -> adm_users
+  assignedToId     BigInt?               @map("assigned_to_id") // cross-app -> adm_users
+  notes            String?               @map("notes")
+  isActive         Boolean               @default(true) @map("is_active")
+  metadata         Json?                 @map("metadata")
+  deletedAt        DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?               @map("created_by_id")
+  updatedById      BigInt?               @map("updated_by_id")
+
+  pmSchedule  MdpMntPmSchedule?  @relation(fields: [pmScheduleId], references: [id])
+  failureCode MdpMntFailureCode? @relation(fields: [failureCodeId], references: [id])
+  spareParts  MdpMntSparePart[]
+
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+  @@index([assetId])
+  @@index([pmScheduleId])
+  @@index([failureCodeId])
+  @@index([assignedToId])
+  @@map("mnt_work_orders")
+}
+
+model MdpMntSparePart {
+  id                 BigInt              @id @default(autoincrement())
+  workOrderId        BigInt              @map("work_order_id")
+  itemId             BigInt              @map("item_id") // cross-app -> md_items
+  qty                Decimal             @map("qty") @db.Decimal(19, 4)
+  uomCode            String?             @map("uom_code")
+  postingStatus      MdpMntPostingStatus @default(PENDING) @map("posting_status")
+  erpStockMovementId BigInt?             @map("erp_stock_movement_id") // -> inv_stock_movements (on post)
+  postedAt           DateTime?           @map("posted_at") @db.Timestamptz(6)
+  notes              String?             @map("notes")
+  deletedAt          DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById        BigInt?             @map("created_by_id")
+  updatedById        BigInt?             @map("updated_by_id")
+
+  workOrder MdpMntWorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@index([workOrderId])
+  @@index([itemId])
+  @@index([postingStatus])
+  @@map("mnt_spare_parts")
+}

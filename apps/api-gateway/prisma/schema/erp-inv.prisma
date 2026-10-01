@@ -1,0 +1,590 @@
+model ErpInvStockMovement {
+  id                     BigInt               @id @default(autoincrement())
+  docNumber              String               @unique @map("doc_number")
+  autoNumber             String?              @map("auto_number")
+  legacyCode             String?              @map("legacy_code")
+  movementType           ErpStockMovementType @map("movement_type")
+  branchId               BigInt               @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId             BigInt?              @map("location_id") // FK -> md_locations (ErpLocation)
+  sourceWarehouseId      BigInt?              @map("source_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  transitWarehouseId     BigInt?              @map("transit_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  destinationWarehouseId BigInt?              @map("destination_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  source                 String?              @map("source")
+  movementDate           DateTime             @map("movement_date") @db.Date
+  fiscalPeriodId         BigInt               @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  requestedById          BigInt?              @map("requested_by_id") // FK -> adm_users (ErpUser)
+  requestedPartnerId     BigInt?              @map("requested_partner_id") // FK -> md_partners (ErpPartner)
+  requestedTo            String?              @map("requested_to")
+  neededDate             DateTime?            @map("needed_date") @db.Date
+  relatedMovementId      BigInt?              @map("related_movement_id")
+  description            String?              @map("description")
+  notes                  String?              @map("notes")
+  referenceNo            String?              @map("reference_no")
+  referenceDate          DateTime?            @map("reference_date") @db.Date
+  status                 ErpDocumentStatus    @map("status")
+  previousStatus         ErpDocumentStatus?   @map("previous_status")
+  revisionCount          Int                  @default(0) @map("revision_count")
+  printCount             Int                  @default(0) @map("print_count")
+  postingStatus          ErpPostingStatus     @map("posting_status")
+  postedAt               DateTime?            @map("posted_at") @db.Timestamptz(6)
+  metadata               Json?                @map("metadata")
+  deletedAt              DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById            BigInt?              @map("created_by_id")
+  updatedById            BigInt?              @map("updated_by_id")
+
+  lines                 ErpInvStockMovementLine[]
+  relatedMovement       ErpInvStockMovement?      @relation("ErpInvStockMovement_relatedMovement", fields: [relatedMovementId], references: [id])
+  childMovements        ErpInvStockMovement[]     @relation("ErpInvStockMovement_relatedMovement")
+  reservationsFulfilled ErpInvStockReservation[]  @relation("ErpInvStockReservation_fulfilledByMovement")
+  serialsLastTouched    ErpInvSerial[]            @relation("ErpInvSerial_lastMovement")
+
+  @@index([movementType, status])
+  @@index([fiscalPeriodId])
+  @@index([relatedMovementId])
+  @@index([legacyCode])
+  @@map("inv_stock_movements")
+}
+
+model ErpInvStockMovementLine {
+  id                     BigInt   @id @default(autoincrement())
+  stockMovementId        BigInt   @map("stock_movement_id")
+  itemId                 BigInt   @map("item_id") // FK -> md_items (ErpItem)
+  quantity               Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId                 BigInt   @map("unit_id") // FK -> md_units (ErpUnit)
+  unitValue              Decimal  @map("unit_value") @db.Decimal(19, 4)
+  baseQuantity           Decimal  @map("base_quantity") @db.Decimal(19, 4)
+  baseUnitId             BigInt   @map("base_unit_id") // FK -> md_units (ErpUnit)
+  currencyId             BigInt?  @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate           Decimal? @map("exchange_rate") @db.Decimal(19, 6)
+  unitCost               Decimal? @map("unit_cost") @db.Decimal(19, 4)
+  salePrice              Decimal? @map("sale_price") @db.Decimal(19, 4)
+  sourceWarehouseId      BigInt?  @map("source_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  destinationWarehouseId BigInt?  @map("destination_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  relatedLineId          BigInt?  @map("related_line_id")
+  binId                  BigInt?  @map("bin_id")
+  lotId                  BigInt?  @map("lot_id")
+  serialId               BigInt?  @map("serial_id")
+  costCenterId           BigInt?  @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId             BigInt?  @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId          BigInt?  @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId              BigInt?  @map("project_id") // FK -> md_projects (ErpProject)
+  notes                  String?  @map("notes")
+  lineNo                 Int      @map("line_no")
+
+  stockMovement ErpInvStockMovement       @relation(fields: [stockMovementId], references: [id], onDelete: Cascade)
+  relatedLine   ErpInvStockMovementLine?  @relation("ErpInvStockMovementLine_relatedLine", fields: [relatedLineId], references: [id])
+  childLines    ErpInvStockMovementLine[] @relation("ErpInvStockMovementLine_relatedLine")
+  bin           ErpInvBin?                @relation(fields: [binId], references: [id])
+  lot           ErpInvLot?                @relation(fields: [lotId], references: [id])
+  serial        ErpInvSerial?             @relation(fields: [serialId], references: [id])
+
+  @@index([stockMovementId])
+  @@index([itemId])
+  @@index([relatedLineId])
+  @@index([binId])
+  @@index([lotId])
+  @@index([serialId])
+  @@map("inv_stock_movement_lines")
+}
+
+model ErpInvOpeningStock {
+  id             BigInt            @id @default(autoincrement())
+  docNumber      String            @unique @map("doc_number")
+  autoNumber     String?           @map("auto_number")
+  legacyCode     String?           @map("legacy_code")
+  branchId       BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId     BigInt?           @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId    BigInt            @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  kind           String?           @map("kind")
+  openingDate    DateTime          @map("opening_date") @db.Date
+  fiscalPeriodId BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  currencyId     BigInt            @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate   Decimal           @map("exchange_rate") @db.Decimal(19, 6)
+  description    String?           @map("description")
+  notes          String?           @map("notes")
+  status         ErpDocumentStatus @map("status")
+  postingStatus  ErpPostingStatus  @map("posting_status")
+  postedAt       DateTime?         @map("posted_at") @db.Timestamptz(6)
+  metadata       Json?             @map("metadata")
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?           @map("created_by_id")
+  updatedById    BigInt?           @map("updated_by_id")
+
+  lines ErpInvOpeningStockLine[]
+
+  @@index([fiscalPeriodId])
+  @@index([legacyCode])
+  @@map("inv_opening_stocks")
+}
+
+model ErpInvOpeningStockLine {
+  id                 BigInt  @id @default(autoincrement())
+  openingStockId     BigInt  @map("opening_stock_id")
+  itemId             BigInt  @map("item_id") // FK -> md_items (ErpItem)
+  quantity           Decimal @map("quantity") @db.Decimal(19, 4)
+  unitId             BigInt  @map("unit_id") // FK -> md_units (ErpUnit)
+  baseUnitId         BigInt  @map("base_unit_id") // FK -> md_units (ErpUnit)
+  unitCost           Decimal @map("unit_cost") @db.Decimal(19, 4)
+  inventoryAccountId BigInt  @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  warehouseId        BigInt  @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  binId              BigInt? @map("bin_id")
+  lotId              BigInt? @map("lot_id")
+  serialId           BigInt? @map("serial_id")
+  costCenterId       BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId         BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId      BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId          BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+  notes              String? @map("notes")
+  lineNo             Int     @map("line_no")
+
+  openingStock ErpInvOpeningStock @relation(fields: [openingStockId], references: [id], onDelete: Cascade)
+  bin          ErpInvBin?         @relation(fields: [binId], references: [id])
+  lot          ErpInvLot?         @relation(fields: [lotId], references: [id])
+  serial       ErpInvSerial?      @relation(fields: [serialId], references: [id])
+
+  @@index([openingStockId])
+  @@index([itemId])
+  @@index([binId])
+  @@index([lotId])
+  @@index([serialId])
+  @@map("inv_opening_stock_lines")
+}
+
+model ErpInvStockCount {
+  id               BigInt             @id @default(autoincrement())
+  docNumber        String             @unique @map("doc_number")
+  autoNumber       String?            @map("auto_number")
+  legacyCode       String?            @map("legacy_code")
+  branchId         BigInt             @map("branch_id") // FK -> md_branches (ErpBranch)
+  warehouseId      BigInt             @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  countType        ErpStockCountType  @map("count_type")
+  countDate        DateTime           @map("count_date") @db.Date
+  fiscalPeriodId   BigInt             @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  stepNo           Int?               @map("step_no")
+  description      String?            @map("description")
+  notes            String?            @map("notes")
+  adjustmentStatus ErpDocumentStatus? @map("adjustment_status")
+  status           ErpDocumentStatus  @map("status")
+  postingStatus    ErpPostingStatus   @map("posting_status")
+  metadata         Json?              @map("metadata")
+  deletedAt        DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?            @map("created_by_id")
+  updatedById      BigInt?            @map("updated_by_id")
+
+  lines       ErpInvStockCountLine[]
+  adjustments ErpInvStockAdjustment[]
+
+  @@index([fiscalPeriodId])
+  @@index([legacyCode])
+  @@map("inv_stock_counts")
+}
+
+model ErpInvStockCountLine {
+  id            BigInt  @id @default(autoincrement())
+  stockCountId  BigInt  @map("stock_count_id")
+  itemId        BigInt  @map("item_id") // FK -> md_items (ErpItem)
+  systemQty     Decimal @map("system_qty") @db.Decimal(19, 4)
+  physicalQty   Decimal @map("physical_qty") @db.Decimal(19, 4)
+  goodQty       Decimal @map("good_qty") @db.Decimal(19, 4)
+  damagedQty    Decimal @map("damaged_qty") @db.Decimal(19, 4)
+  varianceQty   Decimal @map("variance_qty") @db.Decimal(19, 4)
+  unitId        BigInt  @map("unit_id") // FK -> md_units (ErpUnit)
+  baseUnitId    BigInt  @map("base_unit_id") // FK -> md_units (ErpUnit)
+  warehouseId   BigInt  @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  binId         BigInt? @map("bin_id")
+  lotId         BigInt? @map("lot_id")
+  serialId      BigInt? @map("serial_id")
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+  notes         String? @map("notes")
+  lineNo        Int     @map("line_no")
+
+  stockCount      ErpInvStockCount            @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  bin             ErpInvBin?                  @relation(fields: [binId], references: [id])
+  lot             ErpInvLot?                  @relation(fields: [lotId], references: [id])
+  serial          ErpInvSerial?               @relation(fields: [serialId], references: [id])
+  adjustmentLines ErpInvStockAdjustmentLine[]
+
+  @@index([stockCountId])
+  @@index([itemId])
+  @@index([binId])
+  @@index([lotId])
+  @@index([serialId])
+  @@map("inv_stock_count_lines")
+}
+
+model ErpInvStockAdjustment {
+  id             BigInt            @id @default(autoincrement())
+  docNumber      String            @unique @map("doc_number")
+  autoNumber     String?           @map("auto_number")
+  legacyCode     String?           @map("legacy_code")
+  branchId       BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  warehouseId    BigInt            @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  adjustmentDate DateTime          @map("adjustment_date") @db.Date
+  fiscalPeriodId BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  kind           String?           @map("kind")
+  stockCountId   BigInt?           @map("stock_count_id")
+  description    String?           @map("description")
+  notes          String?           @map("notes")
+  status         ErpDocumentStatus @map("status")
+  postingStatus  ErpPostingStatus  @map("posting_status")
+  postedAt       DateTime?         @map("posted_at") @db.Timestamptz(6)
+  metadata       Json?             @map("metadata")
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?           @map("created_by_id")
+  updatedById    BigInt?           @map("updated_by_id")
+
+  lines      ErpInvStockAdjustmentLine[]
+  stockCount ErpInvStockCount?           @relation(fields: [stockCountId], references: [id])
+
+  @@index([fiscalPeriodId])
+  @@index([stockCountId])
+  @@index([legacyCode])
+  @@map("inv_stock_adjustments")
+}
+
+model ErpInvStockAdjustmentLine {
+  id                 BigInt                 @id @default(autoincrement())
+  stockAdjustmentId  BigInt                 @map("stock_adjustment_id")
+  itemId             BigInt                 @map("item_id") // FK -> md_items (ErpItem)
+  direction          ErpAdjustmentDirection @map("direction")
+  quantity           Decimal                @map("quantity") @db.Decimal(19, 4)
+  baseQuantity       Decimal                @map("base_quantity") @db.Decimal(19, 4)
+  unitId             BigInt                 @map("unit_id") // FK -> md_units (ErpUnit)
+  baseUnitId         BigInt                 @map("base_unit_id") // FK -> md_units (ErpUnit)
+  unitCost           Decimal                @map("unit_cost") @db.Decimal(19, 4)
+  inventoryAccountId BigInt                 @map("inventory_account_id") // FK -> md_accounts (ErpAccount)
+  contraAccountId    BigInt                 @map("contra_account_id") // FK -> md_accounts (ErpAccount)
+  warehouseId        BigInt                 @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  countLineId        BigInt?                @map("count_line_id")
+  binId              BigInt?                @map("bin_id")
+  lotId              BigInt?                @map("lot_id")
+  serialId           BigInt?                @map("serial_id")
+  costCenterId       BigInt?                @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId         BigInt?                @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId      BigInt?                @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId          BigInt?                @map("project_id") // FK -> md_projects (ErpProject)
+  notes              String?                @map("notes")
+  lineNo             Int                    @map("line_no")
+
+  stockAdjustment ErpInvStockAdjustment @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
+  countLine       ErpInvStockCountLine? @relation(fields: [countLineId], references: [id])
+  bin             ErpInvBin?            @relation(fields: [binId], references: [id])
+  lot             ErpInvLot?            @relation(fields: [lotId], references: [id])
+  serial          ErpInvSerial?         @relation(fields: [serialId], references: [id])
+
+  @@index([stockAdjustmentId])
+  @@index([itemId])
+  @@index([countLineId])
+  @@index([binId])
+  @@index([lotId])
+  @@index([serialId])
+  @@map("inv_stock_adjustment_lines")
+}
+
+model ErpInvWeighbridgeTicket {
+  id             BigInt            @id @default(autoincrement())
+  docNumber      String            @unique @map("doc_number")
+  legacyCode     String?           @map("legacy_code")
+  branchId       BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId     BigInt?           @map("location_id") // FK -> md_locations (ErpLocation)
+  ticketDate     DateTime          @map("ticket_date") @db.Date
+  fiscalPeriodId BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  vehiclePlate   String?           @map("vehicle_plate")
+  driverName     String?           @map("driver_name")
+  partnerId      BigInt?           @map("partner_id") // FK -> md_partners (ErpPartner)
+  itemId         BigInt?           @map("item_id") // FK -> md_items (ErpItem)
+  grossAt        DateTime?         @map("gross_at") @db.Timestamptz(6)
+  grossWeight    Decimal           @map("gross_weight") @db.Decimal(19, 4)
+  tareAt         DateTime?         @map("tare_at") @db.Timestamptz(6)
+  tareWeight     Decimal           @map("tare_weight") @db.Decimal(19, 4)
+  netWeight      Decimal           @map("net_weight") @db.Decimal(19, 4)
+  unitPrice      Decimal?          @map("unit_price") @db.Decimal(19, 4)
+  description    String?           @map("description")
+  notes          String?           @map("notes")
+  status         ErpDocumentStatus @map("status")
+  postingStatus  ErpPostingStatus  @map("posting_status")
+  postedAt       DateTime?         @map("posted_at") @db.Timestamptz(6)
+  metadata       Json?             @map("metadata")
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?           @map("created_by_id")
+  updatedById    BigInt?           @map("updated_by_id")
+
+  @@index([fiscalPeriodId])
+  @@index([legacyCode])
+  @@map("inv_weighbridge_tickets")
+}
+
+model ErpInvCostRecalculation {
+  id                   BigInt              @id @default(autoincrement())
+  docNumber            String              @unique @map("doc_number")
+  legacyCode           String?             @map("legacy_code")
+  costingMethod        ErpCostingMethod    @map("costing_method")
+  triggerType          String              @map("trigger_type")
+  triggerSourceDocType String?             @map("trigger_source_doc_type")
+  triggerSourceId      BigInt?             @map("trigger_source_id")
+  itemId               BigInt?             @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId          BigInt?             @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  fromDate             DateTime            @map("from_date") @db.Date
+  toDate               DateTime?           @map("to_date") @db.Date
+  fiscalPeriodId       BigInt              @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  status               ErpCostRecalcStatus @map("status")
+  totalDelta           Decimal?            @map("total_delta") @db.Decimal(19, 4)
+  startedAt            DateTime?           @map("started_at") @db.Timestamptz(6)
+  completedAt          DateTime?           @map("completed_at") @db.Timestamptz(6)
+  notes                String?             @map("notes")
+  metadata             Json?               @map("metadata")
+  deletedAt            DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?             @map("created_by_id")
+  updatedById          BigInt?             @map("updated_by_id")
+
+  lines ErpInvCostRecalculationLine[]
+
+  @@index([status])
+  @@index([itemId, warehouseId])
+  @@index([triggerSourceDocType, triggerSourceId])
+  @@index([fiscalPeriodId])
+  @@index([legacyCode])
+  @@map("inv_cost_recalculations")
+}
+
+model ErpInvCostRecalculationLine {
+  id                  BigInt   @id @default(autoincrement())
+  costRecalculationId BigInt   @map("cost_recalculation_id")
+  itemId              BigInt   @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId         BigInt   @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  ledgerEntryId       BigInt?  @map("ledger_entry_id") // FK -> fin_ledger_entries (ErpFinLedgerEntry)
+  oldUnitCost         Decimal  @map("old_unit_cost") @db.Decimal(19, 4)
+  newUnitCost         Decimal  @map("new_unit_cost") @db.Decimal(19, 4)
+  affectedQty         Decimal  @map("affected_qty") @db.Decimal(19, 4)
+  oldDebit            Decimal? @map("old_debit") @db.Decimal(19, 4)
+  oldCredit           Decimal? @map("old_credit") @db.Decimal(19, 4)
+  newDebit            Decimal? @map("new_debit") @db.Decimal(19, 4)
+  newCredit           Decimal? @map("new_credit") @db.Decimal(19, 4)
+  deltaAmount         Decimal  @map("delta_amount") @db.Decimal(19, 4)
+  lineNo              Int      @map("line_no")
+
+  costRecalculation ErpInvCostRecalculation @relation(fields: [costRecalculationId], references: [id], onDelete: Cascade)
+
+  @@index([costRecalculationId])
+  @@index([itemId])
+  @@index([ledgerEntryId])
+  @@map("inv_cost_recalculation_lines")
+}
+
+model ErpInvBin {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @map("code")
+  name        String?   @map("name")
+  legacyCode  String?   @map("legacy_code")
+  warehouseId BigInt    @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  binType     String?   @map("bin_type")
+  sequence    Int?      @map("sequence")
+  isActive    Boolean   @default(true) @map("is_active")
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  movementLines        ErpInvStockMovementLine[]
+  openingStockLines    ErpInvOpeningStockLine[]
+  stockCountLines      ErpInvStockCountLine[]
+  stockAdjustmentLines ErpInvStockAdjustmentLine[]
+  serials              ErpInvSerial[]
+  reservations         ErpInvStockReservation[]
+
+  @@unique([warehouseId, code])
+  @@index([warehouseId])
+  @@index([legacyCode])
+  @@map("inv_bins")
+}
+
+model ErpInvLot {
+  id                   BigInt       @id @default(autoincrement())
+  lotNumber            String       @map("lot_number")
+  legacyCode           String?      @map("legacy_code")
+  itemId               BigInt       @map("item_id") // FK -> md_items (ErpItem)
+  supplierLotNo        String?      @map("supplier_lot_no")
+  manufactureDate      DateTime?    @map("manufacture_date") @db.Date
+  expiryDate           DateTime?    @map("expiry_date") @db.Date
+  originGoodsReceiptId BigInt?      @map("origin_goods_receipt_id") // FK -> pur_goods_receipts (ErpPurGoodsReceipt)
+  status               ErpLotStatus @map("status")
+  notes                String?      @map("notes")
+  metadata             Json?        @map("metadata")
+  deletedAt            DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?      @map("created_by_id")
+  updatedById          BigInt?      @map("updated_by_id")
+
+  serials              ErpInvSerial[]
+  movementLines        ErpInvStockMovementLine[]
+  openingStockLines    ErpInvOpeningStockLine[]
+  stockCountLines      ErpInvStockCountLine[]
+  stockAdjustmentLines ErpInvStockAdjustmentLine[]
+  reservations         ErpInvStockReservation[]
+
+  @@unique([itemId, lotNumber])
+  @@index([itemId, status])
+  @@index([expiryDate])
+  @@index([legacyCode])
+  @@map("inv_lots")
+}
+
+model ErpInvSerial {
+  id                   BigInt          @id @default(autoincrement())
+  serialNumber         String          @map("serial_number")
+  legacyCode           String?         @map("legacy_code")
+  itemId               BigInt          @map("item_id") // FK -> md_items (ErpItem)
+  lotId                BigInt?         @map("lot_id")
+  currentWarehouseId   BigInt?         @map("current_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  currentBinId         BigInt?         @map("current_bin_id")
+  status               ErpSerialStatus @map("status")
+  originGoodsReceiptId BigInt?         @map("origin_goods_receipt_id") // FK -> pur_goods_receipts (ErpPurGoodsReceipt)
+  lastMovementId       BigInt?         @map("last_movement_id")
+  warrantyUntil        DateTime?       @map("warranty_until") @db.Date
+  notes                String?         @map("notes")
+  metadata             Json?           @map("metadata")
+  deletedAt            DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?         @map("created_by_id")
+  updatedById          BigInt?         @map("updated_by_id")
+
+  lot                  ErpInvLot?                  @relation(fields: [lotId], references: [id])
+  currentBin           ErpInvBin?                  @relation(fields: [currentBinId], references: [id])
+  lastMovement         ErpInvStockMovement?        @relation("ErpInvSerial_lastMovement", fields: [lastMovementId], references: [id])
+  movementLines        ErpInvStockMovementLine[]
+  openingStockLines    ErpInvOpeningStockLine[]
+  stockCountLines      ErpInvStockCountLine[]
+  stockAdjustmentLines ErpInvStockAdjustmentLine[]
+
+  @@unique([itemId, serialNumber])
+  @@index([itemId, status])
+  @@index([currentWarehouseId])
+  @@index([lotId])
+  @@index([currentBinId])
+  @@index([lastMovementId])
+  @@index([legacyCode])
+  @@map("inv_serials")
+}
+
+model ErpInvStockReservation {
+  id                    BigInt               @id @default(autoincrement())
+  legacyCode            String?              @map("legacy_code")
+  itemId                BigInt               @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId           BigInt               @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  binId                 BigInt?              @map("bin_id")
+  lotId                 BigInt?              @map("lot_id")
+  quantity              Decimal              @map("quantity") @db.Decimal(19, 4)
+  sourceDocType         String               @map("source_doc_type")
+  sourceDocId           BigInt               @map("source_doc_id")
+  sourceLineId          BigInt?              @map("source_line_id")
+  status                ErpReservationStatus @map("status")
+  expiresAt             DateTime?            @map("expires_at") @db.Timestamptz(6)
+  fulfilledByMovementId BigInt?              @map("fulfilled_by_movement_id")
+  metadata              Json?                @map("metadata")
+  deletedAt             DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?              @map("created_by_id")
+  updatedById           BigInt?              @map("updated_by_id")
+
+  bin                 ErpInvBin?           @relation(fields: [binId], references: [id])
+  lot                 ErpInvLot?           @relation(fields: [lotId], references: [id])
+  fulfilledByMovement ErpInvStockMovement? @relation("ErpInvStockReservation_fulfilledByMovement", fields: [fulfilledByMovementId], references: [id])
+
+  @@index([itemId, warehouseId, status])
+  @@index([sourceDocType, sourceDocId])
+  @@index([binId])
+  @@index([lotId])
+  @@index([fulfilledByMovementId])
+  @@index([legacyCode])
+  @@map("inv_stock_reservations")
+}
+
+model ErpInvDailyCheck {
+  id             BigInt            @id @default(autoincrement())
+  docNumber      String            @unique @map("doc_number")
+  autoNumber     String?           @map("auto_number")
+  legacyCode     String?           @map("legacy_code")
+  branchId       BigInt            @map("branch_id") // FK -> md_branches
+  locationId     BigInt?           @map("location_id") // FK -> md_locations
+  checkDate      DateTime          @map("check_date") @db.Date
+  fiscalPeriodId BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods
+  machineRef     String?           @map("machine_ref")
+  operatorRef    String?           @map("operator_ref")
+  description    String?           @map("description")
+  notes          String?           @map("notes")
+  status         ErpDocumentStatus @map("status")
+  postingStatus  ErpPostingStatus  @map("posting_status")
+  postedAt       DateTime?         @map("posted_at") @db.Timestamptz(6)
+  metadata       Json?             @map("metadata")
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?           @map("created_by_id")
+  updatedById    BigInt?           @map("updated_by_id")
+
+  lines ErpInvDailyCheckLine[]
+
+  @@index([fiscalPeriodId])
+  @@index([legacyCode])
+  @@map("inv_daily_checks")
+}
+
+model ErpInvDailyCheckLine {
+  id           BigInt   @id @default(autoincrement())
+  dailyCheckId BigInt   @map("daily_check_id")
+  itemId       BigInt   @map("item_id") // FK -> md_items
+  quantity     Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitId       BigInt   @map("unit_id") // FK -> md_units
+  warehouseId  BigInt?  @map("warehouse_id") // FK -> md_warehouses
+  costCenterId BigInt?  @map("cost_center_id") // FK -> md_cost_centers
+  notes        String?  @map("notes")
+  machineRef   String?  @map("machine_ref")
+  workHours    Decimal? @map("work_hours") @db.Decimal(19, 4)
+  lineNo       Int      @map("line_no")
+
+  dailyCheck ErpInvDailyCheck @relation(fields: [dailyCheckId], references: [id], onDelete: Cascade)
+
+  @@index([dailyCheckId])
+  @@index([itemId])
+  @@map("inv_daily_check_lines")
+}
+
+/// Lampiran dokumen pendukung transaksi Inventory/Warehouse — generik, berkunci
+/// (doc_type, doc_id). doc_id polymorphic lintas tabel transaksi inv
+/// (tanpa FK; index saja). File di uploads/erp-transactions (bind-mount host).
+model ErpInvTransactionAttachment {
+  id          BigInt   @id @default(autoincrement())
+  docType     String   @map("doc_type")
+  docId       BigInt   @map("doc_id")
+  fileName    String   @map("file_name")
+  storedName  String   @unique @map("stored_name")
+  mimeType    String   @map("mime_type")
+  sizeBytes   Int      @map("size_bytes")
+  note        String?  @map("note")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById BigInt?  @map("created_by_id")
+
+  @@index([docType, docId])
+  @@map("inv_transaction_attachments")
+}

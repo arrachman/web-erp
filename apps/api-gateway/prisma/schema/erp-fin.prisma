@@ -1,0 +1,1070 @@
+model ErpFinJournalEntry {
+  id             BigInt             @id @default(autoincrement())
+  docNumber      String             @unique @map("doc_number")
+  autoNumber     String?            @map("auto_number")
+  journalType    ErpJournalType     @map("journal_type")
+  branchId       BigInt             @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId     BigInt?            @map("location_id") // FK -> md_locations (ErpLocation)
+  source         String?            @map("source")
+  entryDate      DateTime           @map("entry_date") @db.Date
+  fiscalPeriodId BigInt             @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId      BigInt?            @map("partner_id") // FK -> md_partners (ErpPartner)
+  contactPerson  String?            @map("contact_person")
+  description    String             @map("description")
+  notes          String?            @map("notes")
+  currencyId     BigInt             @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate   Decimal            @map("exchange_rate") @db.Decimal(19, 6)
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  revisionCount  Int                @default(0) @map("revision_count")
+  printCount     Int                @default(0) @map("print_count")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+  postedById     BigInt?            @map("posted_by_id") // FK -> adm_users (ErpUser)
+  legacyCode     String?            @map("legacy_code")
+  metadata       Json?              @map("metadata")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?            @map("created_by_id")
+  updatedById    BigInt?            @map("updated_by_id")
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  lines ErpFinJournalLine[]
+
+  periodClosings     ErpFinPeriodClosing[]
+  fxRevaluationRuns  ErpFinFxRevaluationRun[]
+  intercompanyTxFrom ErpFinIntercompanyTransaction[] @relation("ErpFinIntercompanyTransaction_fromJv")
+  intercompanyTxTo   ErpFinIntercompanyTransaction[] @relation("ErpFinIntercompanyTransaction_toJv")
+
+  @@index([fiscalPeriodId])
+  @@index([entryDate])
+  @@index([journalType, status])
+  @@index([branchId])
+  @@index([partnerId])
+  @@index([currencyId])
+  @@index([legacyCode])
+  @@map("fin_journal_entries")
+}
+
+model ErpFinJournalLine {
+  id             BigInt   @id @default(autoincrement())
+  journalEntryId BigInt   @map("journal_entry_id")
+  accountId      BigInt   @map("account_id") // FK -> md_accounts (ErpAccount)
+  currencyId     BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate   Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  debit          Decimal  @map("debit") @db.Decimal(19, 4)
+  credit         Decimal  @map("credit") @db.Decimal(19, 4)
+  debitFx        Decimal? @map("debit_fx") @db.Decimal(19, 4)
+  creditFx       Decimal? @map("credit_fx") @db.Decimal(19, 4)
+  notes          String?  @map("notes")
+  costCenterId   BigInt?  @map("cost_center_id")
+  divisionId     BigInt?  @map("division_id")
+  subdivisionId  BigInt?  @map("subdivision_id")
+  projectId      BigInt?  @map("project_id")
+  lineNo         Int      @map("line_no")
+
+  journalEntry ErpFinJournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  costCenter   ErpCostCenter?     @relation(fields: [costCenterId], references: [id])
+  division     ErpDivision?       @relation(fields: [divisionId], references: [id])
+  subdivision  ErpSubdivision?    @relation(fields: [subdivisionId], references: [id])
+  project      ErpProject?        @relation(fields: [projectId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([costCenterId])
+  @@index([divisionId])
+  @@index([subdivisionId])
+  @@index([projectId])
+  @@map("fin_journal_lines")
+}
+
+model ErpFinLedgerEntry {
+  id                   BigInt                  @id @default(autoincrement())
+  branchId             BigInt                  @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId           BigInt?                 @map("location_id") // FK -> md_locations (ErpLocation)
+  source               String                  @map("source")
+  sourceDocType        String?                 @map("source_doc_type")
+  sourceId             BigInt?                 @map("source_id")
+  docNumber            String                  @map("doc_number")
+  entryDate            DateTime                @map("entry_date") @db.Date
+  fiscalPeriodId       BigInt                  @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId            BigInt?                 @map("partner_id") // FK -> md_partners (ErpPartner)
+  accountId            BigInt                  @map("account_id") // FK -> md_accounts (ErpAccount)
+  description          String?                 @map("description")
+  notes                String?                 @map("notes")
+  currencyId           BigInt                  @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate         Decimal                 @map("exchange_rate") @db.Decimal(19, 6)
+  referenceNo          String?                 @map("reference_no")
+  debit                Decimal                 @map("debit") @db.Decimal(19, 4)
+  credit               Decimal                 @map("credit") @db.Decimal(19, 4)
+  debitFx              Decimal?                @map("debit_fx") @db.Decimal(19, 4)
+  creditFx             Decimal?                @map("credit_fx") @db.Decimal(19, 4)
+  paymentMethod        ErpPaymentMethod?       @map("payment_method")
+  arApType             ErpArApType?            @map("ar_ap_type")
+  arApRef              String?                 @map("ar_ap_ref")
+  dueDate              DateTime?               @map("due_date") @db.Date
+  settledDate          DateTime?               @map("settled_date") @db.Date
+  settlementStatus     ErpSettlementStatus?    @map("settlement_status")
+  reconciledAt         DateTime?               @map("reconciled_at") @db.Date
+  reconciliationStatus ErpReconciliationStatus @map("reconciliation_status")
+  isOpeningBalance     Boolean                 @default(false) @map("is_opening_balance")
+  isAdjustment         Boolean                 @default(false) @map("is_adjustment")
+  isRetail             Boolean                 @default(false) @map("is_retail")
+  recostedAt           DateTime?               @map("recosted_at") @db.Timestamptz(6)
+  recostedById         BigInt?                 @map("recosted_by_id") // FK -> adm_users (ErpUser)
+  recostedByRunId      BigInt?                 @map("recosted_by_run_id") // FK -> inv_cost_recalculations (ErpInvCostRecalculation)
+  group                String?                 @map("group")
+  cashFlowCategory     ErpCashFlowCategory?    @map("cash_flow_category") // MVP/m1 enum — referenced, not redefined
+  budgetRealizedAmount Decimal?                @map("budget_realized_amount") @db.Decimal(19, 4)
+  realizationStatus    String?                 @map("realization_status")
+  costCenterId         BigInt?                 @map("cost_center_id")
+  divisionId           BigInt?                 @map("division_id")
+  subdivisionId        BigInt?                 @map("subdivision_id")
+  projectId            BigInt?                 @map("project_id")
+  lineNo               Int                     @map("line_no")
+  status               ErpDocumentStatus       @map("status")
+  postingStatus        ErpPostingStatus        @map("posting_status")
+  postedAt             DateTime?               @map("posted_at") @db.Timestamptz(6)
+  legacyCode           String?                 @map("legacy_code")
+  metadata             Json?                   @map("metadata")
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?                 @map("created_by_id")
+  updatedById          BigInt?                 @map("updated_by_id")
+  deletedAt            DateTime?               @map("deleted_at") @db.Timestamptz(6)
+
+  costCenter  ErpCostCenter?  @relation(fields: [costCenterId], references: [id])
+  division    ErpDivision?    @relation(fields: [divisionId], references: [id])
+  subdivision ErpSubdivision? @relation(fields: [subdivisionId], references: [id])
+  project     ErpProject?     @relation(fields: [projectId], references: [id])
+
+  settlementAllocations ErpFinSettlementAllocation[]
+  taxEntries            ErpFinTaxEntry[]
+  bankStatementLines    ErpFinBankStatementLine[]
+  collectionActivities  ErpFinCollectionActivity[]
+
+  @@index([accountId, entryDate])
+  @@index([fiscalPeriodId])
+  @@index([partnerId, arApType, settlementStatus])
+  @@index([sourceDocType, sourceId])
+  @@index([reconciliationStatus])
+  @@index([legacyCode])
+  @@map("fin_ledger_entries")
+}
+
+model ErpFinCashBankTransaction {
+  id              BigInt               @id @default(autoincrement())
+  docNumber       String               @unique @map("doc_number")
+  autoNumber      String?              @map("auto_number")
+  direction       ErpCashBankDirection @map("direction")
+  kind            ErpCashBankKind      @default(CASH) @map("kind") // CASH=Kas (CR/CD) · BANK=Bank (RM/SM)
+  paymentMethod   ErpPaymentMethod?    @map("payment_method") // Cara Bayar (bank txns)
+  branchId        BigInt               @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId      BigInt?              @map("location_id") // FK -> md_locations (ErpLocation)
+  source          String?              @map("source")
+  transactionDate DateTime             @map("transaction_date") @db.Date
+  fiscalPeriodId  BigInt               @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  bankAccountId   BigInt               @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  partnerId       BigInt?              @map("partner_id") // FK -> md_partners (ErpPartner)
+  contactPerson   String?              @map("contact_person")
+  description     String               @map("description")
+  notes           String?              @map("notes")
+  currencyId      BigInt               @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate    Decimal              @map("exchange_rate") @db.Decimal(19, 6)
+  amount          Decimal              @map("amount") @db.Decimal(19, 4)
+  amountFx        Decimal?             @map("amount_fx") @db.Decimal(19, 4)
+  paidAmount      Decimal?             @map("paid_amount") @db.Decimal(19, 4)
+  paymentStatus   ErpSettlementStatus? @map("payment_status")
+  settledDate     DateTime?            @map("settled_date") @db.Date
+  budgetDate      DateTime?            @map("budget_date") @db.Date
+  status          ErpDocumentStatus    @map("status")
+  previousStatus  ErpDocumentStatus?   @map("previous_status")
+  revisionCount   Int                  @default(0) @map("revision_count")
+  printCount      Int                  @default(0) @map("print_count")
+  postingStatus   ErpPostingStatus     @map("posting_status")
+  postedAt        DateTime?            @map("posted_at") @db.Timestamptz(6)
+  legacyCode      String?              @map("legacy_code")
+  metadata        Json?                @map("metadata")
+  customFields    Json?                @map("custom_fields") // user-defined header fields (Form Builder), keyed by fieldKey
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?              @map("created_by_id")
+  updatedById     BigInt?              @map("updated_by_id")
+  deletedAt       DateTime?            @map("deleted_at") @db.Timestamptz(6)
+
+  lines              ErpFinCashBankLine[]
+  bankStatementLines ErpFinBankStatementLine[]
+
+  @@index([fiscalPeriodId])
+  @@index([branchId])
+  @@index([partnerId])
+  @@index([legacyCode])
+  @@index([kind, direction, status])
+  @@map("fin_cash_bank_transactions")
+}
+
+model ErpFinCashBankLine {
+  id                    BigInt   @id @default(autoincrement())
+  cashBankTransactionId BigInt   @map("cash_bank_transaction_id")
+  accountId             BigInt   @map("account_id") // FK -> md_accounts (ErpAccount)
+  currencyId            BigInt   @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate          Decimal  @map("exchange_rate") @db.Decimal(19, 6)
+  amount                Decimal  @map("amount") @db.Decimal(19, 4)
+  amountFx              Decimal? @map("amount_fx") @db.Decimal(19, 4)
+  notes                 String?  @map("notes")
+  costCenterId          BigInt?  @map("cost_center_id")
+  divisionId            BigInt?  @map("division_id")
+  subdivisionId         BigInt?  @map("subdivision_id")
+  projectId             BigInt?  @map("project_id")
+  lineNo                Int      @map("line_no")
+  customFields          Json?    @map("custom_fields") // user-defined grid columns (Kustomisasi Grid), keyed by dataField
+
+  cashBankTransaction ErpFinCashBankTransaction @relation(fields: [cashBankTransactionId], references: [id], onDelete: Cascade)
+  costCenter          ErpCostCenter?            @relation(fields: [costCenterId], references: [id])
+  division            ErpDivision?              @relation(fields: [divisionId], references: [id])
+  subdivision         ErpSubdivision?           @relation(fields: [subdivisionId], references: [id])
+  project             ErpProject?               @relation(fields: [projectId], references: [id])
+
+  @@index([cashBankTransactionId])
+  @@index([accountId])
+  @@index([costCenterId])
+  @@index([divisionId])
+  @@index([subdivisionId])
+  @@index([projectId])
+  @@map("fin_cash_bank_lines")
+}
+
+model ErpFinArReceipt {
+  id              BigInt              @id @default(autoincrement())
+  docNumber       String              @unique @map("doc_number")
+  autoNumber      String?             @map("auto_number")
+  branchId        BigInt              @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId      BigInt?             @map("location_id") // FK -> md_locations (ErpLocation)
+  source          String?             @map("source")
+  transactionDate DateTime            @map("transaction_date") @db.Date
+  fiscalPeriodId  BigInt              @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId       BigInt              @map("partner_id") // FK -> md_partners (ErpPartner)
+  contactPerson   String?             @map("contact_person")
+  bankAccountId   BigInt?             @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  description     String              @map("description")
+  notes           String?             @map("notes")
+  currencyId      BigInt              @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate    Decimal             @map("exchange_rate") @db.Decimal(19, 6)
+  amount          Decimal             @map("amount") @db.Decimal(19, 4)
+  amountFx        Decimal?            @map("amount_fx") @db.Decimal(19, 4)
+  allocatedAmount Decimal             @map("allocated_amount") @db.Decimal(19, 4)
+  paymentStatus   ErpSettlementStatus @map("payment_status")
+  settledDate     DateTime?           @map("settled_date") @db.Date
+  status          ErpDocumentStatus   @map("status")
+  previousStatus  ErpDocumentStatus?  @map("previous_status")
+  revisionCount   Int                 @default(0) @map("revision_count")
+  printCount      Int                 @default(0) @map("print_count")
+  postingStatus   ErpPostingStatus    @map("posting_status")
+  postedAt        DateTime?           @map("posted_at") @db.Timestamptz(6)
+  legacyCode      String?             @map("legacy_code")
+  metadata        Json?               @map("metadata")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?             @map("created_by_id")
+  updatedById     BigInt?             @map("updated_by_id")
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  instruments ErpFinPaymentInstrument[]
+  allocations ErpFinSettlementAllocation[]
+
+  @@index([fiscalPeriodId])
+  @@index([partnerId])
+  @@index([legacyCode])
+  @@map("fin_ar_receipts")
+}
+
+model ErpFinApPayment {
+  id                    BigInt              @id @default(autoincrement())
+  docNumber             String              @unique @map("doc_number")
+  autoNumber            String?             @map("auto_number")
+  branchId              BigInt              @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId            BigInt?             @map("location_id") // FK -> md_locations (ErpLocation)
+  source                String?             @map("source")
+  transactionDate       DateTime            @map("transaction_date") @db.Date
+  fiscalPeriodId        BigInt              @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId             BigInt              @map("partner_id") // FK -> md_partners (ErpPartner)
+  contactPerson         String?             @map("contact_person")
+  bankAccountId         BigInt?             @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  description           String              @map("description")
+  notes                 String?             @map("notes")
+  currencyId            BigInt              @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate          Decimal             @map("exchange_rate") @db.Decimal(19, 6)
+  amount                Decimal             @map("amount") @db.Decimal(19, 4)
+  amountFx              Decimal?            @map("amount_fx") @db.Decimal(19, 4)
+  allocatedAmount       Decimal             @map("allocated_amount") @db.Decimal(19, 4)
+  paymentStatus         ErpSettlementStatus @map("payment_status")
+  settledDate           DateTime?           @map("settled_date") @db.Date
+  status                ErpDocumentStatus   @map("status")
+  previousStatus        ErpDocumentStatus?  @map("previous_status")
+  revisionCount         Int                 @default(0) @map("revision_count")
+  printCount            Int                 @default(0) @map("print_count")
+  postingStatus         ErpPostingStatus    @map("posting_status")
+  postedAt              DateTime?           @map("posted_at") @db.Timestamptz(6)
+  legacyCode            String?             @map("legacy_code")
+  // FX gain/loss + term discount added for VP/VPP reuse (m4 pur domain).
+  // See db-design/entities-m4-purchasing.md (payment reuse) and entities-m2-finance.md.
+  fxGainLossAmount      Decimal?            @map("fx_gain_loss_amount") @db.Decimal(19, 4)
+  fxGainLossAccountId   BigInt?             @map("fx_gain_loss_account_id") // FK -> md_accounts (ErpAccount)
+  termDiscountAmount    Decimal?            @map("term_discount_amount") @db.Decimal(19, 4)
+  termDiscountAccountId BigInt?             @map("term_discount_account_id") // FK -> md_accounts (ErpAccount)
+  metadata              Json?               @map("metadata")
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?             @map("created_by_id")
+  updatedById           BigInt?             @map("updated_by_id")
+  deletedAt             DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  instruments ErpFinPaymentInstrument[]
+  allocations ErpFinSettlementAllocation[]
+
+  @@index([fiscalPeriodId])
+  @@index([partnerId])
+  @@index([legacyCode])
+  @@map("fin_ap_payments")
+}
+
+model ErpFinPaymentInstrument {
+  id            BigInt           @id @default(autoincrement())
+  arReceiptId   BigInt?          @map("ar_receipt_id")
+  apPaymentId   BigInt?          @map("ap_payment_id")
+  method        ErpPaymentMethod @map("method")
+  currencyId    BigInt           @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate  Decimal          @map("exchange_rate") @db.Decimal(19, 6)
+  amount        Decimal          @map("amount") @db.Decimal(19, 4)
+  amountFx      Decimal?         @map("amount_fx") @db.Decimal(19, 4)
+  giroId        BigInt?          @map("giro_id")
+  dueDate       DateTime?        @map("due_date") @db.Date
+  bankName      String?          @map("bank_name")
+  bankAccountNo String?          @map("bank_account_no")
+  bankAccountId BigInt?          @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  giroAccountId BigInt?          @map("giro_account_id") // FK -> md_accounts (ErpAccount)
+  notes         String?          @map("notes")
+  lineNo        Int              @map("line_no")
+
+  arReceipt ErpFinArReceipt? @relation(fields: [arReceiptId], references: [id], onDelete: Cascade)
+  apPayment ErpFinApPayment? @relation(fields: [apPaymentId], references: [id], onDelete: Cascade)
+  giro      ErpFinGiro?      @relation(fields: [giroId], references: [id])
+
+  @@index([arReceiptId])
+  @@index([apPaymentId])
+  @@index([giroId])
+  @@map("fin_payment_instruments")
+}
+
+model ErpFinSettlementAllocation {
+  id            BigInt   @id @default(autoincrement())
+  arReceiptId   BigInt?  @map("ar_receipt_id")
+  apPaymentId   BigInt?  @map("ap_payment_id")
+  ledgerEntryId BigInt   @map("ledger_entry_id")
+  invoiceRef    String?  @map("invoice_ref")
+  amount        Decimal  @map("amount") @db.Decimal(19, 4)
+  amountFx      Decimal? @map("amount_fx") @db.Decimal(19, 4)
+  lineNo        Int      @map("line_no")
+
+  arReceipt   ErpFinArReceipt?  @relation(fields: [arReceiptId], references: [id], onDelete: Cascade)
+  apPayment   ErpFinApPayment?  @relation(fields: [apPaymentId], references: [id], onDelete: Cascade)
+  ledgerEntry ErpFinLedgerEntry @relation(fields: [ledgerEntryId], references: [id])
+
+  @@index([arReceiptId])
+  @@index([apPaymentId])
+  @@index([ledgerEntryId])
+  @@map("fin_settlement_allocations")
+}
+
+/// Header for a giro register (RG/SG) or clearing (RGC/SGC) document. A REGISTER
+/// entry owns the giro instruments it creates (giros via giroEntryId); a CLEAR
+/// entry references existing OUTSTANDING giros and marks them CLEARED (giros via
+/// clearedByEntryId), posting GL on POST. Mirrors the fin_journal_entries
+/// header + the §2.7 workflow state machine. See web-erp DECISIONS.md "§ Giro".
+model ErpFinGiroEntry {
+  id             BigInt             @id @default(autoincrement())
+  docNumber      String             @unique @map("doc_number")
+  autoNumber     String?            @map("auto_number")
+  kind           ErpGiroEntryKind   @map("kind")
+  type           ErpGiroType        @map("type")
+  branchId       BigInt             @map("branch_id") // FK -> md_branches (ErpBranch)
+  partnerId      BigInt?            @map("partner_id") // FK -> md_partners (ErpPartner)
+  entryDate      DateTime           @map("entry_date") @db.Date
+  fiscalPeriodId BigInt             @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  bankAccountId  BigInt?            @map("bank_account_id") // FK -> md_accounts (ErpAccount); CLEAR: default settlement bank
+  currencyId     BigInt             @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate   Decimal            @map("exchange_rate") @db.Decimal(19, 6)
+  description    String?            @map("description")
+  notes          String?            @map("notes")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+  postingStatus  ErpPostingStatus   @map("posting_status")
+  postedAt       DateTime?          @map("posted_at") @db.Timestamptz(6)
+  postedById     BigInt?            @map("posted_by_id") // FK -> adm_users (ErpUser)
+  legacyCode     String?            @map("legacy_code")
+  metadata       Json?              @map("metadata")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?            @map("created_by_id")
+  updatedById    BigInt?            @map("updated_by_id")
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  registeredGiros ErpFinGiro[] @relation("GiroRegisterEntry")
+  clearedGiros    ErpFinGiro[] @relation("GiroClearEntry")
+
+  @@index([kind, type, status])
+  @@index([fiscalPeriodId])
+  @@index([entryDate])
+  @@index([partnerId])
+  @@map("fin_giro_entries")
+}
+
+model ErpFinGiro {
+  id                  BigInt         @id @default(autoincrement())
+  giroNumber          String         @unique @map("giro_number")
+  type                ErpGiroType    @map("type")
+  source              String?        @map("source")
+  sourceTransactionId BigInt?        @map("source_transaction_id")
+  giroEntryId         BigInt?        @map("giro_entry_id") // FK -> fin_giro_entries (REGISTER entry that created it)
+  clearedByEntryId    BigInt?        @map("cleared_by_entry_id") // FK -> fin_giro_entries (CLEAR entry that settled it)
+  partnerId           BigInt?        @map("partner_id") // FK -> md_partners (ErpPartner)
+  branchId            BigInt?        @map("branch_id") // FK -> md_branches (ErpBranch)
+  fiscalPeriodId      BigInt?        @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  bankName            String?        @map("bank_name")
+  bankAccountNo       String?        @map("bank_account_no")
+  bankAccountId       BigInt?        @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  giroAccountId       BigInt?        @map("giro_account_id") // FK -> md_accounts (ErpAccount)
+  currencyId          BigInt         @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate        Decimal        @map("exchange_rate") @db.Decimal(19, 6)
+  amount              Decimal        @map("amount") @db.Decimal(19, 4)
+  amountFx            Decimal?       @map("amount_fx") @db.Decimal(19, 4)
+  dueDate             DateTime       @map("due_date") @db.Date
+  clearedDate         DateTime?      @map("cleared_date") @db.Date
+  status              ErpGiroStatus  @map("status")
+  previousStatus      ErpGiroStatus? @map("previous_status")
+  description         String?        @map("description")
+  notes               String?        @map("notes")
+  lineNo              Int            @map("line_no")
+  legacyCode          String?        @map("legacy_code")
+  metadata            Json?          @map("metadata")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById         BigInt?        @map("created_by_id")
+  updatedById         BigInt?        @map("updated_by_id")
+  deletedAt           DateTime?      @map("deleted_at") @db.Timestamptz(6)
+
+  instruments    ErpFinPaymentInstrument[]
+  giroEntry      ErpFinGiroEntry?          @relation("GiroRegisterEntry", fields: [giroEntryId], references: [id], onDelete: Cascade)
+  clearedByEntry ErpFinGiroEntry?          @relation("GiroClearEntry", fields: [clearedByEntryId], references: [id])
+
+  @@index([status, dueDate])
+  @@index([partnerId])
+  @@index([giroEntryId])
+  @@index([clearedByEntryId])
+  @@index([legacyCode])
+  @@map("fin_giros")
+}
+
+model ErpFinBudgetRealization {
+  id             BigInt    @id @default(autoincrement())
+  fiscalPeriodId BigInt    @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  accountId      BigInt    @map("account_id") // FK -> md_accounts (ErpAccount)
+  debitTotal     Decimal   @map("debit_total") @db.Decimal(19, 4)
+  creditTotal    Decimal   @map("credit_total") @db.Decimal(19, 4)
+  budgetAmount   Decimal   @map("budget_amount") @db.Decimal(19, 4)
+  branchId       BigInt?   @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId     BigInt?   @map("location_id") // FK -> md_locations (ErpLocation)
+  costCenterId   BigInt?   @map("cost_center_id")
+  divisionId     BigInt?   @map("division_id")
+  subdivisionId  BigInt?   @map("subdivision_id")
+  projectId      BigInt?   @map("project_id")
+  legacyCode     String?   @map("legacy_code")
+  metadata       Json?     @map("metadata")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?   @map("created_by_id")
+  updatedById    BigInt?   @map("updated_by_id")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  costCenter  ErpCostCenter?  @relation(fields: [costCenterId], references: [id])
+  division    ErpDivision?    @relation(fields: [divisionId], references: [id])
+  subdivision ErpSubdivision? @relation(fields: [subdivisionId], references: [id])
+  project     ErpProject?     @relation(fields: [projectId], references: [id])
+
+  @@unique([fiscalPeriodId, accountId, branchId, locationId, costCenterId, divisionId, subdivisionId, projectId])
+  @@index([accountId])
+  @@index([legacyCode])
+  @@map("fin_budget_realizations")
+}
+
+model ErpFinPeriodClosing {
+  id                        BigInt               @id @default(autoincrement())
+  docNumber                 String               @unique @map("doc_number")
+  fiscalPeriodId            BigInt               @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  status                    ErpPeriodCloseStatus @map("status")
+  retainedEarningsAccountId BigInt               @map("retained_earnings_account_id") // FK -> md_accounts (ErpAccount)
+  closingJournalEntryId     BigInt?              @map("closing_journal_entry_id")
+  netAmount                 Decimal?             @map("net_amount") @db.Decimal(19, 4)
+  startedAt                 DateTime?            @map("started_at") @db.Timestamptz(6)
+  completedAt               DateTime?            @map("completed_at") @db.Timestamptz(6)
+  failedAt                  DateTime?            @map("failed_at") @db.Timestamptz(6)
+  failureReason             String?              @map("failure_reason")
+  reopenedAt                DateTime?            @map("reopened_at") @db.Timestamptz(6)
+  reopenedById              BigInt?              @map("reopened_by_id") // FK -> adm_users (ErpUser)
+  reopenReason              String?              @map("reopen_reason")
+  notes                     String?              @map("notes")
+  legacyCode                String?              @map("legacy_code")
+  metadata                  Json?                @map("metadata")
+  createdAt                 DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById               BigInt?              @map("created_by_id")
+  updatedById               BigInt?              @map("updated_by_id")
+  deletedAt                 DateTime?            @map("deleted_at") @db.Timestamptz(6)
+
+  closingJournalEntry ErpFinJournalEntry? @relation(fields: [closingJournalEntryId], references: [id])
+
+  @@unique([fiscalPeriodId])
+  @@index([fiscalPeriodId])
+  @@index([status])
+  @@index([legacyCode])
+  @@map("fin_period_closings")
+}
+
+model ErpFinPostingRule {
+  id                BigInt          @id @default(autoincrement())
+  name              String          @map("name")
+  module            String          @map("module")
+  eventType         ErpPostingEvent @map("event_type")
+  branchId          BigInt?         @map("branch_id") // FK -> md_branches (ErpBranch)
+  itemCategoryId    BigInt?         @map("item_category_id") // FK -> md_item_categories (ErpItemCategory)
+  partnerCategoryId BigInt?         @map("partner_category_id") // FK -> md_partner_categories (ErpPartnerCategory)
+  taxId             BigInt?         @map("tax_id") // FK -> md_taxes (ErpTax)
+  priority          Int             @map("priority")
+  isActive          Boolean         @default(true) @map("is_active")
+  legacyCode        String?         @map("legacy_code")
+  metadata          Json?           @map("metadata")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?         @map("created_by_id")
+  updatedById       BigInt?         @map("updated_by_id")
+  deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz(6)
+
+  lines ErpFinPostingRuleLine[]
+
+  @@index([module, eventType, priority])
+  @@index([legacyCode])
+  @@map("fin_posting_rules")
+}
+
+model ErpFinPostingRuleLine {
+  id          BigInt  @id @default(autoincrement())
+  ruleId      BigInt  @map("rule_id")
+  legName     String  @map("leg_name")
+  accountId   BigInt  @map("account_id") // FK -> md_accounts (ErpAccount)
+  isDebit     Boolean @map("is_debit")
+  description String? @map("description")
+  lineNo      Int     @map("line_no")
+
+  rule ErpFinPostingRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([accountId])
+  @@map("fin_posting_rule_lines")
+}
+
+model ErpFinTaxEntry {
+  id               BigInt            @id @default(autoincrement())
+  module           String            @map("module")
+  sourceDocType    String?           @map("source_doc_type")
+  sourceId         BigInt?           @map("source_id")
+  docNumber        String            @map("doc_number")
+  transactionDate  DateTime          @map("transaction_date") @db.Date
+  fiscalPeriodId   BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId        BigInt?           @map("partner_id") // FK -> md_partners (ErpPartner)
+  partnerNpwp      String?           @map("partner_npwp")
+  partnerName      String?           @map("partner_name")
+  taxId            BigInt            @map("tax_id") // FK -> md_taxes (ErpTax)
+  taxEntryType     ErpTaxEntryType   @map("tax_entry_type")
+  dpp              Decimal           @map("dpp") @db.Decimal(19, 4)
+  taxRate          Decimal           @map("tax_rate") @db.Decimal(9, 4)
+  taxAmount        Decimal           @map("tax_amount") @db.Decimal(19, 4)
+  fakturNumber     String?           @map("faktur_number")
+  fakturDate       DateTime?         @map("faktur_date") @db.Date
+  status           ErpTaxEntryStatus @map("status")
+  reportedPeriodId BigInt?           @map("reported_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  reportedAt       DateTime?         @map("reported_at") @db.Timestamptz(6)
+  currencyId       BigInt            @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate     Decimal           @map("exchange_rate") @db.Decimal(19, 6)
+  taxAmountFx      Decimal?          @map("tax_amount_fx") @db.Decimal(19, 4)
+  ledgerEntryId    BigInt?           @map("ledger_entry_id")
+  legacyCode       String?           @map("legacy_code")
+  metadata         Json?             @map("metadata")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?           @map("created_by_id")
+  updatedById      BigInt?           @map("updated_by_id")
+  deletedAt        DateTime?         @map("deleted_at") @db.Timestamptz(6)
+
+  ledgerEntry  ErpFinLedgerEntry?     @relation(fields: [ledgerEntryId], references: [id])
+  certificates ErpFinWhtCertificate[]
+
+  @@index([taxEntryType, fiscalPeriodId])
+  @@index([sourceDocType, sourceId])
+  @@index([fakturNumber])
+  @@index([ledgerEntryId])
+  @@index([legacyCode])
+  @@map("fin_tax_entries")
+}
+
+model ErpFinWhtCertificate {
+  id              BigInt           @id @default(autoincrement())
+  certNumber      String           @unique @map("cert_number")
+  autoNumber      String?          @map("auto_number")
+  pphType         ErpTaxEntryType  @map("pph_type")
+  transactionDate DateTime         @map("transaction_date") @db.Date
+  fiscalPeriodId  BigInt           @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  partnerId       BigInt           @map("partner_id") // FK -> md_partners (ErpPartner)
+  partnerNpwp     String?          @map("partner_npwp")
+  partnerName     String           @map("partner_name")
+  dpp             Decimal          @map("dpp") @db.Decimal(19, 4)
+  rate            Decimal          @map("rate") @db.Decimal(9, 4)
+  amountWithheld  Decimal          @map("amount_withheld") @db.Decimal(19, 4)
+  status          ErpWhtCertStatus @map("status")
+  taxEntryId      BigInt?          @map("tax_entry_id")
+  sourceDocType   String?          @map("source_doc_type")
+  sourceId        BigInt?          @map("source_id")
+  notes           String?          @map("notes")
+  legacyCode      String?          @map("legacy_code")
+  metadata        Json?            @map("metadata")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?          @map("created_by_id")
+  updatedById     BigInt?          @map("updated_by_id")
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(6)
+
+  taxEntry ErpFinTaxEntry? @relation(fields: [taxEntryId], references: [id])
+
+  @@index([taxEntryId])
+  @@index([partnerId])
+  @@index([legacyCode])
+  @@map("fin_withholding_tax_certificates")
+}
+
+model ErpFinFxRevaluationRun {
+  id                    BigInt                 @id @default(autoincrement())
+  docNumber             String                 @unique @map("doc_number")
+  fiscalPeriodId        BigInt                 @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  revaluationDate       DateTime               @map("revaluation_date") @db.Date
+  status                ErpFxRevaluationStatus @map("status")
+  totalGainLoss         Decimal?               @map("total_gain_loss") @db.Decimal(19, 4)
+  gainAccountId         BigInt                 @map("gain_account_id") // FK -> md_accounts (ErpAccount)
+  lossAccountId         BigInt                 @map("loss_account_id") // FK -> md_accounts (ErpAccount)
+  closingJournalEntryId BigInt?                @map("closing_journal_entry_id")
+  startedAt             DateTime?              @map("started_at") @db.Timestamptz(6)
+  completedAt           DateTime?              @map("completed_at") @db.Timestamptz(6)
+  failedAt              DateTime?              @map("failed_at") @db.Timestamptz(6)
+  failureReason         String?                @map("failure_reason")
+  notes                 String?                @map("notes")
+  legacyCode            String?                @map("legacy_code")
+  metadata              Json?                  @map("metadata")
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?                @map("created_by_id")
+  updatedById           BigInt?                @map("updated_by_id")
+  deletedAt             DateTime?              @map("deleted_at") @db.Timestamptz(6)
+
+  closingJournalEntry ErpFinJournalEntry?       @relation(fields: [closingJournalEntryId], references: [id])
+  lines               ErpFinFxRevaluationLine[]
+
+  @@index([fiscalPeriodId])
+  @@index([status])
+  @@index([legacyCode])
+  @@map("fin_fx_revaluation_runs")
+}
+
+model ErpFinFxRevaluationLine {
+  id                 BigInt  @id @default(autoincrement())
+  revaluationRunId   BigInt  @map("revaluation_run_id")
+  accountId          BigInt  @map("account_id") // FK -> md_accounts (ErpAccount)
+  currencyId         BigInt  @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  bookBalanceFx      Decimal @map("book_balance_fx") @db.Decimal(19, 4)
+  bookBalanceIdr     Decimal @map("book_balance_idr") @db.Decimal(19, 4)
+  revaluationRate    Decimal @map("revaluation_rate") @db.Decimal(19, 6)
+  revaluedBalanceIdr Decimal @map("revalued_balance_idr") @db.Decimal(19, 4)
+  gainLossAmount     Decimal @map("gain_loss_amount") @db.Decimal(19, 4)
+  lineNo             Int     @map("line_no")
+
+  revaluationRun ErpFinFxRevaluationRun @relation(fields: [revaluationRunId], references: [id], onDelete: Cascade)
+
+  @@index([revaluationRunId])
+  @@index([accountId])
+  @@map("fin_fx_revaluation_lines")
+}
+
+model ErpFinBankStatement {
+  id              BigInt                 @id @default(autoincrement())
+  bankAccountId   BigInt                 @map("bank_account_id") // FK -> md_accounts (ErpAccount)
+  branchId        BigInt                 @map("branch_id") // FK -> md_branches (ErpBranch)
+  statementNumber String?                @map("statement_number")
+  periodStart     DateTime               @map("period_start") @db.Date
+  periodEnd       DateTime               @map("period_end") @db.Date
+  openingBalance  Decimal                @map("opening_balance") @db.Decimal(19, 4)
+  closingBalance  Decimal                @map("closing_balance") @db.Decimal(19, 4)
+  currencyId      BigInt                 @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  status          ErpBankStatementStatus @map("status")
+  importedAt      DateTime               @map("imported_at") @db.Timestamptz(6)
+  notes           String?                @map("notes")
+  legacyCode      String?                @map("legacy_code")
+  metadata        Json?                  @map("metadata")
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?                @map("created_by_id")
+  updatedById     BigInt?                @map("updated_by_id")
+  deletedAt       DateTime?              @map("deleted_at") @db.Timestamptz(6)
+
+  lines ErpFinBankStatementLine[]
+
+  @@index([bankAccountId])
+  @@index([branchId])
+  @@index([legacyCode])
+  @@map("fin_bank_statements")
+}
+
+model ErpFinBankStatementLine {
+  id                           BigInt                  @id @default(autoincrement())
+  statementId                  BigInt                  @map("statement_id")
+  valueDate                    DateTime                @map("value_date") @db.Date
+  description                  String?                 @map("description")
+  referenceNo                  String?                 @map("reference_no")
+  debit                        Decimal                 @map("debit") @db.Decimal(19, 4)
+  credit                       Decimal                 @map("credit") @db.Decimal(19, 4)
+  runningBalance               Decimal?                @map("running_balance") @db.Decimal(19, 4)
+  matchedLedgerEntryId         BigInt?                 @map("matched_ledger_entry_id")
+  matchedCashBankTransactionId BigInt?                 @map("matched_cash_bank_transaction_id")
+  reconciliationStatus         ErpReconciliationStatus @map("reconciliation_status")
+  lineNo                       Int                     @map("line_no")
+
+  statement                  ErpFinBankStatement        @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  matchedLedgerEntry         ErpFinLedgerEntry?         @relation(fields: [matchedLedgerEntryId], references: [id])
+  matchedCashBankTransaction ErpFinCashBankTransaction? @relation(fields: [matchedCashBankTransactionId], references: [id])
+
+  @@index([statementId])
+  @@index([matchedLedgerEntryId])
+  @@index([matchedCashBankTransactionId])
+  @@map("fin_bank_statement_lines")
+}
+
+model ErpFinRecurringJournalTemplate {
+  id              BigInt                @id @default(autoincrement())
+  code            String                @unique @map("code")
+  name            String                @map("name")
+  description     String?               @map("description")
+  journalType     ErpJournalType        @map("journal_type")
+  branchId        BigInt                @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId      BigInt?               @map("location_id") // FK -> md_locations (ErpLocation)
+  currencyId      BigInt                @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  frequency       ErpRecurringFrequency @map("frequency")
+  startDate       DateTime              @map("start_date") @db.Date
+  endDate         DateTime?             @map("end_date") @db.Date
+  nextRunDate     DateTime              @map("next_run_date") @db.Date
+  maxOccurrences  Int?                  @map("max_occurrences")
+  occurrenceCount Int                   @default(0) @map("occurrence_count")
+  status          ErpRecurringStatus    @map("status")
+  legacyCode      String?               @map("legacy_code")
+  metadata        Json?                 @map("metadata")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?               @map("created_by_id")
+  updatedById     BigInt?               @map("updated_by_id")
+  deletedAt       DateTime?             @map("deleted_at") @db.Timestamptz(6)
+
+  lines ErpFinRecurringJournalTemplateLine[]
+
+  @@index([legacyCode])
+  @@map("fin_recurring_journal_templates")
+}
+
+model ErpFinRecurringJournalTemplateLine {
+  id           BigInt  @id @default(autoincrement())
+  templateId   BigInt  @map("template_id")
+  accountId    BigInt  @map("account_id") // FK -> md_accounts (ErpAccount)
+  costCenterId BigInt? @map("cost_center_id")
+  divisionId   BigInt? @map("division_id")
+  projectId    BigInt? @map("project_id")
+  debit        Decimal @map("debit") @db.Decimal(19, 4)
+  credit       Decimal @map("credit") @db.Decimal(19, 4)
+  description  String? @map("description")
+  lineNo       Int     @map("line_no")
+
+  template   ErpFinRecurringJournalTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  costCenter ErpCostCenter?                 @relation(fields: [costCenterId], references: [id])
+  division   ErpDivision?                   @relation(fields: [divisionId], references: [id])
+  project    ErpProject?                    @relation(fields: [projectId], references: [id])
+
+  @@index([templateId])
+  @@index([accountId])
+  @@index([costCenterId])
+  @@index([divisionId])
+  @@index([projectId])
+  @@map("fin_recurring_journal_template_lines")
+}
+
+model ErpFinAccrualSchedule {
+  id               BigInt                @id @default(autoincrement())
+  code             String                @unique @map("code")
+  name             String                @map("name")
+  description      String?               @map("description")
+  totalAmount      Decimal               @map("total_amount") @db.Decimal(19, 4)
+  startDate        DateTime              @map("start_date") @db.Date
+  endDate          DateTime              @map("end_date") @db.Date
+  frequency        ErpRecurringFrequency @map("frequency")
+  prepaidAccountId BigInt                @map("prepaid_account_id") // FK -> md_accounts (ErpAccount)
+  expenseAccountId BigInt                @map("expense_account_id") // FK -> md_accounts (ErpAccount)
+  branchId         BigInt                @map("branch_id") // FK -> md_branches (ErpBranch)
+  costCenterId     BigInt?               @map("cost_center_id")
+  amountPerPeriod  Decimal               @map("amount_per_period") @db.Decimal(19, 4)
+  recognizedAmount Decimal               @default(0) @map("recognized_amount") @db.Decimal(19, 4)
+  remainingAmount  Decimal               @map("remaining_amount") @db.Decimal(19, 4)
+  status           ErpRecurringStatus    @map("status")
+  sourceDocType    String?               @map("source_doc_type")
+  sourceId         BigInt?               @map("source_id")
+  legacyCode       String?               @map("legacy_code")
+  metadata         Json?                 @map("metadata")
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?               @map("created_by_id")
+  updatedById      BigInt?               @map("updated_by_id")
+  deletedAt        DateTime?             @map("deleted_at") @db.Timestamptz(6)
+
+  costCenter ErpCostCenter? @relation(fields: [costCenterId], references: [id])
+
+  @@index([costCenterId])
+  @@index([legacyCode])
+  @@map("fin_accrual_schedules")
+}
+
+model ErpFinReportDefinition {
+  id          BigInt                 @id @default(autoincrement())
+  code        String                 @unique @map("code")
+  name        String                 @map("name")
+  reportType  ErpFinancialReportType @map("report_type")
+  description String?                @map("description")
+  isDefault   Boolean                @default(false) @map("is_default")
+  isActive    Boolean                @default(true) @map("is_active")
+  branchId    BigInt?                @map("branch_id") // FK -> md_branches (ErpBranch)
+  legacyCode  String?                @map("legacy_code")
+  metadata    Json?                  @map("metadata")
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?                @map("created_by_id")
+  updatedById BigInt?                @map("updated_by_id")
+  deletedAt   DateTime?              @map("deleted_at") @db.Timestamptz(6)
+
+  sections ErpFinReportSection[]
+
+  @@index([legacyCode])
+  @@map("fin_report_definitions")
+}
+
+model ErpFinReportSection {
+  id              BigInt            @id @default(autoincrement())
+  reportId        BigInt            @map("report_id")
+  code            String            @map("code")
+  name            String            @map("name")
+  parentSectionId BigInt?           @map("parent_section_id")
+  sortOrder       Int               @map("sort_order")
+  normalBalance   ErpNormalBalance? @map("normal_balance") // MVP/m1 enum — referenced, not redefined
+  isTotalRow      Boolean           @default(false) @map("is_total_row")
+
+  report   ErpFinReportDefinition @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  parent   ErpFinReportSection?   @relation("ErpFinReportSection_parent", fields: [parentSectionId], references: [id])
+  children ErpFinReportSection[]  @relation("ErpFinReportSection_parent")
+  lines    ErpFinReportLine[]
+
+  @@index([reportId])
+  @@index([parentSectionId])
+  @@map("fin_report_sections")
+}
+
+model ErpFinReportLine {
+  id                 BigInt            @id @default(autoincrement())
+  sectionId          BigInt            @map("section_id")
+  code               String?           @map("code")
+  label              String            @map("label")
+  lineType           ErpReportLineType @map("line_type")
+  accountFrom        String?           @map("account_from")
+  accountTo          String?           @map("account_to")
+  specificAccountIds BigInt[]          @map("specific_account_ids")
+  formula            String?           @map("formula")
+  sortOrder          Int               @map("sort_order")
+  indentLevel        Int               @default(0) @map("indent_level")
+  isNegated          Boolean           @default(false) @map("is_negated")
+
+  section ErpFinReportSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+  @@map("fin_report_lines")
+}
+
+model ErpFinCreditLimit {
+  id             BigInt               @id @default(autoincrement())
+  partnerId      BigInt               @map("partner_id") // FK -> md_partners (ErpPartner)
+  limitAmount    Decimal              @map("limit_amount") @db.Decimal(19, 4)
+  currencyId     BigInt               @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  action         ErpCreditLimitAction @map("action")
+  overrideRoleId BigInt?              @map("override_role_id") // FK -> adm_roles (ErpRole)
+  validFrom      DateTime?            @map("valid_from") @db.Date
+  validTo        DateTime?            @map("valid_to") @db.Date
+  reviewDate     DateTime?            @map("review_date") @db.Date
+  notes          String?              @map("notes")
+  isActive       Boolean              @default(true) @map("is_active")
+  legacyCode     String?              @map("legacy_code")
+  metadata       Json?                @map("metadata")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?              @map("created_by_id")
+  updatedById    BigInt?              @map("updated_by_id")
+  deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([partnerId])
+  @@index([legacyCode])
+  @@map("fin_credit_limits")
+}
+
+model ErpFinDunningRule {
+  id              BigInt          @id @default(autoincrement())
+  name            String          @map("name")
+  overdueDaysFrom Int             @map("overdue_days_from")
+  overdueDaysTo   Int?            @map("overdue_days_to")
+  dunningLevel    ErpDunningLevel @map("dunning_level")
+  messageTemplate String?         @map("message_template")
+  isActive        Boolean         @default(true) @map("is_active")
+  sortOrder       Int             @map("sort_order")
+  legacyCode      String?         @map("legacy_code")
+  metadata        Json?           @map("metadata")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?         @map("created_by_id")
+  updatedById     BigInt?         @map("updated_by_id")
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz(6)
+
+  collectionActivities ErpFinCollectionActivity[]
+
+  @@index([legacyCode])
+  @@map("fin_dunning_rules")
+}
+
+model ErpFinCollectionActivity {
+  id               BigInt                    @id @default(autoincrement())
+  partnerId        BigInt                    @map("partner_id") // FK -> md_partners (ErpPartner)
+  activityType     ErpCollectionActivityType @map("activity_type")
+  activityDate     DateTime                  @map("activity_date") @db.Date
+  dueLedgerEntryId BigInt?                   @map("due_ledger_entry_id")
+  dunningRuleId    BigInt?                   @map("dunning_rule_id")
+  dunningLevel     ErpDunningLevel?          @map("dunning_level")
+  status           ErpCollectionStatus       @map("status")
+  assignedToId     BigInt?                   @map("assigned_to_id") // FK -> adm_users (ErpUser)
+  notes            String                    @map("notes")
+  followUpDate     DateTime?                 @map("follow_up_date") @db.Date
+  resolvedAt       DateTime?                 @map("resolved_at") @db.Timestamptz(6)
+  resolvedById     BigInt?                   @map("resolved_by_id") // FK -> adm_users (ErpUser)
+  resolvedNotes    String?                   @map("resolved_notes")
+  legacyCode       String?                   @map("legacy_code")
+  metadata         Json?                     @map("metadata")
+  createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?                   @map("created_by_id")
+  updatedById      BigInt?                   @map("updated_by_id")
+  deletedAt        DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+
+  dunningRule    ErpFinDunningRule? @relation(fields: [dunningRuleId], references: [id])
+  dueLedgerEntry ErpFinLedgerEntry? @relation(fields: [dueLedgerEntryId], references: [id])
+
+  @@index([partnerId])
+  @@index([dunningRuleId])
+  @@index([dueLedgerEntryId])
+  @@index([legacyCode])
+  @@map("fin_collection_activities")
+}
+
+model ErpFinIntercompanyRule {
+  id               BigInt    @id @default(autoincrement())
+  fromBranchId     BigInt    @map("from_branch_id") // FK -> md_branches (ErpBranch)
+  toBranchId       BigInt    @map("to_branch_id") // FK -> md_branches (ErpBranch)
+  dueFromAccountId BigInt    @map("due_from_account_id") // FK -> md_accounts (ErpAccount)
+  dueToAccountId   BigInt    @map("due_to_account_id") // FK -> md_accounts (ErpAccount)
+  isActive         Boolean   @default(true) @map("is_active")
+  notes            String?   @map("notes")
+  legacyCode       String?   @map("legacy_code")
+  metadata         Json?     @map("metadata")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?   @map("created_by_id")
+  updatedById      BigInt?   @map("updated_by_id")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  transactions ErpFinIntercompanyTransaction[]
+
+  @@unique([fromBranchId, toBranchId])
+  @@index([legacyCode])
+  @@map("fin_intercompany_rules")
+}
+
+model ErpFinIntercompanyTransaction {
+  id                    BigInt                @id @default(autoincrement())
+  docNumber             String                @unique @map("doc_number")
+  transactionDate       DateTime              @map("transaction_date") @db.Date
+  fiscalPeriodId        BigInt                @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  ruleId                BigInt?               @map("rule_id")
+  fromBranchId          BigInt                @map("from_branch_id") // FK -> md_branches (ErpBranch)
+  toBranchId            BigInt                @map("to_branch_id") // FK -> md_branches (ErpBranch)
+  fromJournalEntryId    BigInt?               @map("from_journal_entry_id")
+  toJournalEntryId      BigInt?               @map("to_journal_entry_id")
+  amount                Decimal               @map("amount") @db.Decimal(19, 4)
+  currencyId            BigInt                @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate          Decimal               @map("exchange_rate") @db.Decimal(19, 6)
+  description           String                @map("description")
+  status                ErpIntercompanyStatus @map("status")
+  eliminatedAt          DateTime?             @map("eliminated_at") @db.Timestamptz(6)
+  eliminatedById        BigInt?               @map("eliminated_by_id") // FK -> adm_users (ErpUser)
+  consolidationPeriodId BigInt?               @map("consolidation_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  notes                 String?               @map("notes")
+  legacyCode            String?               @map("legacy_code")
+  metadata              Json?                 @map("metadata")
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?               @map("created_by_id")
+  updatedById           BigInt?               @map("updated_by_id")
+  deletedAt             DateTime?             @map("deleted_at") @db.Timestamptz(6)
+
+  rule             ErpFinIntercompanyRule? @relation(fields: [ruleId], references: [id])
+  fromJournalEntry ErpFinJournalEntry?     @relation("ErpFinIntercompanyTransaction_fromJv", fields: [fromJournalEntryId], references: [id])
+  toJournalEntry   ErpFinJournalEntry?     @relation("ErpFinIntercompanyTransaction_toJv", fields: [toJournalEntryId], references: [id])
+
+  @@index([fiscalPeriodId])
+  @@index([ruleId])
+  @@index([fromJournalEntryId])
+  @@index([toJournalEntryId])
+  @@index([legacyCode])
+  @@map("fin_intercompany_transactions")
+}
+
+/// Lampiran dokumen pendukung transaksi Finance — generik, berkunci
+/// (doc_type, doc_id). doc_id polymorphic lintas tabel transaksi fin
+/// (tanpa FK; index saja). File di uploads/erp-transactions (bind-mount host).
+model ErpFinTransactionAttachment {
+  id          BigInt   @id @default(autoincrement())
+  docType     String   @map("doc_type")
+  docId       BigInt   @map("doc_id")
+  fileName    String   @map("file_name")
+  storedName  String   @unique @map("stored_name")
+  mimeType    String   @map("mime_type")
+  sizeBytes   Int      @map("size_bytes")
+  note        String?  @map("note")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById BigInt?  @map("created_by_id")
+
+  @@index([docType, docId])
+  @@map("fin_transaction_attachments")
+}

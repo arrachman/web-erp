@@ -1,0 +1,106 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: DMS — controlled documents (SOP, work instructions, drawings).
+// Document header + revision history + read/understood acknowledgement.
+// Design source: apps/web-mdp/db-design/entities-dms.md.
+//
+// Cross-APP refs (adm_users) = scalar BigInt + @@index, NO @relation.
+// Intra-`dms` FKs (document↔revisions, document↔acks, revision↔acks) enforced.
+// =====================================================================
+
+enum MdpDmsCategory {
+  SOP
+  WORK_INSTRUCTION
+  DRAWING
+  POLICY
+  FORM
+  RECORD
+  OTHER
+}
+
+enum MdpDmsDocStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  RELEASED
+  OBSOLETE
+}
+
+enum MdpDmsRevisionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SUPERSEDED
+}
+
+model MdpDmsDocument {
+  id              BigInt          @id @default(autoincrement())
+  code            String          @unique
+  name            String
+  category        MdpDmsCategory? @map("category")
+  status          MdpDmsDocStatus @default(DRAFT) @map("status")
+  currentRevision String?         @map("current_revision")
+  ownerId         BigInt?         @map("owner_id") // cross-app -> adm_users
+  description     String?         @map("description")
+  effectiveAt     DateTime?       @map("effective_at") @db.Timestamptz(6)
+  isActive        Boolean         @default(true) @map("is_active")
+  metadata        Json?           @map("metadata")
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?         @map("created_by_id")
+  updatedById     BigInt?         @map("updated_by_id")
+
+  revisions        MdpDmsRevision[]
+  acknowledgements MdpDmsAcknowledgement[]
+
+  @@index([category])
+  @@index([status])
+  @@map("dms_documents")
+}
+
+model MdpDmsRevision {
+  id            BigInt               @id @default(autoincrement())
+  documentId    BigInt               @map("document_id")
+  revisionCode  String               @map("revision_code")
+  status        MdpDmsRevisionStatus @default(DRAFT) @map("status")
+  filePath      String?              @map("file_path")
+  changeSummary String?              @map("change_summary")
+  approvedById  BigInt?              @map("approved_by_id") // cross-app -> adm_users
+  approvedAt    DateTime?            @map("approved_at") @db.Timestamptz(6)
+  notes         String?              @map("notes")
+  deletedAt     DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById   BigInt?              @map("created_by_id")
+  updatedById   BigInt?              @map("updated_by_id")
+
+  document         MdpDmsDocument          @relation(fields: [documentId], references: [id])
+  acknowledgements MdpDmsAcknowledgement[]
+
+  @@index([documentId])
+  @@index([status])
+  @@map("dms_revisions")
+}
+
+model MdpDmsAcknowledgement {
+  id             BigInt    @id @default(autoincrement())
+  documentId     BigInt    @map("document_id")
+  revisionId     BigInt?   @map("revision_id")
+  userId         BigInt    @map("user_id") // cross-app -> adm_users
+  acknowledgedAt DateTime  @map("acknowledged_at") @db.Timestamptz(6)
+  notes          String?   @map("notes")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?   @map("created_by_id")
+  updatedById    BigInt?   @map("updated_by_id")
+
+  document MdpDmsDocument  @relation(fields: [documentId], references: [id])
+  revision MdpDmsRevision? @relation(fields: [revisionId], references: [id])
+
+  @@index([documentId])
+  @@index([revisionId])
+  @@index([userId])
+  @@map("dms_acknowledgements")
+}

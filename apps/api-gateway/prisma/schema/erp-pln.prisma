@@ -1,0 +1,143 @@
+model ErpPlnReorderPolicy {
+  id                  BigInt                 @id @default(autoincrement())
+  legacyCode          String?                @map("legacy_code")
+  itemId              BigInt                 @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId         BigInt?                @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  safetyStock         Decimal                @map("safety_stock") @db.Decimal(19, 4)
+  reorderPoint        Decimal                @map("reorder_point") @db.Decimal(19, 4)
+  minOrderQty         Decimal                @map("min_order_qty") @db.Decimal(19, 4)
+  maxOrderQty         Decimal?               @map("max_order_qty") @db.Decimal(19, 4)
+  reorderQty          Decimal                @map("reorder_qty") @db.Decimal(19, 4)
+  lotSizeMethod       ErpLotSizeMethod       @default(LOT_FOR_LOT) @map("lot_size_method")
+  eoqQty              Decimal?               @map("eoq_qty") @db.Decimal(19, 4)
+  leadTimeDays        Int                    @map("lead_time_days")
+  preferredSource     ErpReplenishmentSource @default(PURCHASE) @map("preferred_source")
+  preferredSupplierId BigInt?                @map("preferred_supplier_id") // FK -> md_partners (ErpPartner)
+  isActive            Boolean                @default(true) @map("is_active")
+  metadata            Json?                  @map("metadata")
+  deletedAt           DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById         BigInt?                @map("created_by_id")
+  updatedById         BigInt?                @map("updated_by_id")
+
+  @@unique([itemId, warehouseId])
+  @@index([itemId])
+  @@index([legacyCode])
+  @@map("pln_reorder_policies")
+}
+
+model ErpPlnDemandForecast {
+  id             BigInt    @id @default(autoincrement())
+  legacyCode     String?   @map("legacy_code")
+  itemId         BigInt    @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId    BigInt    @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  fiscalPeriodId BigInt    @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  forecastQty    Decimal   @map("forecast_qty") @db.Decimal(19, 4)
+  confirmedQty   Decimal?  @map("confirmed_qty") @db.Decimal(19, 4)
+  source         String    @map("source")
+  sourceRefId    BigInt?   @map("source_ref_id") // FK -> sls_orders (ErpSlsOrder) when SLS_CONTRACT
+  notes          String?   @map("notes")
+  metadata       Json?     @map("metadata")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?   @map("created_by_id")
+  updatedById    BigInt?   @map("updated_by_id")
+
+  @@unique([itemId, warehouseId, fiscalPeriodId])
+  @@index([fiscalPeriodId])
+  @@index([itemId, warehouseId])
+  @@index([legacyCode])
+  @@map("pln_demand_forecasts")
+}
+
+model ErpPlnMrpRun {
+  id                BigInt          @id @default(autoincrement())
+  docNumber         String          @unique @map("doc_number")
+  legacyCode        String?         @map("legacy_code")
+  runType           String          @map("run_type")
+  planHorizonStart  DateTime        @map("plan_horizon_start") @db.Date
+  planHorizonEnd    DateTime        @map("plan_horizon_end") @db.Date
+  itemScopeId       BigInt?         @map("item_scope_id") // FK -> md_items (ErpItem)
+  warehouseScopeId  BigInt?         @map("warehouse_scope_id") // FK -> md_warehouses (ErpWarehouse)
+  includeForecast   Boolean         @default(true) @map("include_forecast")
+  includeOpenOrders Boolean         @default(true) @map("include_open_orders")
+  status            ErpMrpRunStatus @default(DRAFT) @map("status")
+  startedAt         DateTime?       @map("started_at") @db.Timestamptz(6)
+  completedAt       DateTime?       @map("completed_at") @db.Timestamptz(6)
+  suggestionCount   Int?            @map("suggestion_count")
+  notes             String?         @map("notes")
+  metadata          Json?           @map("metadata")
+  deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?         @map("created_by_id")
+  updatedById       BigInt?         @map("updated_by_id")
+
+  lines       ErpPlnMrpRunLine[]
+  suggestions ErpPlnReplenishmentSuggestion[]
+
+  @@index([status])
+  @@index([planHorizonStart, planHorizonEnd])
+  @@index([legacyCode])
+  @@map("pln_mrp_runs")
+}
+
+model ErpPlnMrpRunLine {
+  id               BigInt  @id @default(autoincrement())
+  mrpRunId         BigInt  @map("mrp_run_id")
+  itemId           BigInt  @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId      BigInt  @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  fiscalPeriodId   BigInt  @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  grossRequirement Decimal @map("gross_requirement") @db.Decimal(19, 4)
+  scheduledReceipt Decimal @map("scheduled_receipt") @db.Decimal(19, 4)
+  projectedOnHand  Decimal @map("projected_on_hand") @db.Decimal(19, 4)
+  safetyStock      Decimal @map("safety_stock") @db.Decimal(19, 4)
+  netRequirement   Decimal @map("net_requirement") @db.Decimal(19, 4)
+  plannedOrderQty  Decimal @map("planned_order_qty") @db.Decimal(19, 4)
+  lineNo           Int     @map("line_no")
+
+  mrpRun ErpPlnMrpRun @relation(fields: [mrpRunId], references: [id], onDelete: Cascade)
+
+  @@index([mrpRunId])
+  @@index([itemId, warehouseId, fiscalPeriodId])
+  @@map("pln_mrp_run_lines")
+}
+
+model ErpPlnReplenishmentSuggestion {
+  id                  BigInt                 @id @default(autoincrement())
+  legacyCode          String?                @map("legacy_code")
+  mrpRunId            BigInt?                @map("mrp_run_id")
+  itemId              BigInt                 @map("item_id") // FK -> md_items (ErpItem)
+  warehouseId         BigInt                 @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  source              ErpReplenishmentSource @map("source")
+  sourceWarehouseId   BigInt?                @map("source_warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  preferredSupplierId BigInt?                @map("preferred_supplier_id") // FK -> md_partners (ErpPartner)
+  requiredQty         Decimal                @map("required_qty") @db.Decimal(19, 4)
+  suggestedQty        Decimal                @map("suggested_qty") @db.Decimal(19, 4)
+  neededByDate        DateTime               @map("needed_by_date") @db.Date
+  actionDueDate       DateTime               @map("action_due_date") @db.Date
+  status              ErpSuggestionStatus    @default(PENDING) @map("status")
+  convertedToDocType  String?                @map("converted_to_doc_type")
+  convertedToDocId    BigInt?                @map("converted_to_doc_id") // FK -> pur_requisitions/mfg_work_orders/inv_stock_movements
+  rejectionReason     String?                @map("rejection_reason")
+  approvedById        BigInt?                @map("approved_by_id") // FK -> adm_users (ErpUser)
+  approvedAt          DateTime?              @map("approved_at") @db.Timestamptz(6)
+  metadata            Json?                  @map("metadata")
+  deletedAt           DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById         BigInt?                @map("created_by_id")
+  updatedById         BigInt?                @map("updated_by_id")
+
+  mrpRun ErpPlnMrpRun? @relation(fields: [mrpRunId], references: [id])
+
+  @@index([status])
+  @@index([itemId, warehouseId, status])
+  @@index([actionDueDate])
+  @@index([mrpRunId])
+  @@index([convertedToDocType, convertedToDocId])
+  @@index([legacyCode])
+  @@map("pln_replenishment_suggestions")
+}

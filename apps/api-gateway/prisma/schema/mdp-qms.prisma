@@ -1,0 +1,252 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: QMS — quality management (inspection plans + characteristics,
+// recorded inspections + results, NCR, CAPA). Records quality results
+// against MES output / ERP goods receipts; flags dispositions but does NOT
+// post stock. Design source: apps/web-mdp/db-design/entities-qms.md.
+//
+// Conventions (inherited from ERP): BigInt PK, soft-delete, audit quartet,
+// Decimal(19,4), timestamptz UTC, Postgres enums. Models prefixed `Mdp`.
+// Cross-APP refs (md_items/adm_users/ERP docs) + cross-domain MDP refs
+// (mes_operations/mes_production_orders) = scalar BigInt + @@index, NO
+// @relation. Intra-`qms` FKs (plan↔characteristics/inspections,
+// inspection↔results, inspection↔NCR, NCR↔CAPA) are enforced.
+// =====================================================================
+
+enum MdpQmsInspectionType {
+  INCOMING
+  IN_PROCESS
+  FINAL
+}
+
+enum MdpQmsInspectionVerdict {
+  PENDING
+  PASS
+  FAIL
+}
+
+enum MdpQmsCharacteristicType {
+  VARIABLE
+  ATTRIBUTE
+}
+
+enum MdpQmsResultStatus {
+  PASS
+  FAIL
+  NA
+}
+
+enum MdpQmsNcrSeverity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum MdpQmsNcrStatus {
+  OPEN
+  UNDER_REVIEW
+  CONTAINED
+  CLOSED
+  CANCELLED
+}
+
+enum MdpQmsDisposition {
+  PENDING
+  USE_AS_IS
+  REWORK
+  REPAIR
+  SCRAP
+  RETURN_TO_SUPPLIER
+}
+
+enum MdpQmsCapaType {
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum MdpQmsCapaStatus {
+  OPEN
+  IN_PROGRESS
+  IMPLEMENTED
+  VERIFIED
+  CLOSED
+  CANCELLED
+}
+
+model MdpQmsInspectionPlan {
+  id          BigInt               @id @default(autoincrement())
+  code        String               @unique
+  name        String
+  type        MdpQmsInspectionType @map("type")
+  itemId      BigInt?              @map("item_id") // cross-app -> md_items
+  operationId BigInt?              @map("operation_id") // cross-domain -> mes_operations
+  description String?              @map("description")
+  isActive    Boolean              @default(true) @map("is_active")
+  metadata    Json?                @map("metadata")
+  deletedAt   DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?              @map("created_by_id")
+  updatedById BigInt?              @map("updated_by_id")
+
+  characteristics MdpQmsInspectionCharacteristic[]
+  inspections     MdpQmsInspection[]
+
+  @@index([type])
+  @@index([itemId])
+  @@index([operationId])
+  @@map("qms_inspection_plans")
+}
+
+model MdpQmsInspectionCharacteristic {
+  id                 BigInt                   @id @default(autoincrement())
+  planId             BigInt                   @map("plan_id")
+  sequence           Int                      @default(0) @map("sequence")
+  name               String
+  characteristicType MdpQmsCharacteristicType @default(VARIABLE) @map("characteristic_type")
+  uomCode            String?                  @map("uom_code")
+  nominal            Decimal?                 @map("nominal") @db.Decimal(19, 4)
+  lowerLimit         Decimal?                 @map("lower_limit") @db.Decimal(19, 4)
+  upperLimit         Decimal?                 @map("upper_limit") @db.Decimal(19, 4)
+  notes              String?                  @map("notes")
+  deletedAt          DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById        BigInt?                  @map("created_by_id")
+  updatedById        BigInt?                  @map("updated_by_id")
+
+  plan    MdpQmsInspectionPlan     @relation(fields: [planId], references: [id])
+  results MdpQmsInspectionResult[]
+
+  @@index([planId])
+  @@map("qms_inspection_characteristics")
+}
+
+model MdpQmsInspection {
+  id                BigInt                  @id @default(autoincrement())
+  code              String                  @unique
+  planId            BigInt?                 @map("plan_id")
+  type              MdpQmsInspectionType    @map("type")
+  itemId            BigInt?                 @map("item_id") // cross-app -> md_items
+  productionOrderId BigInt?                 @map("production_order_id") // cross-domain -> mes_production_orders
+  lotCode           String?                 @map("lot_code")
+  lotSize           Decimal?                @map("lot_size") @db.Decimal(19, 4)
+  sampleSize        Decimal?                @map("sample_size") @db.Decimal(19, 4)
+  result            MdpQmsInspectionVerdict @default(PENDING) @map("result")
+  inspectedAt       DateTime                @map("inspected_at") @db.Timestamptz(6)
+  inspectedById     BigInt?                 @map("inspected_by_id") // cross-app -> adm_users
+  notes             String?                 @map("notes")
+  isActive          Boolean                 @default(true) @map("is_active")
+  metadata          Json?                   @map("metadata")
+  deletedAt         DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?                 @map("created_by_id")
+  updatedById       BigInt?                 @map("updated_by_id")
+
+  plan            MdpQmsInspectionPlan?    @relation(fields: [planId], references: [id])
+  results         MdpQmsInspectionResult[]
+  nonconformances MdpQmsNonconformance[]
+
+  @@index([planId])
+  @@index([type])
+  @@index([result])
+  @@index([itemId])
+  @@index([productionOrderId])
+  @@map("qms_inspections")
+}
+
+model MdpQmsInspectionResult {
+  id               BigInt             @id @default(autoincrement())
+  inspectionId     BigInt             @map("inspection_id")
+  characteristicId BigInt?            @map("characteristic_id")
+  measuredValue    Decimal?           @map("measured_value") @db.Decimal(19, 4)
+  status           MdpQmsResultStatus @default(PASS) @map("status")
+  notes            String?            @map("notes")
+  deletedAt        DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?            @map("created_by_id")
+  updatedById      BigInt?            @map("updated_by_id")
+
+  inspection     MdpQmsInspection                @relation(fields: [inspectionId], references: [id])
+  characteristic MdpQmsInspectionCharacteristic? @relation(fields: [characteristicId], references: [id])
+
+  @@index([inspectionId])
+  @@index([characteristicId])
+  @@index([status])
+  @@map("qms_inspection_results")
+}
+
+model MdpQmsNonconformance {
+  id                BigInt            @id @default(autoincrement())
+  code              String            @unique
+  name              String
+  description       String?           @map("description")
+  severity          MdpQmsNcrSeverity @default(MINOR) @map("severity")
+  status            MdpQmsNcrStatus   @default(OPEN) @map("status")
+  disposition       MdpQmsDisposition @default(PENDING) @map("disposition")
+  sourceType        String?           @map("source_type") // INSPECTION/PRODUCTION/CUSTOMER/SUPPLIER
+  itemId            BigInt?           @map("item_id") // cross-app -> md_items
+  productionOrderId BigInt?           @map("production_order_id") // cross-domain -> mes_production_orders
+  inspectionId      BigInt?           @map("inspection_id")
+  qtyAffected       Decimal?          @map("qty_affected") @db.Decimal(19, 4)
+  erpReferenceType  String?           @map("erp_reference_type") // ERP doc kind (GRN/PO/…)
+  erpReferenceId    BigInt?           @map("erp_reference_id")
+  detectedAt        DateTime          @map("detected_at") @db.Timestamptz(6)
+  detectedById      BigInt?           @map("detected_by_id") // cross-app -> adm_users
+  closedAt          DateTime?         @map("closed_at") @db.Timestamptz(6)
+  notes             String?           @map("notes")
+  isActive          Boolean           @default(true) @map("is_active")
+  metadata          Json?             @map("metadata")
+  deletedAt         DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?           @map("created_by_id")
+  updatedById       BigInt?           @map("updated_by_id")
+
+  inspection  MdpQmsInspection?  @relation(fields: [inspectionId], references: [id])
+  capaActions MdpQmsCapaAction[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([disposition])
+  @@index([itemId])
+  @@index([productionOrderId])
+  @@index([inspectionId])
+  @@map("qms_nonconformances")
+}
+
+model MdpQmsCapaAction {
+  id               BigInt           @id @default(autoincrement())
+  code             String           @unique
+  name             String
+  nonconformanceId BigInt?          @map("nonconformance_id")
+  type             MdpQmsCapaType   @default(CORRECTIVE) @map("type")
+  status           MdpQmsCapaStatus @default(OPEN) @map("status")
+  description      String?          @map("description")
+  rootCause        String?          @map("root_cause")
+  actionPlan       String?          @map("action_plan")
+  assignedToId     BigInt?          @map("assigned_to_id") // cross-app -> adm_users
+  dueDate          DateTime?        @map("due_date") @db.Timestamptz(6)
+  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
+  verifiedById     BigInt?          @map("verified_by_id") // cross-app -> adm_users
+  verifiedAt       DateTime?        @map("verified_at") @db.Timestamptz(6)
+  effectiveness    String?          @map("effectiveness")
+  notes            String?          @map("notes")
+  isActive         Boolean          @default(true) @map("is_active")
+  metadata         Json?            @map("metadata")
+  deletedAt        DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?          @map("created_by_id")
+  updatedById      BigInt?          @map("updated_by_id")
+
+  nonconformance MdpQmsNonconformance? @relation(fields: [nonconformanceId], references: [id])
+
+  @@index([nonconformanceId])
+  @@index([type])
+  @@index([status])
+  @@index([assignedToId])
+  @@map("qms_capa_actions")
+}

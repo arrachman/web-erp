@@ -1,0 +1,653 @@
+model ErpFaAssetCategory {
+  id         BigInt  @id @default(autoincrement())
+  code       String  @unique @map("code")
+  name       String  @map("name")
+  legacyCode String? @map("legacy_code")
+
+  taxCategoryId                BigInt? @map("tax_category_id")
+  assetAccountId               BigInt? @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  accumDepreciationAccountId   BigInt? @map("accum_depreciation_account_id") // FK -> md_accounts (ErpAccount)
+  depreciationExpenseAccountId BigInt? @map("depreciation_expense_account_id") // FK -> md_accounts (ErpAccount)
+
+  metadata Json? @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  taxCategory ErpFaAssetCategoryTax? @relation(fields: [taxCategoryId], references: [id])
+  assets      ErpFaAsset[]
+
+  @@index([legacyCode])
+  @@index([taxCategoryId])
+  @@map("fa_asset_categories")
+}
+
+model ErpFaAssetCategoryTax {
+  id         BigInt  @id @default(autoincrement())
+  code       String  @unique @map("code")
+  name       String  @map("name")
+  legacyCode String? @map("legacy_code")
+
+  method            ErpDepreciationMethod @map("method")
+  usefulLifeMonths  Int                   @map("useful_life_months")
+  depreciationTable String?               @map("depreciation_table")
+
+  metadata Json? @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  categories ErpFaAssetCategory[]
+
+  @@index([legacyCode])
+  @@map("fa_asset_category_taxes")
+}
+
+model ErpFaDepreciationCategory {
+  id         BigInt  @id @default(autoincrement())
+  code       String  @unique @map("code")
+  name       String  @map("name")
+  legacyCode String? @map("legacy_code")
+  isActive   Boolean @default(true) @map("is_active")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  @@index([legacyCode])
+  @@map("fa_depreciation_categories")
+}
+
+model ErpFaAssetDepartment {
+  id         BigInt  @id @default(autoincrement())
+  code       String  @unique @map("code")
+  name       String  @map("name")
+  legacyCode String? @map("legacy_code")
+
+  locationId  BigInt? @map("location_id") // FK -> md_locations (ErpLocation)
+  description String? @map("description")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  assets            ErpFaAsset[]
+  transferLinesFrom ErpFaTransferLine[] @relation("ErpFaTransferLine_fromDepartment")
+  transferLinesTo   ErpFaTransferLine[] @relation("ErpFaTransferLine_toDepartment")
+
+  @@index([legacyCode])
+  @@index([locationId])
+  @@map("fa_asset_departments")
+}
+
+model ErpFaAsset {
+  id         BigInt  @id @default(autoincrement())
+  code       String  @unique @map("code")
+  name       String  @map("name")
+  legacyCode String? @map("legacy_code")
+
+  categoryId    BigInt  @map("category_id")
+  tagNumber     String? @map("tag_number")
+  linkedItemId  BigInt? @map("linked_item_id") // FK -> md_items (ErpItem)
+  branchId      BigInt  @map("branch_id") // FK -> md_branches (ErpBranch)
+  locationId    BigInt? @map("location_id") // FK -> md_locations (ErpLocation)
+  warehouseId   BigInt? @map("warehouse_id") // FK -> md_warehouses (ErpWarehouse)
+  departmentId  BigInt? @map("department_id")
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  purchaseDate            DateTime?             @map("purchase_date") @db.Date
+  inServiceDate           DateTime?             @map("in_service_date") @db.Date
+  quantity                Decimal               @map("quantity") @db.Decimal(19, 4)
+  unitId                  BigInt?               @map("unit_id") // FK -> md_units (ErpUnit)
+  currencyId              BigInt                @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate            Decimal               @map("exchange_rate") @db.Decimal(19, 6)
+  acquisitionCost         Decimal               @map("acquisition_cost") @db.Decimal(19, 4)
+  residualValue           Decimal               @map("residual_value") @db.Decimal(19, 4)
+  usefulLifeMonths        Int                   @map("useful_life_months")
+  monthlyDepreciation     Decimal               @map("monthly_depreciation") @db.Decimal(19, 4)
+  accumulatedDepreciation Decimal               @map("accumulated_depreciation") @db.Decimal(19, 4)
+  bookValue               Decimal               @map("book_value") @db.Decimal(19, 4)
+  depreciationCount       Int                   @map("depreciation_count")
+  method                  ErpDepreciationMethod @map("method")
+  depreciationTable       String?               @map("depreciation_table")
+  isIntangible            Boolean               @default(false) @map("is_intangible")
+  isFiscal                Boolean               @default(false) @map("is_fiscal")
+  halfMonthConvention     Boolean               @default(false) @map("half_month_convention")
+  isDecliningValue        Boolean               @default(false) @map("is_declining_value")
+
+  assetAccountId               BigInt? @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  accumDepreciationAccountId   BigInt? @map("accum_depreciation_account_id") // FK -> md_accounts (ErpAccount)
+  depreciationExpenseAccountId BigInt? @map("depreciation_expense_account_id") // FK -> md_accounts (ErpAccount)
+  disposalAccountId            BigInt? @map("disposal_account_id") // FK -> md_accounts (ErpAccount)
+
+  manufacturer   String?            @map("manufacturer")
+  retirementDate DateTime?          @map("retirement_date") @db.Date
+  isDisposed     Boolean            @default(false) @map("is_disposed")
+  isLocked       Boolean            @default(false) @map("is_locked")
+  status         ErpDocumentStatus  @map("status")
+  previousStatus ErpDocumentStatus? @map("previous_status")
+
+  metadata Json? @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  category             ErpFaAssetCategory         @relation(fields: [categoryId], references: [id])
+  department           ErpFaAssetDepartment?      @relation(fields: [departmentId], references: [id])
+  registration         ErpFaAssetRegistration?    @relation(fields: [registrationId], references: [id])
+  registrationId       BigInt?                    @map("registration_id")
+  movements            ErpFaAssetMovement[]
+  depreciationRunLines ErpFaDepreciationRunLine[]
+  transferLines        ErpFaTransferLine[]
+  disposalLines        ErpFaDisposalLine[]
+
+  @@index([legacyCode])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([registrationId])
+  @@index([branchId])
+  @@map("fa_assets")
+}
+
+model ErpFaAssetMovement {
+  id               BigInt               @id @default(autoincrement())
+  assetId          BigInt               @map("asset_id")
+  movementType     ErpAssetMovementType @map("movement_type")
+  sourceDocType    String?              @map("source_doc_type")
+  sourceId         BigInt?              @map("source_id")
+  docNumber        String?              @map("doc_number")
+  movementDate     DateTime             @map("movement_date") @db.Date
+  amount           Decimal?             @map("amount") @db.Decimal(19, 4)
+  accumulatedAfter Decimal?             @map("accumulated_after") @db.Decimal(19, 4)
+  bookValueAfter   Decimal?             @map("book_value_after") @db.Decimal(19, 4)
+
+  costCenterId  BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId    BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId     BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+
+  status   ErpDocumentStatus @map("status")
+  metadata Json?             @map("metadata")
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById BigInt?  @map("created_by_id")
+
+  asset ErpFaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, movementDate])
+  @@index([sourceDocType, sourceId])
+  @@map("fa_asset_movements")
+}
+
+model ErpFaAssetRequisition {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(REQUISITION) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  supplierId    BigInt?           @map("supplier_id") // FK -> md_partners (ErpPartner)
+  docDate       DateTime          @map("doc_date") @db.Date
+  requestedById BigInt?           @map("requested_by_id") // FK -> adm_users (ErpUser)
+  neededDate    DateTime?         @map("needed_date") @db.Date
+  currencyId    BigInt?           @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate  Decimal?          @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode     ErpPriceMode?     @map("price_mode")
+  description   String?           @map("description")
+  totalAmount   Decimal?          @map("total_amount") @db.Decimal(19, 4)
+  status        ErpDocumentStatus @map("status")
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  lines        ErpFaAssetRequisitionLine[]
+  quotations   ErpFaAssetQuotation[]
+  orders       ErpFaAssetOrder[]
+  acquisitions ErpFaAcquisition[]
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@map("fa_asset_requisitions")
+}
+
+model ErpFaAssetRequisitionLine {
+  id                          BigInt   @id @default(autoincrement())
+  requisitionId               BigInt   @map("requisition_id")
+  lineNo                      Int      @map("line_no")
+  assetId                     BigInt?  @map("asset_id") // FK -> fa_assets (set on registration; null pre-capitalize)
+  assetName                   String?  @map("asset_name")
+  description                 String?  @map("description")
+  quantity                    Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitPrice                   Decimal  @map("unit_price") @db.Decimal(19, 4)
+  discountAmount              Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount                   Decimal? @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal                   Decimal  @map("line_total") @db.Decimal(19, 4)
+  assetAccountId              BigInt?  @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId   BigInt?  @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  acquisitionPayableAccountId BigInt?  @map("acquisition_payable_account_id") // FK -> md_accounts (ErpAccount)
+  metadata                    Json?    @map("metadata")
+
+  requisition ErpFaAssetRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@index([requisitionId])
+  @@map("fa_asset_requisition_lines")
+}
+
+model ErpFaAssetQuotation {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(QUOTATION) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  supplierId    BigInt?           @map("supplier_id") // FK -> md_partners (ErpPartner)
+  docDate       DateTime          @map("doc_date") @db.Date
+  groupNo       String?           @map("group_no")
+  requisitionId BigInt?           @map("requisition_id")
+  currencyId    BigInt?           @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate  Decimal?          @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode     ErpPriceMode?     @map("price_mode")
+  description   String?           @map("description")
+  totalAmount   Decimal?          @map("total_amount") @db.Decimal(19, 4)
+  status        ErpDocumentStatus @map("status")
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  requisition  ErpFaAssetRequisition?    @relation(fields: [requisitionId], references: [id])
+  lines        ErpFaAssetQuotationLine[]
+  orders       ErpFaAssetOrder[]
+  acquisitions ErpFaAcquisition[]
+
+  @@index([legacyCode])
+  @@index([requisitionId])
+  @@index([branchId])
+  @@map("fa_asset_quotations")
+}
+
+model ErpFaAssetQuotationLine {
+  id                          BigInt   @id @default(autoincrement())
+  quotationId                 BigInt   @map("quotation_id")
+  lineNo                      Int      @map("line_no")
+  assetId                     BigInt?  @map("asset_id") // FK -> fa_assets
+  assetName                   String?  @map("asset_name")
+  description                 String?  @map("description")
+  quantity                    Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitPrice                   Decimal  @map("unit_price") @db.Decimal(19, 4)
+  discountAmount              Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount                   Decimal? @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal                   Decimal  @map("line_total") @db.Decimal(19, 4)
+  assetAccountId              BigInt?  @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId   BigInt?  @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  acquisitionPayableAccountId BigInt?  @map("acquisition_payable_account_id") // FK -> md_accounts (ErpAccount)
+  metadata                    Json?    @map("metadata")
+
+  quotation ErpFaAssetQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+  @@map("fa_asset_quotation_lines")
+}
+
+model ErpFaAssetOrder {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(ORDER) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  supplierId    BigInt?           @map("supplier_id") // FK -> md_partners (ErpPartner)
+  docDate       DateTime          @map("doc_date") @db.Date
+  requisitionId BigInt?           @map("requisition_id")
+  quotationId   BigInt?           @map("quotation_id")
+  currencyId    BigInt?           @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate  Decimal?          @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode     ErpPriceMode?     @map("price_mode")
+  description   String?           @map("description")
+  totalAmount   Decimal?          @map("total_amount") @db.Decimal(19, 4)
+  status        ErpDocumentStatus @map("status")
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  requisition  ErpFaAssetRequisition? @relation(fields: [requisitionId], references: [id])
+  quotation    ErpFaAssetQuotation?   @relation(fields: [quotationId], references: [id])
+  lines        ErpFaAssetOrderLine[]
+  acquisitions ErpFaAcquisition[]
+
+  @@index([legacyCode])
+  @@index([requisitionId])
+  @@index([quotationId])
+  @@index([branchId])
+  @@map("fa_asset_orders")
+}
+
+model ErpFaAssetOrderLine {
+  id                          BigInt   @id @default(autoincrement())
+  orderId                     BigInt   @map("order_id")
+  lineNo                      Int      @map("line_no")
+  assetId                     BigInt?  @map("asset_id") // FK -> fa_assets
+  assetName                   String?  @map("asset_name")
+  description                 String?  @map("description")
+  quantity                    Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitPrice                   Decimal  @map("unit_price") @db.Decimal(19, 4)
+  discountAmount              Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount                   Decimal? @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal                   Decimal  @map("line_total") @db.Decimal(19, 4)
+  assetAccountId              BigInt?  @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId   BigInt?  @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  acquisitionPayableAccountId BigInt?  @map("acquisition_payable_account_id") // FK -> md_accounts (ErpAccount)
+  metadata                    Json?    @map("metadata")
+
+  order ErpFaAssetOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("fa_asset_order_lines")
+}
+
+model ErpFaAcquisition {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(ACQUISITION) @map("fa_doc_type")
+
+  branchId         BigInt               @map("branch_id") // FK -> md_branches (ErpBranch)
+  supplierId       BigInt?              @map("supplier_id") // FK -> md_partners (ErpPartner)
+  docDate          DateTime             @map("doc_date") @db.Date
+  requisitionId    BigInt?              @map("requisition_id")
+  quotationId      BigInt?              @map("quotation_id")
+  orderId          BigInt?              @map("order_id")
+  currencyId       BigInt?              @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate     Decimal?             @map("exchange_rate") @db.Decimal(19, 6)
+  priceMode        ErpPriceMode?        @map("price_mode")
+  taxInvoiceNo     String?              @map("tax_invoice_no")
+  description      String?              @map("description")
+  totalAmount      Decimal?             @map("total_amount") @db.Decimal(19, 4)
+  status           ErpDocumentStatus    @map("status")
+  postingStatus    ErpPostingStatus     @map("posting_status")
+  settlementStatus ErpSettlementStatus? @map("settlement_status")
+  settledDate      DateTime?            @map("settled_date") @db.Date
+  apPaymentId      BigInt?              @map("ap_payment_id") // FK -> fin_ap_payments (settled_by)
+  ledgerEntryId    BigInt?              @map("ledger_entry_id") // FK -> fin_ledger_entries (AP open item)
+  metadata         Json?                @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  requisition   ErpFaAssetRequisition?   @relation(fields: [requisitionId], references: [id])
+  quotation     ErpFaAssetQuotation?     @relation(fields: [quotationId], references: [id])
+  order         ErpFaAssetOrder?         @relation(fields: [orderId], references: [id])
+  lines         ErpFaAcquisitionLine[]
+  registrations ErpFaAssetRegistration[]
+
+  @@index([legacyCode])
+  @@index([requisitionId])
+  @@index([quotationId])
+  @@index([orderId])
+  @@index([apPaymentId])
+  @@index([ledgerEntryId])
+  @@index([branchId])
+  @@map("fa_acquisitions")
+}
+
+model ErpFaAcquisitionLine {
+  id                          BigInt   @id @default(autoincrement())
+  acquisitionId               BigInt   @map("acquisition_id")
+  lineNo                      Int      @map("line_no")
+  assetId                     BigInt?  @map("asset_id") // FK -> fa_assets
+  assetName                   String?  @map("asset_name")
+  description                 String?  @map("description")
+  quantity                    Decimal  @map("quantity") @db.Decimal(19, 4)
+  unitPrice                   Decimal  @map("unit_price") @db.Decimal(19, 4)
+  discountAmount              Decimal? @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount                   Decimal? @map("tax_amount") @db.Decimal(19, 4)
+  lineTotal                   Decimal  @map("line_total") @db.Decimal(19, 4)
+  assetAccountId              BigInt?  @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  purchaseDiscountAccountId   BigInt?  @map("purchase_discount_account_id") // FK -> md_accounts (ErpAccount)
+  acquisitionPayableAccountId BigInt?  @map("acquisition_payable_account_id") // FK -> md_accounts (ErpAccount)
+  metadata                    Json?    @map("metadata")
+
+  acquisition ErpFaAcquisition @relation(fields: [acquisitionId], references: [id], onDelete: Cascade)
+
+  @@index([acquisitionId])
+  @@map("fa_acquisition_lines")
+}
+
+model ErpFaAssetRegistration {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(REGISTRATION) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  docDate       DateTime          @map("doc_date") @db.Date
+  acquisitionId BigInt?           @map("acquisition_id")
+  description   String?           @map("description")
+  status        ErpDocumentStatus @map("status")
+  postingStatus ErpPostingStatus  @map("posting_status")
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  acquisition ErpFaAcquisition?            @relation(fields: [acquisitionId], references: [id])
+  lines       ErpFaAssetRegistrationLine[]
+  assets      ErpFaAsset[]
+
+  @@index([legacyCode])
+  @@index([acquisitionId])
+  @@index([branchId])
+  @@map("fa_asset_registrations")
+}
+
+model ErpFaAssetRegistrationLine {
+  id                           BigInt   @id @default(autoincrement())
+  registrationId               BigInt   @map("registration_id")
+  lineNo                       Int      @map("line_no")
+  assetId                      BigInt?  @map("asset_id") // FK -> fa_assets (created/linked on capitalize)
+  acquisitionCost              Decimal  @map("acquisition_cost") @db.Decimal(19, 4)
+  residualValue                Decimal? @map("residual_value") @db.Decimal(19, 4)
+  usefulLifeMonths             Int?     @map("useful_life_months")
+  assetAccountId               BigInt?  @map("asset_account_id") // FK -> md_accounts (ErpAccount)
+  accumDepreciationAccountId   BigInt?  @map("accum_depreciation_account_id") // FK -> md_accounts (ErpAccount)
+  depreciationExpenseAccountId BigInt?  @map("depreciation_expense_account_id") // FK -> md_accounts (ErpAccount)
+  costCenterId                 BigInt?  @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId                   BigInt?  @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId                BigInt?  @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId                    BigInt?  @map("project_id") // FK -> md_projects (ErpProject)
+  metadata                     Json?    @map("metadata")
+
+  registration ErpFaAssetRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@map("fa_asset_registration_lines")
+}
+
+model ErpFaDepreciationRun {
+  id         BigInt       @id @default(autoincrement())
+  docNumber  String       @unique @map("doc_number")
+  legacyCode String?      @map("legacy_code")
+  autoNumber String?      @map("auto_number")
+  faDocType  ErpFaDocType @default(DEPRECIATION) @map("fa_doc_type")
+
+  branchId       BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  runDate        DateTime          @map("run_date") @db.Date
+  fiscalPeriodId BigInt            @map("fiscal_period_id") // FK -> sys_fiscal_periods (ErpFiscalPeriod)
+  currencyId     BigInt            @map("currency_id") // FK -> md_currencies (ErpCurrency)
+  exchangeRate   Decimal           @map("exchange_rate") @db.Decimal(19, 6)
+  description    String?           @map("description")
+  status         ErpDocumentStatus @map("status")
+  postingStatus  ErpPostingStatus  @map("posting_status")
+  postedAt       DateTime?         @map("posted_at") @db.Timestamptz(6)
+  ledgerEntryId  BigInt?           @map("ledger_entry_id") // FK -> fin_ledger_entries (posts_dep)
+  metadata       Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  lines ErpFaDepreciationRunLine[]
+
+  @@index([legacyCode])
+  @@index([fiscalPeriodId])
+  @@index([ledgerEntryId])
+  @@index([branchId])
+  @@map("fa_depreciation_runs")
+}
+
+model ErpFaDepreciationRunLine {
+  id                 BigInt  @id @default(autoincrement())
+  depreciationRunId  BigInt  @map("depreciation_run_id")
+  assetId            BigInt  @map("asset_id")
+  lineNo             Int     @map("line_no")
+  depreciationNo     Int     @map("depreciation_no")
+  depreciationAmount Decimal @map("depreciation_amount") @db.Decimal(19, 4)
+  bookValueBefore    Decimal @map("book_value_before") @db.Decimal(19, 4)
+  costCenterId       BigInt? @map("cost_center_id") // FK -> md_cost_centers (ErpCostCenter)
+  divisionId         BigInt? @map("division_id") // FK -> md_divisions (ErpDivision)
+  subdivisionId      BigInt? @map("subdivision_id") // FK -> md_subdivisions (ErpSubdivision)
+  projectId          BigInt? @map("project_id") // FK -> md_projects (ErpProject)
+  metadata           Json?   @map("metadata")
+
+  depreciationRun ErpFaDepreciationRun @relation(fields: [depreciationRunId], references: [id], onDelete: Cascade)
+  asset           ErpFaAsset           @relation(fields: [assetId], references: [id])
+
+  @@index([depreciationRunId])
+  @@index([assetId])
+  @@map("fa_depreciation_run_lines")
+}
+
+model ErpFaTransfer {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(TRANSFER) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  docDate       DateTime          @map("doc_date") @db.Date
+  effectiveDate DateTime?         @map("effective_date") @db.Date
+  description   String?           @map("description")
+  status        ErpDocumentStatus @map("status")
+  postingStatus ErpPostingStatus  @map("posting_status")
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  lines ErpFaTransferLine[]
+
+  @@index([legacyCode])
+  @@index([branchId])
+  @@map("fa_transfers")
+}
+
+model ErpFaTransferLine {
+  id               BigInt    @id @default(autoincrement())
+  transferId       BigInt    @map("transfer_id")
+  assetId          BigInt    @map("asset_id")
+  lineNo           Int       @map("line_no")
+  fromLocationId   BigInt?   @map("from_location_id") // FK -> md_locations (ErpLocation)
+  toLocationId     BigInt?   @map("to_location_id") // FK -> md_locations (ErpLocation)
+  fromDepartmentId BigInt?   @map("from_department_id")
+  toDepartmentId   BigInt?   @map("to_department_id")
+  fromBranchId     BigInt?   @map("from_branch_id") // FK -> md_branches (ErpBranch)
+  toBranchId       BigInt?   @map("to_branch_id") // FK -> md_branches (ErpBranch)
+  custodian        String?   @map("custodian")
+  effectiveDate    DateTime? @map("effective_date") @db.Date
+  metadata         Json?     @map("metadata")
+
+  transfer       ErpFaTransfer         @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  asset          ErpFaAsset            @relation(fields: [assetId], references: [id])
+  fromDepartment ErpFaAssetDepartment? @relation("ErpFaTransferLine_fromDepartment", fields: [fromDepartmentId], references: [id])
+  toDepartment   ErpFaAssetDepartment? @relation("ErpFaTransferLine_toDepartment", fields: [toDepartmentId], references: [id])
+
+  @@index([transferId])
+  @@index([assetId])
+  @@index([fromDepartmentId])
+  @@index([toDepartmentId])
+  @@map("fa_transfer_lines")
+}
+
+model ErpFaDisposal {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @map("code")
+  legacyCode String?      @map("legacy_code")
+  faDocType  ErpFaDocType @default(DISPOSAL) @map("fa_doc_type")
+
+  branchId      BigInt            @map("branch_id") // FK -> md_branches (ErpBranch)
+  docDate       DateTime          @map("doc_date") @db.Date
+  description   String?           @map("description")
+  status        ErpDocumentStatus @map("status")
+  postingStatus ErpPostingStatus  @map("posting_status")
+  ledgerEntryId BigInt?           @map("ledger_entry_id") // FK -> fin_ledger_entries (derecognition JV)
+  metadata      Json?             @map("metadata")
+
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  lines ErpFaDisposalLine[]
+
+  @@index([legacyCode])
+  @@index([ledgerEntryId])
+  @@index([branchId])
+  @@map("fa_disposals")
+}
+
+model ErpFaDisposalLine {
+  id                BigInt   @id @default(autoincrement())
+  disposalId        BigInt   @map("disposal_id")
+  assetId           BigInt   @map("asset_id")
+  lineNo            Int      @map("line_no")
+  disposalType      String   @map("disposal_type")
+  proceeds          Decimal? @map("proceeds") @db.Decimal(19, 4)
+  gainLossAccountId BigInt?  @map("gain_loss_account_id") // FK -> md_accounts (ErpAccount)
+  metadata          Json?    @map("metadata")
+
+  disposal ErpFaDisposal @relation(fields: [disposalId], references: [id], onDelete: Cascade)
+  asset    ErpFaAsset    @relation(fields: [assetId], references: [id])
+
+  @@index([disposalId])
+  @@index([assetId])
+  @@map("fa_disposal_lines")
+}

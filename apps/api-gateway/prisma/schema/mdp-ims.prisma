@@ -1,0 +1,158 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: IMS / QHSE (ehs domain) — integrated incidents, audits, and
+// permits-to-work. Three independent headers (no intra-domain FKs).
+// Design source: apps/web-mdp/db-design/entities-ims.md.
+//
+// Cross-DOMAIN refs (eam_assets/eam_work_centers) + cross-APP refs
+// (adm_users) = scalar BigInt + @@index, NO @relation.
+// =====================================================================
+
+enum MdpEhsIncidentType {
+  INJURY
+  NEAR_MISS
+  PROPERTY_DAMAGE
+  ENVIRONMENTAL
+  SECURITY
+  OTHER
+}
+
+enum MdpEhsSeverity {
+  MINOR
+  MODERATE
+  MAJOR
+  FATAL
+}
+
+enum MdpEhsIncidentStatus {
+  REPORTED
+  UNDER_INVESTIGATION
+  ACTION_PENDING
+  CLOSED
+  CANCELLED
+}
+
+enum MdpEhsAuditType {
+  SAFETY
+  ENVIRONMENTAL
+  QUALITY
+  FIVE_S
+  INTERNAL
+  EXTERNAL
+}
+
+enum MdpEhsAuditStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MdpEhsPermitType {
+  HOT_WORK
+  CONFINED_SPACE
+  WORKING_AT_HEIGHT
+  ELECTRICAL
+  EXCAVATION
+  CHEMICAL
+  OTHER
+}
+
+enum MdpEhsPermitStatus {
+  REQUESTED
+  APPROVED
+  ACTIVE
+  CLOSED
+  EXPIRED
+  REJECTED
+  CANCELLED
+}
+
+model MdpEhsIncident {
+  id               BigInt               @id @default(autoincrement())
+  code             String               @unique
+  name             String
+  type             MdpEhsIncidentType   @map("type")
+  severity         MdpEhsSeverity       @default(MINOR) @map("severity")
+  status           MdpEhsIncidentStatus @default(REPORTED) @map("status")
+  assetId          BigInt?              @map("asset_id") // cross-domain -> eam_assets
+  workCenterId     BigInt?              @map("work_center_id") // cross-domain -> eam_work_centers
+  location         String?              @map("location")
+  description      String?              @map("description")
+  occurredAt       DateTime             @map("occurred_at") @db.Timestamptz(6)
+  reportedById     BigInt?              @map("reported_by_id") // cross-app -> adm_users
+  investigatedById BigInt?              @map("investigated_by_id") // cross-app -> adm_users
+  rootCause        String?              @map("root_cause")
+  correctiveAction String?              @map("corrective_action")
+  closedAt         DateTime?            @map("closed_at") @db.Timestamptz(6)
+  notes            String?              @map("notes")
+  isActive         Boolean              @default(true) @map("is_active")
+  metadata         Json?                @map("metadata")
+  deletedAt        DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?              @map("created_by_id")
+  updatedById      BigInt?              @map("updated_by_id")
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([assetId])
+  @@map("ehs_incidents")
+}
+
+model MdpEhsAudit {
+  id           BigInt            @id @default(autoincrement())
+  code         String            @unique
+  name         String
+  type         MdpEhsAuditType   @map("type")
+  status       MdpEhsAuditStatus @default(PLANNED) @map("status")
+  scope        String?           @map("scope")
+  workCenterId BigInt?           @map("work_center_id") // cross-domain -> eam_work_centers
+  auditorId    BigInt?           @map("auditor_id") // cross-app -> adm_users
+  scheduledAt  DateTime?         @map("scheduled_at") @db.Timestamptz(6)
+  conductedAt  DateTime?         @map("conducted_at") @db.Timestamptz(6)
+  score        Decimal?          @map("score") @db.Decimal(19, 4)
+  findings     String?           @map("findings")
+  notes        String?           @map("notes")
+  isActive     Boolean           @default(true) @map("is_active")
+  metadata     Json?             @map("metadata")
+  deletedAt    DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById  BigInt?           @map("created_by_id")
+  updatedById  BigInt?           @map("updated_by_id")
+
+  @@index([type])
+  @@index([status])
+  @@map("ehs_audits")
+}
+
+model MdpEhsPermit {
+  id            BigInt             @id @default(autoincrement())
+  code          String             @unique
+  name          String
+  type          MdpEhsPermitType   @map("type")
+  status        MdpEhsPermitStatus @default(REQUESTED) @map("status")
+  assetId       BigInt?            @map("asset_id") // cross-domain -> eam_assets
+  workCenterId  BigInt?            @map("work_center_id") // cross-domain -> eam_work_centers
+  location      String?            @map("location")
+  requestedById BigInt?            @map("requested_by_id") // cross-app -> adm_users
+  approvedById  BigInt?            @map("approved_by_id") // cross-app -> adm_users
+  validFrom     DateTime?          @map("valid_from") @db.Timestamptz(6)
+  validTo       DateTime?          @map("valid_to") @db.Timestamptz(6)
+  description   String?            @map("description")
+  notes         String?            @map("notes")
+  isActive      Boolean            @default(true) @map("is_active")
+  metadata      Json?              @map("metadata")
+  deletedAt     DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById   BigInt?            @map("created_by_id")
+  updatedById   BigInt?            @map("updated_by_id")
+
+  @@index([type])
+  @@index([status])
+  @@index([assetId])
+  @@map("ehs_permits")
+}

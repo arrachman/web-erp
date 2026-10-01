@@ -1,0 +1,158 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: WMS — physical warehouse execution. Emits movements ERP `inv_`
+// posts (L4↔L3 contract); does NOT own stock balances. Design source:
+// apps/web-mdp/db-design/entities-wms.md (review-gated).
+//
+// Conventions (inherited from ERP): BigInt PK, soft-delete, audit quartet,
+// Decimal(19,4) qty, timestamptz UTC, Postgres enums. Models prefixed `Mdp`.
+// Cross-APP refs (md_items/md_storage_bins/adm_users/inv_*) + cross-domain
+// MDP refs (mes_production_orders) = scalar BigInt + @@index, NO @relation.
+// Intra-`wms` FKs (task↔picks/movements, HU links) are enforced.
+// =====================================================================
+
+enum MdpWmsTaskType {
+  PUTAWAY
+  PICK
+  MOVE
+  COUNT
+  REPLENISH
+}
+
+enum MdpWmsTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MdpWmsPostingStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+enum MdpWmsHandlingUnitStatus {
+  OPEN
+  CLOSED
+  SHIPPED
+}
+
+model MdpWmsTask {
+  id                BigInt           @id @default(autoincrement())
+  code              String           @unique
+  type              MdpWmsTaskType   @map("type")
+  status            MdpWmsTaskStatus @default(OPEN) @map("status")
+  itemId            BigInt?          @map("item_id") // cross-app -> md_items
+  qty               Decimal?         @map("qty") @db.Decimal(19, 4)
+  uomCode           String?          @map("uom_code")
+  sourceBinId       BigInt?          @map("source_bin_id") // cross-app -> md_storage_bins
+  destBinId         BigInt?          @map("dest_bin_id") // cross-app -> md_storage_bins
+  productionOrderId BigInt?          @map("production_order_id") // cross-domain -> mes_production_orders
+  erpReferenceType  String?          @map("erp_reference_type") // ERP doc kind (GRN/DO/…)
+  erpReferenceId    BigInt?          @map("erp_reference_id")
+  assignedToId      BigInt?          @map("assigned_to_id") // cross-app -> adm_users
+  priority          Int              @default(0) @map("priority")
+  notes             String?          @map("notes")
+  isActive          Boolean          @default(true) @map("is_active")
+  metadata          Json?            @map("metadata")
+  deletedAt         DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?          @map("created_by_id")
+  updatedById       BigInt?          @map("updated_by_id")
+
+  picks     MdpWmsPick[]
+  movements MdpWmsMovement[]
+
+  @@index([type])
+  @@index([status])
+  @@index([itemId])
+  @@index([sourceBinId])
+  @@index([destBinId])
+  @@index([productionOrderId])
+  @@index([assignedToId])
+  @@map("wms_tasks")
+}
+
+model MdpWmsHandlingUnit {
+  id           BigInt                   @id @default(autoincrement())
+  code         String                   @unique
+  status       MdpWmsHandlingUnitStatus @default(OPEN) @map("status")
+  currentBinId BigInt?                  @map("current_bin_id") // cross-app -> md_storage_bins
+  notes        String?                  @map("notes")
+  isActive     Boolean                  @default(true) @map("is_active")
+  metadata     Json?                    @map("metadata")
+  deletedAt    DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById  BigInt?                  @map("created_by_id")
+  updatedById  BigInt?                  @map("updated_by_id")
+
+  picks     MdpWmsPick[]
+  movements MdpWmsMovement[]
+
+  @@index([currentBinId])
+  @@map("wms_handling_units")
+}
+
+model MdpWmsPick {
+  id             BigInt           @id @default(autoincrement())
+  taskId         BigInt           @map("task_id")
+  itemId         BigInt           @map("item_id") // cross-app -> md_items
+  qtyRequested   Decimal          @map("qty_requested") @db.Decimal(19, 4)
+  qtyPicked      Decimal          @default(0) @map("qty_picked") @db.Decimal(19, 4)
+  sourceBinId    BigInt?          @map("source_bin_id") // cross-app -> md_storage_bins
+  handlingUnitId BigInt?          @map("handling_unit_id")
+  status         MdpWmsTaskStatus @default(OPEN) @map("status")
+  notes          String?          @map("notes")
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?          @map("created_by_id")
+  updatedById    BigInt?          @map("updated_by_id")
+
+  task         MdpWmsTask          @relation(fields: [taskId], references: [id])
+  handlingUnit MdpWmsHandlingUnit? @relation(fields: [handlingUnitId], references: [id])
+
+  @@index([taskId])
+  @@index([itemId])
+  @@index([sourceBinId])
+  @@index([handlingUnitId])
+  @@map("wms_picks")
+}
+
+model MdpWmsMovement {
+  id                 BigInt              @id @default(autoincrement())
+  code               String              @unique
+  taskId             BigInt?             @map("task_id")
+  itemId             BigInt              @map("item_id") // cross-app -> md_items
+  qty                Decimal             @map("qty") @db.Decimal(19, 4)
+  uomCode            String?             @map("uom_code")
+  fromBinId          BigInt?             @map("from_bin_id") // cross-app -> md_storage_bins
+  toBinId            BigInt?             @map("to_bin_id") // cross-app -> md_storage_bins
+  handlingUnitId     BigInt?             @map("handling_unit_id")
+  movedAt            DateTime            @map("moved_at") @db.Timestamptz(6)
+  movedById          BigInt?             @map("moved_by_id") // cross-app -> adm_users
+  postingStatus      MdpWmsPostingStatus @default(PENDING) @map("posting_status")
+  erpStockMovementId BigInt?             @map("erp_stock_movement_id") // -> inv_stock_movements (on post)
+  postedAt           DateTime?           @map("posted_at") @db.Timestamptz(6)
+  notes              String?             @map("notes")
+  metadata           Json?               @map("metadata")
+  deletedAt          DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById        BigInt?             @map("created_by_id")
+  updatedById        BigInt?             @map("updated_by_id")
+
+  task         MdpWmsTask?         @relation(fields: [taskId], references: [id])
+  handlingUnit MdpWmsHandlingUnit? @relation(fields: [handlingUnitId], references: [id])
+
+  @@index([taskId])
+  @@index([itemId])
+  @@index([fromBinId])
+  @@index([toBinId])
+  @@index([handlingUnitId])
+  @@index([postingStatus])
+  @@map("wms_movements")
+}

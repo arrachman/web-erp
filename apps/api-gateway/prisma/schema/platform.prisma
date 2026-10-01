@@ -1,0 +1,518 @@
+model User {
+  id           Int       @id(map: "user_pkey") @default(autoincrement())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  warehouseId  Int?      @map("warehouse_id")
+  fullName     String?   @map("full_name")
+  avatarUrl    String?   @map("avatar_url")
+  phone        String?   @map("phone")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login_tz") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  createdBy    Int?      @map("created_by")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy    Int?      @map("updated_by")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    Int?      @map("deleted_by")
+
+  roles            UserRole[]
+  departments      UserDepartment[]
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  warehouse        MasterDataWarehouse? @relation(fields: [warehouseId], references: [id])
+  inventoryLedgers InventoryLedger[]
+  managerInsights  ManagerInsight[]
+  managerRisks     ManagerRisk[]
+
+  @@index([warehouseId])
+  @@map("m0_users")
+}
+
+model Role {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  isSystem    Boolean   @default(false) @map("is_system")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   Int?      @map("created_by")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   Int?      @map("updated_by")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   Int?      @map("deleted_by")
+
+  permissions RolePermission[]
+  users       UserRole[]
+  menus       RoleMenu[]
+
+  @@map("m0_role")
+}
+
+model Menu {
+  id             Int       @id @default(autoincrement())
+  key            String    @unique
+  title          String
+  path           String?
+  icon           String?
+  type           String    @default("ITEM")
+  parentId       Int?      @map("parent_id")
+  sortOrder      Int       @default(0) @map("sort_order")
+  isVisible      Boolean   @default(true) @map("is_visible")
+  isActive       Boolean   @default(true) @map("is_active")
+  permissionName String?   @map("permission_name")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  createdBy      Int?      @map("created_by")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy      Int?      @map("updated_by")
+  deletedAt      DateTime? @map("deleted_at")
+  deletedBy      Int?      @map("deleted_by")
+
+  parent   Menu?      @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children Menu[]     @relation("MenuHierarchy")
+  roles    RoleMenu[]
+
+  @@index([parentId, sortOrder])
+  @@map("m0_menu")
+}
+
+model RoleMenu {
+  id         Int       @id @default(autoincrement())
+  roleId     Int       @map("role_id")
+  menuId     Int       @map("menu_id")
+  canView    Boolean   @default(true) @map("can_view")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  createdBy  Int?      @map("created_by")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy  Int?      @map("updated_by")
+  deletedAt  DateTime? @map("deleted_at")
+  deletedBy  Int?      @map("deleted_by")
+
+  role Role @relation(fields: [roleId], references: [id])
+  menu Menu @relation(fields: [menuId], references: [id])
+
+  @@unique([roleId, menuId])
+  @@map("m0_role_menu")
+}
+
+model Permission {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  module      String
+  action      String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   Int?      @map("created_by")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   Int?      @map("updated_by")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   Int?      @map("deleted_by")
+
+  roles RolePermission[]
+
+  @@map("m0_permission")
+}
+
+model RolePermission {
+  id           Int       @id @default(autoincrement())
+  roleId       Int       @map("role_id")
+  permissionId Int       @map("permission_id")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  createdBy    Int?      @map("created_by")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy    Int?      @map("updated_by")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    Int?      @map("deleted_by")
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("m0_role_permission")
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String
+  code        String    @unique
+  description String?
+  parentId    Int?      @map("parent_id")
+  managerId   String?   @map("manager_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   Int?      @map("created_by")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   Int?      @map("updated_by")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   Int?      @map("deleted_by")
+
+  parent   Department?      @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[]     @relation("DepartmentHierarchy")
+  users    UserDepartment[]
+
+  @@map("m0_department")
+}
+
+model UserRole {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  roleId     Int       @map("role_id")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  createdBy  Int?      @map("created_by")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy  Int?      @map("updated_by")
+  deletedAt  DateTime? @map("deleted_at")
+  deletedBy  Int?      @map("deleted_by")
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("m0_user_role")
+}
+
+model UserDepartment {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  departmentId Int       @map("department_id")
+  joinedAt     DateTime  @default(now()) @map("joined_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  createdBy    Int?      @map("created_by")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy    Int?      @map("updated_by")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    Int?      @map("deleted_by")
+
+  user       User       @relation(fields: [userId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([userId, departmentId])
+  @@map("m0_user_department")
+}
+
+model DeliveryOrder {
+  id                   Int       @id @default(autoincrement())
+  reportNo             BigInt    @unique @default(autoincrement()) @map("report_no")
+  doNumber             String    @map("do_number")
+  doDate               DateTime  @map("do_date") @db.Date
+  doReceivedDate       DateTime  @map("do_received_date") @db.Date
+  customerId           Int       @map("customer_id")
+  warehouseId          Int?      @map("warehouse_id")
+  destinationCityId    Int?      @map("destination_city_id")
+  stdLeadTimeDays      Int       @default(0) @map("std_lead_time_days")
+  stdReturnDoDays      Int       @default(0) @map("std_return_do_days")
+  shippingDate         DateTime? @map("shipping_date") @db.Date
+  actualReceivedDate   DateTime? @map("actual_received_date") @db.Date
+  receivedBy           String?   @map("received_by")
+  doScanReturnDate     DateTime? @map("do_scan_return_date") @db.Date
+  standardReceivedDate DateTime? @map("standard_received_date") @db.Date
+  stdDoReturnDate      DateTime? @map("std_do_return_date") @db.Date
+  kpiDeliveryStatus    String?   @map("kpi_delivery_status")
+  kpiDoReturnStatus    String?   @map("kpi_do_return_status")
+  totalItemTypes       Int       @default(0) @map("total_item_types")
+  totalBatches         Int       @default(0) @map("total_batches")
+  totalQtyPcs          Decimal   @default(0) @map("total_qty_pcs") @db.Decimal(18, 2)
+  totalKg              Decimal   @default(0) @map("total_kg") @db.Decimal(18, 3)
+  bu                   String?
+  notes                String?
+  status               String    @default("DRAFT")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  createdBy            Int?      @map("created_by")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy            Int?      @map("updated_by")
+  deletedAt            DateTime? @map("deleted_at")
+  deletedBy            Int?      @map("deleted_by")
+
+  customer        MasterDataContact     @relation(fields: [customerId], references: [id])
+  warehouse       MasterDataWarehouse?  @relation(fields: [warehouseId], references: [id])
+  destinationCity MasterDataCity?       @relation("DoDestinationCity", fields: [destinationCityId], references: [id])
+  details         DeliveryOrderDetail[]
+
+  @@index([customerId])
+  @@index([warehouseId])
+  @@index([shippingDate])
+  @@index([doReceivedDate])
+  @@map("m2_outbound")
+}
+
+model DeliveryOrderDetail {
+  id               Int       @id @default(autoincrement())
+  doId             Int       @map("do_id")
+  lineNo           Int       @map("line_no")
+  itemId           Int       @map("item_id")
+  qtyPcs           Decimal   @default(0) @map("qty_pcs") @db.Decimal(18, 2)
+  qtyKg            Decimal   @map("qty_kg") @db.Decimal(18, 3)
+  itemCodeSnapshot String?   @map("item_code_snapshot")
+  itemNameSnapshot String?   @map("item_name_snapshot")
+  uomCodeSnapshot  String?   @map("uom_code_snapshot")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        Int?      @map("created_by")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy        Int?      @map("updated_by")
+  deletedAt        DateTime? @map("deleted_at")
+  deletedBy        Int?      @map("deleted_by")
+
+  deliveryOrder DeliveryOrder         @relation(fields: [doId], references: [id])
+  item          MasterDataItem        @relation(fields: [itemId], references: [id])
+  batches       OutboundDetailBatch[]
+
+  @@unique([doId, lineNo])
+  @@index([doId])
+  @@index([itemId])
+  @@map("m2_outbound_detail")
+}
+
+model OutboundDetailBatch {
+  id               Int       @id @default(autoincrement())
+  outboundDetailId Int       @map("outbound_detail_id")
+  lineNo           Int       @map("line_no")
+  batchOut         String    @map("batch_out")
+  qtyPcs           Decimal   @default(0) @map("qty_pcs") @db.Decimal(18, 2)
+  qtyKg            Decimal   @default(0) @map("qty_kg") @db.Decimal(18, 3)
+  expiredDate      DateTime? @map("expired_date") @db.Date
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        Int?      @map("created_by")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy        Int?      @map("updated_by")
+  deletedAt        DateTime? @map("deleted_at")
+  deletedBy        Int?      @map("deleted_by")
+
+  outboundDetail DeliveryOrderDetail @relation(fields: [outboundDetailId], references: [id])
+
+  @@unique([outboundDetailId, lineNo])
+  @@index([outboundDetailId])
+  @@map("m2_outbound_detail_batch")
+}
+
+model Inbound {
+  id              Int       @id @default(autoincrement())
+  reportNo        BigInt    @unique @default(autoincrement()) @map("report_no")
+  transactionNo   String    @unique @map("transaction_no")
+  transactionDate DateTime  @default(now()) @map("transaction_date") @db.Date
+  supplierId      Int       @map("supplier_id")
+  warehouseId     Int       @map("warehouse_id")
+  notes           String?
+  status          String    @default("DRAFT")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  createdBy       Int?      @map("created_by")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy       Int?      @map("updated_by")
+  deletedAt       DateTime? @map("deleted_at")
+  deletedBy       Int?      @map("deleted_by")
+
+  supplier  MasterDataContact   @relation("InboundSupplier", fields: [supplierId], references: [id])
+  warehouse MasterDataWarehouse @relation(fields: [warehouseId], references: [id])
+  details   InboundDetail[]
+
+  @@index([supplierId])
+  @@index([warehouseId])
+  @@index([transactionDate])
+  @@map("m2_inbound")
+}
+
+model InboundDetail {
+  id               Int       @id @default(autoincrement())
+  inboundId        Int       @map("inbound_id")
+  lineNo           Int       @map("line_no")
+  itemId           Int       @map("item_id")
+  qty              Decimal   @default(0) @db.Decimal(18, 2)
+  uomInput         Int?      @map("uom_input")
+  itemCodeSnapshot String?   @map("item_code_snapshot")
+  itemNameSnapshot String?   @map("item_name_snapshot")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        Int?      @map("created_by")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy        Int?      @map("updated_by")
+  deletedAt        DateTime? @map("deleted_at")
+  deletedBy        Int?      @map("deleted_by")
+
+  inbound Inbound              @relation(fields: [inboundId], references: [id])
+  item    MasterDataItem       @relation(fields: [itemId], references: [id])
+  batches InboundDetailBatch[]
+
+  @@unique([inboundId, lineNo])
+  @@index([inboundId])
+  @@index([itemId])
+  @@map("m2_inbound_detail")
+}
+
+model InboundDetailBatch {
+  id              Int       @id @default(autoincrement())
+  inboundDetailId Int       @map("inbound_detail_id")
+  lineNo          Int       @map("line_no")
+  batchIn         String    @map("batch_in")
+  qty             Decimal   @default(0) @db.Decimal(18, 2)
+  expiredDate     DateTime? @map("expired_date") @db.Date
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  createdBy       Int?      @map("created_by")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy       Int?      @map("updated_by")
+  deletedAt       DateTime? @map("deleted_at")
+  deletedBy       Int?      @map("deleted_by")
+
+  inboundDetail InboundDetail @relation(fields: [inboundDetailId], references: [id])
+
+  @@unique([inboundDetailId, lineNo])
+  @@index([inboundDetailId])
+  @@map("m2_inbound_detail_batch")
+}
+
+model InventoryBatch {
+  id          Int       @id @default(autoincrement())
+  itemId      Int       @map("item_id")
+  batchNumber String    @map("batch_number")
+  expiryDate  DateTime? @map("expiry_date") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   Int?      @map("created_by")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   Int?      @map("updated_by")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   Int?      @map("deleted_by")
+
+  item   MasterDataItem    @relation(fields: [itemId], references: [id])
+  ledger InventoryLedger[]
+
+  @@unique([itemId, batchNumber])
+  @@index([itemId])
+  @@index([expiryDate])
+  @@map("m2_inventory_batch")
+}
+
+model InventoryLedger {
+  id               BigInt    @id @default(autoincrement())
+  transactionDate  DateTime  @default(now()) @map("transaction_date_tz") @db.Timestamptz(3)
+  itemId           Int       @map("item_id")
+  warehouseId      Int       @map("warehouse_id")
+  batchId          Int       @map("batch_id")
+  transactionType  String    @map("transaction_type")
+  referenceDocType String?   @map("reference_doc_type")
+  referenceDocId   String?   @map("reference_doc_id")
+  referenceNumber  String?   @map("reference_number")
+  quantityPcs      Decimal   @default(0) @map("quantity_pcs") @db.Decimal(18, 2)
+  quantityKg       Decimal   @default(0) @map("quantity_kg") @db.Decimal(18, 3)
+  uomId            Int       @map("uom_id")
+  unitCost         Decimal?  @map("unit_cost") @db.Decimal(15, 2)
+  totalValue       Decimal   @default(0) @map("total_value") @db.Decimal(18, 2)
+  userId           Int?      @map("user_id")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        Int?      @map("created_by")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy        Int?      @map("updated_by")
+  deletedAt        DateTime? @map("deleted_at")
+  deletedBy        Int?      @map("deleted_by")
+
+  item      MasterDataItem      @relation(fields: [itemId], references: [id])
+  warehouse MasterDataWarehouse @relation(fields: [warehouseId], references: [id])
+  batch     InventoryBatch      @relation(fields: [batchId], references: [id])
+  uom       MasterDataUom       @relation(fields: [uomId], references: [id])
+  user      User?               @relation(fields: [userId], references: [id])
+
+  @@index([itemId, warehouseId, batchId])
+  @@index([itemId, warehouseId, batchId, transactionDate])
+  @@index([transactionDate])
+  @@index([referenceDocType, referenceDocId])
+  @@index([batchId])
+  @@map("m2_inventory_ledger")
+}
+
+model Session {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at") @db.Timestamp(3)
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy Int?      @map("created_by")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy Int?      @map("updated_by")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy Int?      @map("deleted_by")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("m0_session")
+}
+
+model AuditLog {
+  id         Int       @id @default(autoincrement())
+  userId     Int?      @map("user_id")
+  action     String
+  entityType String    @map("entity_type")
+  entityId   String?   @map("entity_id")
+  oldData    Json?     @map("old_data")
+  newData    Json?     @map("new_data")
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  createdBy  Int?      @map("created_by")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy  Int?      @map("updated_by")
+  deletedAt  DateTime? @map("deleted_at")
+  deletedBy  Int?      @map("deleted_by")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("m0_auditlog")
+}
+
+model ManagerInsight {
+  id               Int       @id @default(autoincrement())
+  managerUserId    Int?      @map("manager_user_id")
+  title            String
+  question         String?
+  status           String
+  insightCreatedAt DateTime  @map("insight_created_at") @db.Timestamptz(3)
+  decisionAt       DateTime? @map("decision_at") @db.Timestamptz(3)
+  decisionNote     String?   @map("decision_note")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  managerUser User? @relation(fields: [managerUserId], references: [id])
+
+  @@unique([managerUserId, title, insightCreatedAt])
+  @@index([insightCreatedAt])
+  @@index([status, insightCreatedAt])
+  @@index([managerUserId, insightCreatedAt])
+  @@map("m0_manager_insight")
+}
+
+model ManagerRisk {
+  id            Int       @id @default(autoincrement())
+  managerUserId Int?      @map("manager_user_id")
+  title         String
+  domain        String
+  severity      String
+  status        String
+  openedAt      DateTime  @map("opened_at") @db.Timestamptz(3)
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  managerUser User? @relation(fields: [managerUserId], references: [id])
+
+  @@unique([title, openedAt])
+  @@index([severity, status])
+  @@index([openedAt])
+  @@map("m0_manager_risk")
+}
+
+model ManagerDataFreshness {
+  id            Int      @id @default(autoincrement())
+  domain        String
+  datasetName   String   @map("dataset_name")
+  slaMinutes    Int      @map("sla_minutes")
+  lastRefreshAt DateTime @map("last_refresh_at") @db.Timestamptz(3)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([domain, datasetName])
+  @@index([lastRefreshAt])
+  @@map("m0_manager_data_freshness")
+}

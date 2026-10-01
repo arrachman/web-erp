@@ -1,0 +1,328 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: MES (anchor) + minimal mdp/eam foundation it depends on.
+// Design source: apps/web-mdp/db-design/entities-mes.md (review-gated).
+//
+// Conventions (inherited from ERP): BigInt PK, soft-delete (deleted_at),
+// audit (created_at/updated_at/created_by_id/updated_by_id), Decimal(19,4)
+// money/qty, timestamptz UTC, Postgres enums. Models prefixed `Mdp`.
+// Cross-APP references to ERP (md_*/mfg_*/fa_*/adm_*) = scalar BigInt FK +
+// @@index, NO @relation (domains decoupled). Intra-MDP FKs are enforced.
+// =====================================================================
+
+enum MdpMesOrderStatus {
+  RELEASED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum MdpMesOperationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum MdpMesPostingStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+enum MdpReasonCodeCategory {
+  DOWNTIME
+  SCRAP
+  DELAY
+  QUALITY
+  OTHER
+}
+
+enum MdpDowntimeType {
+  PLANNED
+  UNPLANNED
+}
+
+// ---------------------------------------------------------------------
+// Foundation (mdp / eam) — minimal slice MES depends on
+// ---------------------------------------------------------------------
+
+model MdpAsset {
+  id              BigInt    @id @default(autoincrement())
+  code            String    @unique
+  name            String
+  erpFixedAssetId BigInt?   @map("erp_fixed_asset_id") // cross-app FK -> fa_assets (ERP)
+  isActive        Boolean   @default(true) @map("is_active")
+  metadata        Json?     @map("metadata")
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?   @map("created_by_id")
+  updatedById     BigInt?   @map("updated_by_id")
+
+  workCenters    MdpWorkCenter[]
+  downtimeEvents MdpDowntimeEvent[]
+
+  @@index([erpFixedAssetId])
+  @@map("eam_assets")
+}
+
+model MdpWorkCenter {
+  id                BigInt    @id @default(autoincrement())
+  code              String    @unique
+  name              String
+  assetId           BigInt?   @map("asset_id")
+  idealCycleSeconds Decimal?  @map("ideal_cycle_seconds") @db.Decimal(19, 4)
+  isActive          Boolean   @default(true) @map("is_active")
+  metadata          Json?     @map("metadata")
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?   @map("created_by_id")
+  updatedById       BigInt?   @map("updated_by_id")
+
+  asset            MdpAsset?            @relation(fields: [assetId], references: [id])
+  operations       MdpOperation[]
+  downtimeEvents   MdpDowntimeEvent[]
+  productionOrders MdpProductionOrder[]
+
+  @@index([assetId])
+  @@map("eam_work_centers")
+}
+
+model MdpShift {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  isActive    Boolean   @default(true) @map("is_active")
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  productionLogs MdpProductionLog[]
+  laborLogs      MdpLaborLog[]
+
+  @@map("mdp_shifts")
+}
+
+model MdpReasonCode {
+  id          BigInt                @id @default(autoincrement())
+  code        String                @unique
+  name        String
+  category    MdpReasonCodeCategory @map("category")
+  isActive    Boolean               @default(true) @map("is_active")
+  metadata    Json?                 @map("metadata")
+  deletedAt   DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?               @map("created_by_id")
+  updatedById BigInt?               @map("updated_by_id")
+
+  downtimeEvents MdpDowntimeEvent[]
+  scrapLogs      MdpProductionLog[]
+
+  @@map("mdp_reason_codes")
+}
+
+// ---------------------------------------------------------------------
+// MES (mes_*)
+// ---------------------------------------------------------------------
+
+model MdpProductionOrder {
+  id               BigInt            @id @default(autoincrement())
+  code             String            @unique
+  erpWorkOrderId   BigInt?           @map("erp_work_order_id") // cross-app FK -> mfg_work_orders (ERP)
+  itemId           BigInt            @map("item_id") // cross-app FK -> md_items (ERP)
+  workCenterId     BigInt?           @map("work_center_id")
+  plannedQty       Decimal           @map("planned_qty") @db.Decimal(19, 4)
+  producedGoodQty  Decimal           @default(0) @map("produced_good_qty") @db.Decimal(19, 4)
+  producedScrapQty Decimal           @default(0) @map("produced_scrap_qty") @db.Decimal(19, 4)
+  uomCode          String?           @map("uom_code")
+  status           MdpMesOrderStatus @default(RELEASED) @map("status")
+  plannedStartAt   DateTime?         @map("planned_start_at") @db.Timestamptz(6)
+  plannedEndAt     DateTime?         @map("planned_end_at") @db.Timestamptz(6)
+  actualStartAt    DateTime?         @map("actual_start_at") @db.Timestamptz(6)
+  actualEndAt      DateTime?         @map("actual_end_at") @db.Timestamptz(6)
+  branchId         BigInt?           @map("branch_id") // cross-app FK -> md_branches (ERP)
+  notes            String?           @map("notes")
+  metadata         Json?             @map("metadata")
+  deletedAt        DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?           @map("created_by_id")
+  updatedById      BigInt?           @map("updated_by_id")
+
+  workCenter           MdpWorkCenter?           @relation(fields: [workCenterId], references: [id])
+  operations           MdpOperation[]
+  productionLogs       MdpProductionLog[]
+  materialConsumptions MdpMaterialConsumption[]
+  downtimeEvents       MdpDowntimeEvent[]
+
+  @@index([erpWorkOrderId])
+  @@index([itemId])
+  @@index([workCenterId])
+  @@index([branchId])
+  @@index([status])
+  @@map("mes_production_orders")
+}
+
+model MdpOperation {
+  id                BigInt                @id @default(autoincrement())
+  productionOrderId BigInt                @map("production_order_id")
+  sequence          Int                   @map("sequence")
+  name              String
+  workCenterId      BigInt                @map("work_center_id")
+  status            MdpMesOperationStatus @default(PENDING) @map("status")
+  plannedQty        Decimal?              @map("planned_qty") @db.Decimal(19, 4)
+  goodQty           Decimal               @default(0) @map("good_qty") @db.Decimal(19, 4)
+  scrapQty          Decimal               @default(0) @map("scrap_qty") @db.Decimal(19, 4)
+  startedAt         DateTime?             @map("started_at") @db.Timestamptz(6)
+  completedAt       DateTime?             @map("completed_at") @db.Timestamptz(6)
+  metadata          Json?                 @map("metadata")
+  deletedAt         DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?               @map("created_by_id")
+  updatedById       BigInt?               @map("updated_by_id")
+
+  productionOrder      MdpProductionOrder       @relation(fields: [productionOrderId], references: [id])
+  workCenter           MdpWorkCenter            @relation(fields: [workCenterId], references: [id])
+  productionLogs       MdpProductionLog[]
+  materialConsumptions MdpMaterialConsumption[]
+  downtimeEvents       MdpDowntimeEvent[]
+  laborLogs            MdpLaborLog[]
+
+  @@index([productionOrderId])
+  @@index([workCenterId])
+  @@map("mes_operations")
+}
+
+model MdpProductionLog {
+  id                   BigInt              @id @default(autoincrement())
+  productionOrderId    BigInt              @map("production_order_id")
+  operationId          BigInt?             @map("operation_id")
+  shiftId              BigInt?             @map("shift_id")
+  operatorId           BigInt?             @map("operator_id") // cross-app FK -> adm_users (ERP)
+  goodQty              Decimal             @default(0) @map("good_qty") @db.Decimal(19, 4)
+  scrapQty             Decimal             @default(0) @map("scrap_qty") @db.Decimal(19, 4)
+  reworkQty            Decimal             @default(0) @map("rework_qty") @db.Decimal(19, 4)
+  scrapReasonId        BigInt?             @map("scrap_reason_id")
+  startedAt            DateTime            @map("started_at") @db.Timestamptz(6)
+  endedAt              DateTime?           @map("ended_at") @db.Timestamptz(6)
+  postingStatus        MdpMesPostingStatus @default(PENDING) @map("posting_status")
+  erpProductionEntryId BigInt?             @map("erp_production_entry_id") // cross-app FK -> mfg_production_entries (ERP)
+  postedAt             DateTime?           @map("posted_at") @db.Timestamptz(6)
+  notes                String?             @map("notes")
+  metadata             Json?               @map("metadata")
+  deletedAt            DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?             @map("created_by_id")
+  updatedById          BigInt?             @map("updated_by_id")
+
+  productionOrder MdpProductionOrder @relation(fields: [productionOrderId], references: [id])
+  operation       MdpOperation?      @relation(fields: [operationId], references: [id])
+  shift           MdpShift?          @relation(fields: [shiftId], references: [id])
+  scrapReason     MdpReasonCode?     @relation(fields: [scrapReasonId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([operationId])
+  @@index([shiftId])
+  @@index([operatorId])
+  @@index([scrapReasonId])
+  @@index([postingStatus])
+  @@map("mes_production_logs")
+}
+
+model MdpMaterialConsumption {
+  id                BigInt              @id @default(autoincrement())
+  productionOrderId BigInt              @map("production_order_id")
+  operationId       BigInt?             @map("operation_id")
+  itemId            BigInt              @map("item_id") // cross-app FK -> md_items (ERP)
+  qty               Decimal             @map("qty") @db.Decimal(19, 4)
+  uomCode           String?             @map("uom_code")
+  sourceBinId       BigInt?             @map("source_bin_id") // cross-app FK -> md_storage_bins (ERP)
+  postingStatus     MdpMesPostingStatus @default(PENDING) @map("posting_status")
+  consumedAt        DateTime            @map("consumed_at") @db.Timestamptz(6)
+  metadata          Json?               @map("metadata")
+  deletedAt         DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?             @map("created_by_id")
+  updatedById       BigInt?             @map("updated_by_id")
+
+  productionOrder MdpProductionOrder @relation(fields: [productionOrderId], references: [id])
+  operation       MdpOperation?      @relation(fields: [operationId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([operationId])
+  @@index([itemId])
+  @@index([sourceBinId])
+  @@index([postingStatus])
+  @@map("mes_material_consumptions")
+}
+
+model MdpDowntimeEvent {
+  id                BigInt          @id @default(autoincrement())
+  productionOrderId BigInt?         @map("production_order_id")
+  operationId       BigInt?         @map("operation_id")
+  workCenterId      BigInt          @map("work_center_id")
+  assetId           BigInt?         @map("asset_id")
+  reasonId          BigInt          @map("reason_id")
+  type              MdpDowntimeType @default(UNPLANNED) @map("type")
+  startedAt         DateTime        @map("started_at") @db.Timestamptz(6)
+  endedAt           DateTime?       @map("ended_at") @db.Timestamptz(6)
+  durationSeconds   Decimal?        @map("duration_seconds") @db.Decimal(19, 4)
+  reportedById      BigInt?         @map("reported_by_id") // cross-app FK -> adm_users (ERP)
+  notes             String?         @map("notes")
+  metadata          Json?           @map("metadata")
+  deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?         @map("created_by_id")
+  updatedById       BigInt?         @map("updated_by_id")
+
+  productionOrder MdpProductionOrder? @relation(fields: [productionOrderId], references: [id])
+  operation       MdpOperation?       @relation(fields: [operationId], references: [id])
+  workCenter      MdpWorkCenter       @relation(fields: [workCenterId], references: [id])
+  asset           MdpAsset?           @relation(fields: [assetId], references: [id])
+  reason          MdpReasonCode       @relation(fields: [reasonId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([operationId])
+  @@index([workCenterId])
+  @@index([assetId])
+  @@index([reasonId])
+  @@map("mes_downtime_events")
+}
+
+model MdpLaborLog {
+  id              BigInt    @id @default(autoincrement())
+  operationId     BigInt    @map("operation_id")
+  operatorId      BigInt    @map("operator_id") // cross-app FK -> adm_users (ERP)
+  shiftId         BigInt?   @map("shift_id")
+  startedAt       DateTime  @map("started_at") @db.Timestamptz(6)
+  endedAt         DateTime? @map("ended_at") @db.Timestamptz(6)
+  durationSeconds Decimal?  @map("duration_seconds") @db.Decimal(19, 4)
+  metadata        Json?     @map("metadata")
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?   @map("created_by_id")
+  updatedById     BigInt?   @map("updated_by_id")
+
+  operation MdpOperation @relation(fields: [operationId], references: [id])
+  shift     MdpShift?    @relation(fields: [shiftId], references: [id])
+
+  @@index([operationId])
+  @@index([operatorId])
+  @@index([shiftId])
+  @@map("mes_labor_logs")
+}

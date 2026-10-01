@@ -1,0 +1,512 @@
+model ErpMenu {
+  id          BigInt      @id @default(autoincrement())
+  code        String      @unique @map("code")
+  title       String      @map("title")
+  path        String?     @map("path")
+  icon        String?     @map("icon")
+  type        ErpMenuType @map("type")
+  parentId    BigInt?     @map("parent_id")
+  sortOrder   Int         @map("sort_order")
+  isActive    Boolean     @default(true) @map("is_active")
+  legacyCode  String?     @map("legacy_code")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?     @map("created_by_id")
+  updatedById BigInt?     @map("updated_by_id")
+  deletedAt   DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  parent     ErpMenu?               @relation("MenuParent", fields: [parentId], references: [id])
+  children   ErpMenu[]              @relation("MenuParent")
+  roleMenus  ErpRoleMenu[]
+  numberings ErpDocumentNumbering[]
+
+  @@index([parentId])
+  @@index([legacyCode])
+  @@map("sys_menus")
+}
+
+model ErpSetting {
+  id          BigInt    @id @default(autoincrement())
+  module      String?   @map("module")
+  group       String    @map("group")
+  key         String    @map("key")
+  name        String    @map("name")
+  value       String?   @map("value")
+  dataType    String    @map("data_type")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  legacyCode  String?   @map("legacy_code")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([module, group, key])
+  @@map("sys_settings")
+}
+
+model ErpDocumentNumbering {
+  id               BigInt            @id @default(autoincrement())
+  documentCode     String            @unique @map("document_code")
+  name             String            @map("name")
+  prefix           String            @map("prefix")
+  digitCount       Int               @map("digit_count")
+  resetPolicy      ErpNumberingReset @map("reset_policy")
+  nextNumber       Int               @default(1) @map("next_number")
+  menuId           BigInt?           @map("menu_id")
+  affectsLedger    Boolean           @default(false) @map("affects_ledger")
+  affectsInventory Boolean           @default(false) @map("affects_inventory")
+  affectsCost      Boolean           @default(false) @map("affects_cost")
+  notes            String?           @map("notes")
+  legacyCode       String?           @map("legacy_code")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?           @map("created_by_id")
+  updatedById      BigInt?           @map("updated_by_id")
+  deletedAt        DateTime?         @map("deleted_at") @db.Timestamptz(6)
+
+  menu ErpMenu? @relation(fields: [menuId], references: [id])
+
+  @@index([menuId])
+  @@index([legacyCode])
+  @@map("sys_document_numberings")
+}
+
+model ErpFiscalPeriod {
+  id           BigInt                @id @default(autoincrement())
+  year         Int                   @map("year")
+  periodNo     Int                   @map("period_no")
+  name         String                @map("name")
+  startDate    DateTime              @map("start_date") @db.Date
+  endDate      DateTime              @map("end_date") @db.Date
+  status       ErpFiscalPeriodStatus @default(OPEN) @map("status")
+  closedAt     DateTime?             @map("closed_at") @db.Timestamptz(6)
+  closedById   BigInt?               @map("closed_by_id")
+  softClosedAt DateTime?             @map("soft_closed_at") @db.Timestamptz(6)
+  reopenedAt   DateTime?             @map("reopened_at") @db.Timestamptz(6)
+  reopenedById BigInt?               @map("reopened_by_id")
+  reopenReason String?               @map("reopen_reason")
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById  BigInt?               @map("created_by_id")
+  updatedById  BigInt?               @map("updated_by_id")
+  deletedAt    DateTime?             @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([year, periodNo])
+  @@map("sys_fiscal_periods")
+}
+
+model ErpAuditLog {
+  id         BigInt         @id @default(autoincrement())
+  action     ErpAuditAction @map("action")
+  entityName String         @map("entity_name")
+  entityId   BigInt?        @map("entity_id")
+  summary    String?        @map("summary")
+  changes    Json?          @map("changes")
+  actorId    BigInt?        @map("actor_id")
+  actorIp    String?        @map("actor_ip")
+  occurredAt DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  actor ErpUser? @relation(fields: [actorId], references: [id])
+
+  @@index([entityName, entityId])
+  @@index([actorId])
+  @@index([occurredAt])
+  @@map("sys_audit_logs")
+}
+
+model ErpNotification {
+  id              BigInt    @id @default(autoincrement())
+  recipientId     BigInt    @map("recipient_id")
+  type            String    @map("type")
+  title           String    @map("title")
+  body            String    @map("body")
+  referenceEntity String?   @map("reference_entity")
+  referenceId     BigInt?   @map("reference_id")
+  actionUrl       String?   @map("action_url")
+  readAt          DateTime? @map("read_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  recipient ErpUser @relation(fields: [recipientId], references: [id])
+
+  @@index([recipientId, readAt])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("sys_notifications")
+}
+
+model ErpLanguage {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique @map("code") @db.VarChar(10)
+  name        String    @map("name")
+  nativeName  String    @map("native_name")
+  isRtl       Boolean   @default(false) @map("is_rtl")
+  isDefault   Boolean   @default(false) @map("is_default")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  emailTemplates ErpEmailTemplate[]
+
+  @@map("sys_languages")
+}
+
+model ErpEmailTemplate {
+  id                    BigInt                 @id @default(autoincrement())
+  code                  String                 @map("code")
+  name                  String                 @map("name")
+  description           String?                @map("description")
+  channel               ErpNotificationChannel @map("channel")
+  languageCode          String?                @map("language_code") @db.VarChar(10)
+  subject               String?                @map("subject")
+  body                  String                 @map("body")
+  availablePlaceholders Json?                  @map("available_placeholders")
+  isActive              Boolean                @default(true) @map("is_active")
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?                @map("created_by_id")
+  updatedById           BigInt?                @map("updated_by_id")
+  deletedAt             DateTime?              @map("deleted_at") @db.Timestamptz(6)
+
+  language ErpLanguage? @relation(fields: [languageCode], references: [code])
+
+  @@unique([code, channel, languageCode])
+  @@map("sys_email_templates")
+}
+
+model ErpUser {
+  id                BigInt       @id @default(autoincrement())
+  code              String       @unique @map("code")
+  name              String       @map("name")
+  email             String?      @unique @map("email")
+  passwordHash      String       @map("password_hash")
+  level             ErpUserLevel @map("level")
+  language          String       @default("id") @map("language") @db.VarChar(2)
+  defaultMenuId     BigInt?      @map("default_menu_id")
+  homeBranchId      BigInt?      @map("home_branch_id")
+  homeWarehouseId   BigInt?      @map("home_warehouse_id")
+  salesmanPartnerId BigInt?      @map("salesman_partner_id")
+  expiresAt         DateTime?    @map("expires_at") @db.Timestamptz(6)
+  isActive          Boolean      @default(true) @map("is_active")
+  legacyCode        String?      @map("legacy_code")
+  metadata          Json?        @map("metadata")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?      @map("created_by_id")
+  updatedById       BigInt?      @map("updated_by_id")
+  deletedAt         DateTime?    @map("deleted_at") @db.Timestamptz(6)
+
+  roles           ErpUserRole[]
+  branchAccess    ErpUserBranchAccess[]
+  locationAccess  ErpUserLocationAccess[]
+  warehouseAccess ErpUserWarehouseAccess[]
+  sessions        ErpUserSession[]
+  preferences     ErpUserPreferences?
+  notifications   ErpNotification[]
+  auditLogs       ErpAuditLog[]
+
+  @@index([homeBranchId])
+  @@index([legacyCode])
+  @@map("adm_users")
+}
+
+model ErpRole {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique @map("code")
+  name        String    @map("name")
+  description String?   @map("description")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  users       ErpUserRole[]
+  permissions ErpRolePermission[]
+  menus       ErpRoleMenu[]
+
+  @@map("adm_roles")
+}
+
+model ErpPermission {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique @map("code")
+  name        String    @map("name")
+  group       String?   @map("group")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  roles ErpRolePermission[]
+
+  @@map("adm_permissions")
+}
+
+model ErpUserRole {
+  userId BigInt @map("user_id")
+  roleId BigInt @map("role_id")
+
+  user ErpUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role ErpRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("adm_user_roles")
+}
+
+model ErpRolePermission {
+  roleId       BigInt @map("role_id")
+  permissionId BigInt @map("permission_id")
+
+  role       ErpRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission ErpPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("adm_role_permissions")
+}
+
+model ErpRoleMenu {
+  roleId     BigInt  @map("role_id")
+  menuId     BigInt  @map("menu_id")
+  canView    Boolean @default(false) @map("can_view")
+  canCreate  Boolean @default(false) @map("can_create")
+  canEdit    Boolean @default(false) @map("can_edit")
+  canDelete  Boolean @default(false) @map("can_delete")
+  canApprove Boolean @default(false) @map("can_approve")
+  canPrint   Boolean @default(false) @map("can_print")
+  canExport  Boolean @default(false) @map("can_export")
+  canImport  Boolean @default(false) @map("can_import")
+  isFavorite Boolean @default(false) @map("is_favorite")
+
+  role ErpRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  menu ErpMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, menuId])
+  @@map("adm_role_menus")
+}
+
+// Statuses user boleh pilih saat membuat dokumen baru, per role per document type.
+// allowedStatuses = subset dari CREATION_STATUSES (DRAFT/NEED_APPROVE/APPROVE_1..4/APPROVED/REJECTED).
+// Multi-role user → union semua rows roleId-nya.
+model ErpRoleDocPolicy {
+  id              BigInt    @id @default(autoincrement())
+  roleId          BigInt    @map("role_id")
+  documentType    String    @map("document_type") @db.VarChar(60)
+  allowedStatuses String[]  @map("allowed_statuses")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById     BigInt?   @map("created_by_id")
+  updatedById     BigInt?   @map("updated_by_id")
+
+  @@unique([roleId, documentType])
+  @@index([roleId])
+  @@map("adm_role_doc_policies")
+}
+
+model ErpUserBranchAccess {
+  userId   BigInt @map("user_id")
+  branchId BigInt @map("branch_id")
+
+  user   ErpUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch ErpBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@map("adm_user_branch_access")
+}
+
+model ErpUserLocationAccess {
+  userId     BigInt @map("user_id")
+  locationId BigInt @map("location_id")
+
+  user     ErpUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location ErpLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+  @@map("adm_user_location_access")
+}
+
+model ErpUserWarehouseAccess {
+  userId      BigInt @map("user_id")
+  warehouseId BigInt @map("warehouse_id")
+
+  user      ErpUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouse ErpWarehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, warehouseId])
+  @@map("adm_user_warehouse_access")
+}
+
+model ErpUserSession {
+  id               BigInt    @id @default(autoincrement())
+  userId           BigInt    @map("user_id")
+  refreshTokenHash String    @map("refresh_token_hash")
+  deviceName       String?   @map("device_name")
+  ipAddress        String?   @map("ip_address")
+  userAgent        String?   @map("user_agent")
+  lastActiveAt     DateTime  @map("last_active_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason    String?   @map("revoked_reason")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user ErpUser @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@map("adm_user_sessions")
+}
+
+model ErpPasswordPolicy {
+  id                    BigInt    @id @default(autoincrement())
+  code                  String    @unique @map("code")
+  name                  String    @map("name")
+  minLength             Int       @default(8) @map("min_length")
+  requireUppercase      Boolean   @default(true) @map("require_uppercase")
+  requireLowercase      Boolean   @default(true) @map("require_lowercase")
+  requireNumber         Boolean   @default(true) @map("require_number")
+  requireSymbol         Boolean   @default(false) @map("require_symbol")
+  maxAgeDays            Int?      @map("max_age_days")
+  historyCount          Int       @default(3) @map("history_count")
+  maxFailedAttempts     Int       @default(5) @map("max_failed_attempts")
+  lockoutDurationMin    Int       @default(30) @map("lockout_duration_min")
+  maxConcurrentSessions Int?      @map("max_concurrent_sessions")
+  sessionTimeoutMin     Int       @default(480) @map("session_timeout_min")
+  isDefault             Boolean   @default(false) @map("is_default")
+  isActive              Boolean   @default(true) @map("is_active")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById           BigInt?   @map("created_by_id")
+  updatedById           BigInt?   @map("updated_by_id")
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@map("adm_password_policies")
+}
+
+model ErpUserPreferences {
+  userId           BigInt   @id @map("user_id")
+  theme            String?  @map("theme")
+  language         String?  @map("language") @db.VarChar(10)
+  timezone         String?  @map("timezone")
+  dateFormat       String?  @map("date_format")
+  numberFormat     String?  @map("number_format")
+  tablePageSize    Int?     @map("table_page_size")
+  sidebarCollapsed Boolean  @default(false) @map("sidebar_collapsed")
+  defaultBranchId  BigInt?  @map("default_branch_id")
+  metadata         Json?    @map("metadata")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?  @map("created_by_id")
+  updatedById      BigInt?  @map("updated_by_id")
+
+  user ErpUser @relation(fields: [userId], references: [id])
+
+  @@map("adm_user_preferences")
+}
+
+// ── Initial Setup: company bank accounts (legacy 0-31) ──────────────────────
+// Rekening bank milik PERUSAHAAN (bukan partner). Dipakai sebagai sumber/tujuan
+// kas-bank transaksi & footer dokumen. Cross-domain ref (currency/GL account) =
+// scalar BigInt FK + @@index tanpa @relation (domain decoupled, pola erp-core).
+model ErpBankAccount {
+  id            BigInt    @id @default(autoincrement())
+  code          String    @unique @map("code")
+  name          String    @map("name")
+  bankName      String    @map("bank_name")
+  accountNumber String    @map("account_number")
+  accountHolder String    @map("account_holder")
+  branch        String?   @map("branch")
+  currencyId    BigInt?   @map("currency_id")
+  glAccountId   BigInt?   @map("gl_account_id")
+  swiftCode     String?   @map("swift_code")
+  isPrimary     Boolean   @default(false) @map("is_primary")
+  notes         String?   @map("notes")
+  isActive      Boolean   @default(true) @map("is_active")
+  legacyCode    String?   @map("legacy_code")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById   BigInt?   @map("created_by_id")
+  updatedById   BigInt?   @map("updated_by_id")
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@index([currencyId])
+  @@index([glAccountId])
+  @@map("sys_bank_accounts")
+}
+
+// ── Initial Setup: approval rules per document type (legacy 0-46) ───────────
+// Aturan persetujuan per jenis dokumen. Multi-level = beberapa baris per
+// documentType (level 1..n). approverRoleId = scalar FK ke adm_roles.
+model ErpApprovalRule {
+  id               BigInt    @id @default(autoincrement())
+  documentType     String    @map("document_type")
+  name             String    @map("name")
+  level            Int       @default(1) @map("level")
+  requiresApproval Boolean   @default(true) @map("requires_approval")
+  minAmount        Decimal?  @map("min_amount") @db.Decimal(19, 4)
+  approverRoleId   BigInt?   @map("approver_role_id")
+  notes            String?   @map("notes")
+  isActive         Boolean   @default(true) @map("is_active")
+  legacyCode       String?   @map("legacy_code")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?   @map("created_by_id")
+  updatedById      BigInt?   @map("updated_by_id")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([documentType, level])
+  @@index([approverRoleId])
+  @@map("sys_approval_rules")
+}
+
+// ── Initial Setup: home/dashboard widget layout (legacy 0-39) ───────────────
+// Konfigurasi widget beranda (global). enabled + sortOrder + colSpan grid 1..4.
+model ErpHomeWidget {
+  id          BigInt    @id @default(autoincrement())
+  widgetKey   String    @unique @map("widget_key")
+  title       String    @map("title")
+  description String?   @map("description")
+  enabled     Boolean   @default(true) @map("enabled")
+  sortOrder   Int       @default(0) @map("sort_order")
+  colSpan     Int       @default(1) @map("col_span")
+  config      Json?     @map("config")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@map("sys_home_widgets")
+}
+
+// ── Initial Setup: data import jobs/history (legacy 0-20) ───────────────────
+// Riwayat impor data master. status: PENDING/SUCCESS/PARTIAL/FAILED.
+// errors = array {row, message} hasil validasi.
+model ErpImportJob {
+  id          BigInt    @id @default(autoincrement())
+  entity      String    @map("entity")
+  fileName    String    @map("file_name")
+  status      String    @default("PENDING") @map("status")
+  rowsTotal   Int       @default(0) @map("rows_total")
+  rowsOk      Int       @default(0) @map("rows_ok")
+  rowsFailed  Int       @default(0) @map("rows_failed")
+  errors      Json?     @map("errors")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@index([entity])
+  @@map("sys_import_jobs")
+}

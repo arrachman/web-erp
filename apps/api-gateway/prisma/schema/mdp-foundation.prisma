@@ -1,0 +1,100 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: mdp foundation — work calendars (OEE availability basis),
+// navigation SSOT (mdp_menus), and thin shop-floor access map
+// (mdp_role_menus, open decision #1 = "thin mdp_* mapping; identity
+// stays adm_users"). Built additively on top of mdp-mes.prisma.
+//
+// Conventions (inherited from ERP): BigInt PK, soft-delete (deleted_at),
+// audit quartet, Decimal(19,4), timestamptz UTC, Postgres enums. Models
+// prefixed `Mdp`. Cross-APP references to ERP (adm_roles, adm_users,
+// eam_work_centers/mdp_shifts are intra-MDP) = scalar BigInt + @@index,
+// NO @relation. Intra-MDP FKs (menu self-tree, role→menu) are enforced.
+// =====================================================================
+
+// ---------------------------------------------------------------------
+// mdp_work_calendars — planned operating time (basis for OEE Availability)
+// ---------------------------------------------------------------------
+// v1: a named planned-time profile, optionally scoped to a work center
+// and/or shift. `plannedMinutesPerDay` × `workingDaysPerWeek` feeds the
+// Availability denominator (planned time − mes_downtime_events).
+// Work center / shift refs are scalar (no @relation) to keep this file
+// additive — no ALTER on existing eam_*/mdp_* tables.
+model MdpWorkCalendar {
+  id                   BigInt    @id @default(autoincrement())
+  code                 String    @unique
+  name                 String
+  description          String?   @map("description")
+  workCenterId         BigInt?   @map("work_center_id") // intra-MDP ref -> eam_work_centers (scalar; null = plant-wide)
+  shiftId              BigInt?   @map("shift_id") // intra-MDP ref -> mdp_shifts (scalar; null = all shifts)
+  plannedMinutesPerDay Decimal   @default(0) @map("planned_minutes_per_day") @db.Decimal(19, 4)
+  workingDaysPerWeek   Int       @default(7) @map("working_days_per_week")
+  effectiveFrom        DateTime? @map("effective_from") @db.Timestamptz(6)
+  effectiveTo          DateTime? @map("effective_to") @db.Timestamptz(6)
+  isActive             Boolean   @default(true) @map("is_active")
+  metadata             Json?     @map("metadata")
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById          BigInt?   @map("created_by_id")
+  updatedById          BigInt?   @map("updated_by_id")
+
+  @@index([workCenterId])
+  @@index([shiftId])
+  @@map("mdp_work_calendars")
+}
+
+// ---------------------------------------------------------------------
+// mdp_menus — navigation SSOT for the MDP shell (mirror of sys_menus)
+// ---------------------------------------------------------------------
+model MdpMenu {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  parentId    BigInt?   @map("parent_id")
+  path        String?   @map("path") // app route, e.g. /app/mes
+  icon        String?   @map("icon") // lucide icon name
+  moduleKey   String?   @map("module_key") // MOM module: mes/qms/mnt/wms/...
+  sequence    Int       @default(0) @map("sequence")
+  isActive    Boolean   @default(true) @map("is_active")
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  parent    MdpMenu?      @relation("MdpMenuTree", fields: [parentId], references: [id])
+  children  MdpMenu[]     @relation("MdpMenuTree")
+  roleMenus MdpRoleMenu[]
+
+  @@index([parentId])
+  @@index([moduleKey])
+  @@map("mdp_menus")
+}
+
+// ---------------------------------------------------------------------
+// mdp_role_menus — thin shop-floor access map (decision #1, default lean)
+// ---------------------------------------------------------------------
+// Identity/roles stay in ERP (`adm_users`/`adm_roles`); this only maps an
+// ERP role id (scalar, cross-app, NO @relation) to an MDP menu it may see.
+model MdpRoleMenu {
+  id          BigInt    @id @default(autoincrement())
+  roleId      BigInt    @map("role_id") // cross-app ref -> adm_roles (ERP)
+  menuId      BigInt    @map("menu_id")
+  canView     Boolean   @default(true) @map("can_view")
+  canEdit     Boolean   @default(false) @map("can_edit")
+  metadata    Json?     @map("metadata")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+
+  menu MdpMenu @relation(fields: [menuId], references: [id])
+
+  @@unique([roleId, menuId])
+  @@index([roleId])
+  @@index([menuId])
+  @@map("mdp_role_menus")
+}

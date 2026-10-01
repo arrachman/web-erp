@@ -1,0 +1,106 @@
+// =====================================================================
+// Senti MDP (apps/web-mdp) — ISA-95 Level 3 / MOM
+// Module: LMS — training & competency. Courses, user enrollments, and a
+// competency matrix (gates who may run an operation). Design source:
+// apps/web-mdp/db-design/entities-lms.md.
+//
+// Cross-APP refs (adm_users) = scalar BigInt + @@index, NO @relation.
+// Intra-`lms` FKs (course↔enrollments, course↔competencies) enforced.
+// =====================================================================
+
+enum MdpLmsCourseCategory {
+  SAFETY
+  QUALITY
+  TECHNICAL
+  ONBOARDING
+  COMPLIANCE
+  OTHER
+}
+
+enum MdpLmsCourseStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum MdpLmsEnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model MdpLmsCourse {
+  id             BigInt                @id @default(autoincrement())
+  code           String                @unique
+  name           String
+  category       MdpLmsCourseCategory? @map("category")
+  status         MdpLmsCourseStatus    @default(DRAFT) @map("status")
+  description    String?               @map("description")
+  durationHours  Decimal?              @map("duration_hours") @db.Decimal(19, 4)
+  isMandatory    Boolean               @default(false) @map("is_mandatory")
+  validityMonths Int?                  @map("validity_months")
+  isActive       Boolean               @default(true) @map("is_active")
+  metadata       Json?                 @map("metadata")
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?               @map("created_by_id")
+  updatedById    BigInt?               @map("updated_by_id")
+
+  enrollments  MdpLmsEnrollment[]
+  competencies MdpLmsCompetency[]
+
+  @@index([category])
+  @@index([status])
+  @@map("lms_courses")
+}
+
+model MdpLmsEnrollment {
+  id              BigInt                 @id @default(autoincrement())
+  courseId        BigInt                 @map("course_id")
+  userId          BigInt                 @map("user_id") // cross-app -> adm_users
+  status          MdpLmsEnrollmentStatus @default(ENROLLED) @map("status")
+  progressPct     Decimal?               @map("progress_pct") @db.Decimal(19, 4)
+  enrolledAt      DateTime               @map("enrolled_at") @db.Timestamptz(6)
+  completedAt     DateTime?              @map("completed_at") @db.Timestamptz(6)
+  score           Decimal?               @map("score") @db.Decimal(19, 4)
+  certificateCode String?                @map("certificate_code")
+  expiresAt       DateTime?              @map("expires_at") @db.Timestamptz(6)
+  notes           String?                @map("notes")
+  deletedAt       DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     BigInt?                @map("created_by_id")
+  updatedById     BigInt?                @map("updated_by_id")
+
+  course MdpLmsCourse @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([userId])
+  @@index([status])
+  @@map("lms_enrollments")
+}
+
+model MdpLmsCompetency {
+  id               BigInt    @id @default(autoincrement())
+  code             String    @unique
+  name             String
+  category         String?   @map("category")
+  description      String?   @map("description")
+  requiredCourseId BigInt?   @map("required_course_id")
+  level            String?   @map("level")
+  isActive         Boolean   @default(true) @map("is_active")
+  metadata         Json?     @map("metadata")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById      BigInt?   @map("created_by_id")
+  updatedById      BigInt?   @map("updated_by_id")
+
+  requiredCourse MdpLmsCourse? @relation(fields: [requiredCourseId], references: [id])
+
+  @@index([requiredCourseId])
+  @@map("lms_competencies")
+}

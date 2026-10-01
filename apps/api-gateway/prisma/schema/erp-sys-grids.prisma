@@ -1,0 +1,128 @@
+// ── Kustomisasi Grid (Transaction grid customization) ───────────────────────
+// System-wide, admin-managed definitions for which columns appear in each
+// transaction detail grid (mirrors legacy MyERP+ "Grid" config). Domain = sys.
+// One transaction type can own MANY grids (tabs) — e.g. a Bank Receipt has a
+// contra-account grid + a giro grid. Columns belong to a grid (tab).
+// `kind`/`dataType` + the renderer/formatter slots kept as TEXT + app-level
+// validation (lighter migrations; allowlist lives in the DTO + FE dropdowns).
+
+model ErpTransactionType {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique @map("code") // e.g. "FIN.CR"
+  name        String    @map("name") // e.g. "Cash Receipt (CR)"
+  moduleKey   String    @map("module_key") // e.g. "finance"
+  moduleLabel String    @map("module_label") // e.g. "Finance & Accounting"
+  groupLabel  String?   @map("group_label") // e.g. "Transaction"
+  lineTable   String?   @map("line_table") // physical line table this grid drives, e.g. "fin_cash_bank_lines"
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  legacyCode  String?   @map("legacy_code")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById BigInt?   @map("created_by_id")
+  updatedById BigInt?   @map("updated_by_id")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  grids ErpTransactionGrid[]
+
+  @@index([moduleKey])
+  @@map("sys_transaction_types")
+}
+
+// A grid/tab under a transaction type. One menu (transaction type) can show
+// more than one table — each is a grid here (tab in the customization UI).
+model ErpTransactionGrid {
+  id                BigInt    @id @default(autoincrement())
+  transactionTypeId BigInt    @map("transaction_type_id")
+  key               String    @map("key") // slug within the type, e.g. "main", "giro"
+  label             String    @map("label") // tab label, e.g. "Akun Lawan", "Giro"
+  sortOrder         Int       @default(0) @map("sort_order")
+  lineTable         String?   @map("line_table") // physical line table this tab drives
+  isPrimary         Boolean   @default(false) @map("is_primary") // the grid the runtime entry reads by default
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById       BigInt?   @map("created_by_id")
+  updatedById       BigInt?   @map("updated_by_id")
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  transactionType ErpTransactionType         @relation(fields: [transactionTypeId], references: [id], onDelete: Cascade)
+  columns         ErpTransactionGridColumn[]
+
+  @@unique([transactionTypeId, key])
+  @@index([transactionTypeId])
+  @@map("sys_transaction_grids")
+}
+
+model ErpTransactionGridColumn {
+  id                  BigInt    @id @default(autoincrement())
+  gridId              BigInt    @map("grid_id")
+  sortOrder           Int       @default(0) @map("sort_order") // "No" column / display order
+  headerText          String    @map("header_text")
+  dataField           String    @map("data_field") // standard field key (accountId, amount, …) or custom slot (customText1, …)
+  width               Int       @default(120) @map("width")
+  isVisible           Boolean   @default(true) @map("is_visible")
+  isRequired          Boolean   @default(false) @map("is_required")
+  isEditable          Boolean   @default(true) @map("is_editable")
+  isSkippable         Boolean   @default(false) @map("is_skippable") // cell skipped during tab/arrow focus navigation
+  kind                String    @default("STANDARD") @map("kind") // STANDARD | CUSTOM
+  dataType            String    @default("TEXT") @map("data_type") // TEXT | NUMBER | DATE | LOOKUP
+  lookupSource        String?   @map("lookup_source") // for LOOKUP: registry slug (accounts|partners|cost-centers|…); legacy slugs aliased at runtime
+  lookupDefaultFilter Json?     @map("lookup_default_filter") // extra filter params merged into loader, e.g. {"isActive":true}
+  lookupDefaultSort   String?   @map("lookup_default_sort") // "field:direction", e.g. "name:asc"
+  // Per-column field settings (mirror sys_form_fields) — apply to the live entry grid.
+  placeholder         String?   @map("placeholder") // cell placeholder shown when empty; null = built-in default
+  defaultValue        String?   @map("default_value") // prefilled on a new line row (lookup = id, others = raw string)
+  defaultValueLabel   String?   @map("default_value_label") // resolved display label for a lookup defaultValue (stored at pick time)
+  // Semantic column type — single selector that derives all 4 presentation slots below.
+  columnType          String?   @map("column_type") // text|number|currency|decimal|percent|date|datetime|checkbox|lookup|textarea|badge|link|discount|stepper|combobox|account_picker|partner_picker
+  // Presentation/edit slots (allowlist in DTO + FE dropdowns; null = derive from dataType)
+  labelFormatter      String?   @map("label_formatter") // value format in cell: NONE|NUMBER|DECIMAL|CURRENCY|PERCENT|DATE|DATETIME|BOOLEAN
+  headerRenderer      String?   @map("header_renderer") // header cell render: DEFAULT|REQUIRED|CENTER|WRAP|HELP
+  cellRenderer        String?   @map("cell_renderer") // row cell render: TEXT|NUMERIC|CURRENCY|BADGE|CHECK|LINK|LOOKUP
+  cellEditor          String?   @map("cell_editor") // active-cell editor: TEXT|NUMBER|DATE|LOOKUP|TEXTAREA|CHECKBOX|NONE|DISCOUNT|STEPPER|COMBOBOX|ACCOUNT_PICKER|PARTNER_PICKER
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById         BigInt?   @map("created_by_id")
+  updatedById         BigInt?   @map("updated_by_id")
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  grid ErpTransactionGrid @relation(fields: [gridId], references: [id], onDelete: Cascade)
+
+  @@unique([gridId, dataField])
+  @@index([gridId])
+  @@map("sys_transaction_grid_columns")
+}
+
+// ── Form Builder (Transaction header form customization) ─────────────────────
+// Per-transaction-type config for header form fields: structural fields can be
+// relabeled / hidden / reordered; custom fields can be added with any fieldType.
+// Custom field values are stored in fin_cash_bank_transactions.custom_fields (JSONB).
+
+model ErpFormField {
+  id                  BigInt    @id @default(autoincrement())
+  transactionTypeCode String    @map("transaction_type_code") // e.g. "FIN.CR"
+  fieldKey            String    @map("field_key") // structural: "partnerId" | custom: "customText1"
+  kind                String    @default("STRUCTURAL") @map("kind") // STRUCTURAL | CUSTOM
+  label               String    @map("label") // display label shown in the form
+  fieldType           String    @default("TEXT") @map("field_type") // TEXT|NUMBER|DATE|PARTNER|ACCOUNT|BRANCH|LOCATION|CURRENCY|LOOKUP
+  lookupSource        String?   @map("lookup_source") // for LOOKUP: API slug, e.g. "partners"
+  lookupDefaultFilter Json?     @map("lookup_default_filter") // extra filter params merged into loader, e.g. {"typeKind":"CUSTOMER"}
+  lookupDefaultSort   String?   @map("lookup_default_sort") // "field:direction", e.g. "name:asc"
+  placeholder         String?   @map("placeholder") // input placeholder shown when empty; null = use form default
+  defaultValue        String?   @map("default_value") // prefilled value on new records (lookup = id, others = raw string)
+  isReadonly          Boolean   @default(false) @map("is_readonly") // always non-editable regardless of workflow status
+  isRequired          Boolean   @default(false) @map("is_required")
+  isVisible           Boolean   @default(true) @map("is_visible")
+  sortOrder           Int       @default(0) @map("sort_order")
+  columnSlot          String    @default("LEFT") @map("column_slot") // LEFT | CENTER | RIGHT
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById         BigInt?   @map("created_by_id")
+  updatedById         BigInt?   @map("updated_by_id")
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([transactionTypeCode, fieldKey])
+  @@index([transactionTypeCode])
+  @@map("sys_form_fields")
+}
