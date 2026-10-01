@@ -4450,3 +4450,53 @@ REOPEN → ledger terhapus bersih.
 **benar-benar selesai** kecuali SIE (di-gate). AS menutup gap terakhir yang
 tercatat di checkpoint sebelumnya.
 
+### § AP (Vendor Advance) GL posting — mirror AS, tabel dibagi dengan VP (2026-10-01)
+
+Temuan struktural penting: `erp-pur-vendor-advances` (AP, PRD) **tidak
+punya model Prisma sendiri** — ia menulis ke **`fin_ap_payments` yang sama
+dengan VP**, dibedakan hanya kolom `source = 'AP'` (filter wajib di semua
+query `findRaw`/`findAll`). Levelnya sama seperti VP sebelum dikerjakan:
+`transition()` ada tapi `postingStatus` sengaja stuck `UNPOSTED` dengan
+TODO comment, **dan** `NEXT` map-nya (ditulis inline di service, bukan file
+`*.helpers.ts` terpisah) **juga tidak punya `POSTED: { REOPEN }`** — bug
+yang sama dengan temuan sebelumnya, di lokasi berbeda yang belum ter-grep
+saat audit 16-modul (karena bukan file `*.helpers.ts`).
+
+**Kenapa TIDAK reuse `ApPaymentPostingService` (posting VP):** sama alasan
+AS vs AR Receipt — `ApPaymentPostingService` wajib alokasi ke
+`pur_invoices` outstanding tertentu, tapi vendor advance belum punya
+invoice untuk dilunasi. AP perlu posting sendiri: **Dr Uang Muka Pembelian
+(asset) / Cr Kas-Bank** — arah terbalik dari AS, tapi sama alasan "tidak
+reuse modul yang assume ada invoice".
+
+**Field:** `fin_ap_payments.bankAccountId` sudah ada sebagai **kolom asli**
+(dipakai VP juga) — diisi langsung, bukan metadata. `advanceAccountId`
+tidak punya kolom (sama dengan AS) → disimpan di `metadata`. Ditambahkan ke
+`CreateVendorAdvanceDto`/`UpdateVendorAdvanceDto`.
+
+**Isolasi namespace ledger dari VP (PENTING):** AP dan VP berbagi **id
+space yang sama** (satu tabel `fin_ap_payments`) — kalau `sourceDocType`
+posting AP sama dengan VP (`'fin_ap_payments'`), REOPEN salah satu bisa
+menghapus ledger milik yang lain pada id yang sama secara tidak sengaja.
+**Sengaja dipakai `sourceDocType` berbeda**: AP = `fin_ap_payments_vendor_advance`,
+VP tetap `fin_ap_payments`. Diverifikasi eksplisit di test (ledger AP tidak
+muncul saat query dengan `sourceDocType: 'fin_ap_payments'`).
+
+**Bug fix sekalian:** `transition()` sebelumnya **tidak pakai
+`$transaction`** sama sekali (update langsung tanpa wrap) — diperbaiki
+jadi pola standar (`$transaction` + `posting.reverseLedger` sebelum
+`postToLedger` + update status, sama seperti semua modul lain) + `NEXT`
+map ditambah `POSTED: { REOPEN: 'DRAFT' }`.
+
+**Diverifikasi end-to-end terhadap database nyata:** AP dibuat (amount
+3000000) → SUBMIT→APPROVE→POST → `postingStatus` benar jadi `POSTED`
+(bukan stuck `UNPOSTED` seperti sebelumnya) → 2 baris ledger balanced (Dr
+3000000 Uang Muka Pembelian/Cr 3000000 Bank) → **dikonfirmasi ledger AP
+tidak bocor ke namespace VP** → REOPEN dari POSTED berhasil (bug fix
+teruji end-to-end, bukan cuma guard check) → ledger terhapus bersih.
+
+**Dua belas unit kerja total selesai sesi ini.** Fase 2 (Purchasing) kini
+juga **lengkap** untuk semua transaksi non-gated PRD (PR, RFQ/BS belum
+disentuh tapi PRD bilang Jurnal=Tidak/Stok=Tidak untuk keduanya — cek
+ulang sebelum declare selesai total).
+

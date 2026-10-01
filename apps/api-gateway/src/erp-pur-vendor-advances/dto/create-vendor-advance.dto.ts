@@ -54,4 +54,18 @@ export class CreateVendorAdvanceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ description: 'Akun kas/bank (md_accounts) sumber pembayaran uang muka — wajib diisi sebelum POST' })
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Akun Uang Muka Pembelian / Vendor Advance Asset (md_accounts) — wajib diisi sebelum POST. ' +
+      'Tidak ada kolom tersendiri di fin_ap_payments; disimpan di metadata (pola sama dengan AS).',
+  })
+  @IsOptional()
+  @IsString()
+  advanceAccountId?: string;
 }
