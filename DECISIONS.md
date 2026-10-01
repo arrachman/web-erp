@@ -4129,3 +4129,45 @@ RNR/SR (yang semua "isi NO-OP yang polanya sudah ada"). **Jangan
 dikerjakan sambil lalu** — perlu desain allocation flow dulu, eskalasi ke
 user sebelum mulai.
 
+### § PI Purchasing (Purchase Invoice) stock + GL posting — langkah keenam Fase 2 (2026-10-01)
+
+`src/erp-pur-invoices/pur-invoice-posting.service.ts` — ganti NO-OP jadi
+posting nyata, 2 jalur eksklusif berdasar `invoice.goodsReceiptId`
+(FR-PUR-03/04 persis "PI dibuat dari GRN tidak menambah stok lagi, PI tanpa
+GRN menambah stok sendiri"):
+
+- **PATH A — dari GRN** (`goodsReceiptId` terisi): **tidak** ada stock
+  movement baru (barang & accrual sudah diposting GRN). GL murni
+  reklasifikasi: **Dr** GR/IR Accrual (`line.accruedPayableAccountId`,
+  wajib diisi — error eksplisit kalau kosong) + **Dr** PPN Masukan
+  (`tax.purchaseAccountId`, override header) → **Cr** Utang Usaha
+  (`invoice.payableAccountId`, fallback `supplier.payableAccountId`).
+- **PATH B — tanpa GRN** (`goodsReceiptId` null, pembelian langsung):
+  stock movement sendiri (pola identik GRN: `TRANSFER_RECEIPT`, qty-only,
+  **tidak** lewat `InvStockMovementPostingService.postMovement` karena arah
+  GL auto-nya salah untuk pembelian — alasan sama seperti GRN) + GL penuh
+  **Dr** Persediaan (`line.inventoryAccountId`, fallback item) + Dr PPN
+  Masukan → **Cr** Utang Usaha.
+- Doc number movement PATH B: kode baru **`PII`**.
+- **`matchStatus` (3-way match) SENGAJA tidak dijadikan gate posting** —
+  field itu ada di schema + enum `ErpMatchStatus` tapi **tidak pernah
+  di-set** oleh service manapun (selalu default `PENDING`). Komentar lama di
+  file ini mengklaim "gated behind 3-way match MATCHED/WAIVED" tapi itu
+  aspirational, bukan infra yang nyata — kalau dipaksa jadi gate, PI tidak
+  akan pernah bisa di-POST (matchStatus selalu PENDING selamanya). 3-way
+  matching = fitur terpisah yang lebih besar, di luar scope unit kerja ini.
+  **Catatan untuk siapa pun yang membangun 3-way match nanti:** field sudah
+  ada, servicenya belum.
+
+**Diverifikasi end-to-end terhadap database nyata, kedua jalur:** PATH A
+(reuse GRN existing demi FK valid) → 2 baris ledger balanced Dr 120000
+Accrual/Cr 120000 AP, **nol** stock movement tercipta, reverse bersih.
+PATH B → 1 stock movement qty=6 tercipta, 2 baris ledger balanced Dr 90000
+Persediaan/Cr 90000 AP, reverse bersih di kedua movement+ledger. Script
+test dihapus setelah lulus.
+
+**Belum disentuh:** PRT (Purchase Return, mirror SR tapi Purchasing — direct
+vs undirect mode per FR-PUR-05), DNR (Return Shipment, mirror RNR tapi
+barang keluar ke vendor). Levelnya sepadan SI/DO/GRN/RNR/SR/PI — kandidat
+langkah berikutnya.
+
