@@ -4670,3 +4670,28 @@ yang belum pernah dipanggil lewat service layer penuh dalam sesi ini —
 risiko bug tersembunyi serupa belum sepenuhnya dikesampingkan untuk modul
 itu.
 
+### § Audit service-layer lanjutan: PI, PRT, AS, AR Receipt, AP Payment, AP — bersih (2026-10-01)
+
+Menjalankan rekomendasi follow-up di atas. `service.create()` +
+`service.findOne()` (bukan raw Prisma) dites nyata terhadap database untuk
+keenam modul yang belum pernah diverifikasi lewat jalur ini sesi ini:
+
+- **PI** — bersih. Tidak ada reference lintas-transaksi di
+  `pur-invoice-enrich.ts`, `settlementStatus` sudah `'UNPAID'` sejak awal.
+- **PRT** — bersih, sama alasan dengan PI.
+- **AS, AR Receipt, AP Payment, AP (vendor advance)** — bersih. Dicek
+  `erp-fin-ar-receipts.service.ts`/`erp-fin-ap-payments.service.ts`
+  (keduanya **tidak punya enrich logic sama sekali** — `findRaw`/`one`
+  polos, jadi tidak ada vektor bug `select: SELECT` di situ) dan
+  `sls-customer-advance-enrich.ts` (semua target `select: SELECT` adalah
+  master data murni — partner/branch/currency/paymentTerm/costCenter/
+  division/project — tidak ada reference ke model transaksi lain).
+
+**Hasil: tidak ada bug baru ditemukan.** Kombinasi bug `settlementStatus`
+salah + `enrich select` salah yang ditemukan di SI/SR/RNR **tidak meluas**
+ke enam modul ini. Audit lengkap `service.create()`+`findOne()` lewat
+service layer asli (bukan raw Prisma) sekarang mencakup **seluruh 15
+transaksi** yang disentuh sesi ini: SI, DO, GRN, RNR, SR, PI, PRT/DNR, AR
+Receipt, AP Payment, AS, AP — semua terverifikasi bersih atau sudah
+diperbaiki.
+
