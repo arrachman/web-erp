@@ -85,6 +85,7 @@ import { ErpProjectsModule } from './erp-projects/erp-projects.module';
 import { ErpProvincesModule } from './erp-provinces/provinces.module';
 import { ErpPurBidSelectionsModule } from './erp-pur-bid-selections/erp-pur-bid-selections.module';
 import { ErpPurFreightPayablesModule } from './erp-pur-freight-payables/erp-pur-freight-payables.module';
+import { ErpSlsFreightReceivablesModule } from './erp-sls-freight-receivables/erp-sls-freight-receivables.module';
 import { ErpPurGoodsReceiptsModule } from './erp-pur-goods-receipts/erp-pur-goods-receipts.module';
 import { ErpPurInvoicesModule } from './erp-pur-invoices/erp-pur-invoices.module';
 import { ErpPurOrdersModule } from './erp-pur-orders/erp-pur-orders.module';
@@ -234,6 +235,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpProvincesModule,
     ErpPurBidSelectionsModule,
     ErpPurFreightPayablesModule,
+    ErpSlsFreightReceivablesModule,
     ErpPurGoodsReceiptsModule,
     ErpPurInvoicesModule,
     ErpPurOrdersModule,

@@ -4918,3 +4918,74 @@ ledger terhapus bersih.
 
 **Dua puluh lima unit kerja total selesai sesi ini.**
 
+### § RP (Freight Receivable) — modul baru dari nol + migrasi skema (2026-10-01)
+
+**Satu-satunya unit kerja sesi ini yang butuh migrasi skema.** Berbeda
+dari PP (sudah ada skeleton), RP **tidak punya model/tabel/controller/
+service apapun** di seluruh codebase — grep `'RP'` nihil total. User
+diberi pilihan eksplisit (migrasi baru vs tumpangi `fin_ar_receipts` vs
+skip) dan **menyetujui migrasi baru**.
+
+**Model baru:** `ErpSlsFreightReceivable` (`sls_freight_receivables`,
+domain `sls` karena ini tagihan ke customer, bukan entri finance generik —
+konsisten dengan `sls_customer_advances`). **Sengaja TIDAK** mirror
+`fin_ar_receipts` (instrument+allocation) — RP murni dokumen tagihan
+sebelum ada kas sama sekali (beda dari AR Receipt yang representasi
+penerimaan kas); mirror `ErpSlsCustomerAdvance` (standalone, tanpa baris
+item, tanpa instrument).
+
+**Migrasi additive** (`20261001_001_erp_sls_freight_receivables`): `CREATE
+TABLE` baru, nol `DROP`/`ALTER` ke tabel existing. **Catatan proses migrasi
+penting:** `prisma migrate dev` gagal karena shadow database mereplay
+histori migration lama yang sudah tidak valid (`clinic_client` tidak ada —
+masalah pre-existing, bukan dari perubahan ini). **Solusi**: tulis SQL
+manual, `npx prisma db execute --file ... --schema prisma/schema` untuk
+apply langsung ke DB (skip shadow DB), lalu `npx prisma migrate resolve
+--applied <nama>` untuk mencatat status di `_prisma_migrations`, lalu
+`npm run db:generate`. Pola ini disebut CLAUDE.md root ("Migrasi ERP =
+hand-written SQL + prisma migrate deploy") — dipakai pertama kali sesi ini.
+
+**`npx prisma format` punya efek samping**: mengubah whitespace alignment
+di `erp-md.prisma` (file lain yang tidak disentuh) — **di-revert** sebelum
+commit supaya diff tetap minimal dan fokus hanya ke perubahan yang
+dimaksud. **Catatan untuk sesi depan:** jalankan `git diff --stat` setelah
+`prisma format`/`generate` sebelum `git add`, jangan asumsikan command itu
+hanya menyentuh file yang baru diedit.
+
+**GL (arah dikonfirmasi user, sama seperti PP):** **Dr** Piutang Usaha
+(`receivableAccountId`, fallback customer) **/ Cr** Pendapatan Jasa Angkut
+(`incomeAccountId`) — ongkos kirim terpisah dari penjualan barang/HPP.
+
+Modul lengkap: DTO (create/update/query/transition), service (CRUD +
+transition dengan `$transaction` + `NEXT['POSTED']` sejak awal — tidak
+perlu ditemukan ulang bug-nya), controller, module, posting service.
+Didaftarkan di `app.module.ts`.
+
+**Diverifikasi end-to-end lewat service layer penuh (query database nyata
+terhadap tabel baru):** RP dibuat (amount 600000) → SUBMIT→APPROVE→POST →
+2 baris ledger balanced (Dr 600000 Piutang/Cr 600000 Pendapatan Jasa
+Angkut) → REOPEN → ledger terhapus bersih → `findOne` dengan customer
+enrich berhasil.
+
+**Dua puluh enam unit kerja total selesai sesi ini.** RP dan PP (Freight
+Receivable/Payable) kini lengkap — kedua gate PRD soal ongkos kirim
+terbuka dan terselesaikan.
+
+### § Status akhir gate PRD (checkpoint, 2026-10-01)
+
+Dari 7 transaksi/isu yang di-gate PRD sejak plan awal:
+- **RP, PP** — **selesai** (sesi ini, setelah klarifikasi user: terpisah
+  dari HPP).
+- **SIE** — **selesai** (sesi ini, setelah klarifikasi user: realokasi
+  saldo antar invoice).
+- **RF, DC, RW** — **tetap gated** sesuai keputusan eksplisit user
+  (proses bisnis belum dikonfirmasi, jangan ditebak).
+- **BOM/WO** — **tetap gated** sesuai plan awal (PRD sendiri bilang
+  "usulan awal, belum ada di diagram kerja").
+
+Fase 0 (outstanding-tracking 6 pasangan + guard anti-double-posting) dan
+Fase 1/2 (semua transaksi non-gated Sales+Purchasing) **selesai total**.
+Sisa scope PRD yang genuinely belum bisa dikerjakan: RF/DC/RW/BOM/WO,
+semuanya menunggu klarifikasi proses bisnis dari user/tim operasional —
+bukan lagi keputusan yang bisa diambil sendiri tanpa menebak.
+
