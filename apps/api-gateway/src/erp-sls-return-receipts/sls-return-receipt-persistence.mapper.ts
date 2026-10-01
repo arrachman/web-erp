@@ -56,7 +56,7 @@ export function buildSlsReturnReceiptCreateData(
     salesDeptId: toBigInt(dto.salesDeptId),
     invoiceId: toBigInt(dto.invoiceId),
     returnId: toBigInt(dto.returnId),
-    settlementStatus: (dto.settlementStatus ?? 'OPEN') as never,
+    settlementStatus: (dto.settlementStatus ?? 'UNPAID') as never,
     status: 'DRAFT',
     postingStatus: 'UNPOSTED',
     legacyCode: dto.legacyCode ?? null,

@@ -89,8 +89,16 @@ export async function enrichReturnReceipts<T extends RawReturnReceipt>(prisma: P
     nameMap(prisma.erpPaymentTerm.findMany({ where: { id: { in: ids((t) => t.paymentTermId) } }, select: SELECT })),
     nameMap(prisma.erpDivision.findMany({ where: { id: { in: ids((t) => t.salesDeptId) } }, select: SELECT })),
     nameMap(prisma.erpAccount.findMany({ where: { id: { in: ids((t) => t.receivableAccountId) } }, select: SELECT })),
-    nameMap(prisma.erpSlsInvoice.findMany({ where: { id: { in: invoiceIds } }, select: SELECT })),
-    nameMap(prisma.erpSlsReturn.findMany({ where: { id: { in: returnIds } }, select: SELECT })),
+    nameMap(
+      prisma.erpSlsInvoice
+        .findMany({ where: { id: { in: invoiceIds } }, select: { id: true, code: true, docNumber: true } })
+        .then((rows) => rows.map((r) => ({ id: r.id, code: r.code, name: r.docNumber }))),
+    ),
+    nameMap(
+      prisma.erpSlsReturn
+        .findMany({ where: { id: { in: returnIds } }, select: { id: true, code: true, docNumber: true } })
+        .then((rows) => rows.map((r) => ({ id: r.id, code: r.code, name: r.docNumber }))),
+    ),
     nameMap(prisma.erpItem.findMany({ where: { id: { in: lineIds((l) => l.itemId) } }, select: SELECT })),
     nameMap(prisma.erpUnit.findMany({ where: { id: { in: lineIds((l) => l.unitId) } }, select: SELECT })),
     nameMap(prisma.erpTax.findMany({ where: { id: { in: taxIds } }, select: SELECT })),

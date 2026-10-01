@@ -65,7 +65,7 @@ export function buildSlsReturnCreateData(
     salesDeptId: toBigInt(dto.salesDeptId),
     invoiceId: toBigInt(dto.invoiceId),
     remainingAccountId: toBigInt(dto.remainingAccountId),
-    settlementStatus: (dto.settlementStatus ?? 'OPEN') as never,
+    settlementStatus: (dto.settlementStatus ?? 'UNPAID') as never,
     status: 'DRAFT',
     postingStatus: 'UNPOSTED',
     legacyCode: dto.legacyCode ?? null,

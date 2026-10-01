@@ -4627,3 +4627,46 @@ FR-SLS-02 (SI←DO) qty-side kini sama-sama lengkap dengan pola konsisten.
 Kandidat berikutnya untuk pola serupa: GRN←PO, PI←GRN, RNR←SI, SR←RNR,
 dan pasangan Purchasing (DNR/PRT←PI).
 
+### § Dua bug kritis lagi ditemukan: SR & RNR `create()` juga selalu gagal (2026-10-01)
+
+Setelah fix SI `settlementStatus: 'UNSETTLED'`, audit cepat ke seluruh
+`*-persistence.mapper.ts` dan `*-enrich.ts` untuk pola serupa menemukan
+**dua bug lagi di modul yang sudah dicatat "selesai" sesi ini (SR, RNR)**:
+
+1. **`settlementStatus: 'OPEN' as never`** — nilai yang juga **tidak ada**
+   di enum `ErpSettlementStatus` (sama pola persis dengan bug SI), di
+   `sls-return-persistence.mapper.ts` (SR) dan
+   `sls-return-receipt-persistence.mapper.ts` (RNR). Diperbaiki → `'UNPAID'`.
+2. **`select: SELECT` ({id,code,**name**}) dipakai untuk reference ke model
+   transaksi** (`erpSlsInvoice`, `erpSlsReturn`) di `sls-return-enrich.ts`
+   dan `sls-return-receipt-enrich.ts` — **tidak ada model transaksi
+   manapun di skema ini yang punya kolom `name`** (semua pakai `code`/
+   `docNumber`). Prisma menolak select itu di runtime dengan "Unknown
+   field `name`". Diperbaiki: query terpisah `select: {id, code,
+   docNumber}` lalu map manual `name: docNumber` (pola yang SI dan SIE
+   sudah pakai dengan benar sejak awal — developer tahu soal ini di 2 file
+   itu tapi lupa terapkan konsisten di SR/RNR).
+
+**Audit lanjutan membuktikan ini TIDAK meluas ke file lain:** di-grep
+seluruh `*enrich*.ts` yang pakai `select: SELECT` — semua sisanya memang
+model master data yang benar punya `name` (`erpAccount`, `erpItem`,
+`erpBranch`, dst). Hanya SR dan RNR yang kena kombinasi dua bug ini.
+
+**Implikasi gabungan dengan temuan SI:** ketiga modul (SI, SR, RNR) yang
+sesi ini saya "selesaikan" posting-nya (GL/stok) kemungkinan **tidak
+pernah benar-benar dites lewat service layer sebelumnya** — semua test
+end-to-end saya sepanjang sesi untuk ketiganya memakai raw Prisma langsung
+(bypass `.create()`/`.findOne()`), jadi bug-bug ini baru ketahuan sekarang
+setelah saya kebetulan menguji `service.create()` asli untuk kasus SI←DO.
+
+**Diverifikasi end-to-end lewat service layer (bukan raw Prisma) untuk
+pertama kali:** SR dan RNR masing-masing `service.create()` sukses tanpa
+crash, `settlementStatus` benar `UNPAID`.
+
+**Enam belas unit kerja total selesai sesi ini.** Rekomendasi untuk sesi
+berikutnya: audit serupa (test `service.create()`/`service.findOne()`
+nyata, bukan raw Prisma) untuk PI, PRT/DNR, AR Receipt, AP Payment, AS, AP
+yang belum pernah dipanggil lewat service layer penuh dalam sesi ini —
+risiko bug tersembunyi serupa belum sepenuhnya dikesampingkan untuk modul
+itu.
+
