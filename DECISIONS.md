@@ -5023,3 +5023,15 @@ dokumen & master partner. `isBalanced` toleransi 0,01. **Belum:** rekonsiliasi
 stok (Σ nilai saldo stok vs akun persediaan) dan halaman frontend; endpoint
 **belum diuji terhadap data live** (hanya typecheck) — jalankan dulu sebelum
 dipercaya untuk migrasi data lama.
+
+### § FR-FIN-06 — Opening Balance (CoA) seimbang dengan opening subledger (2026-10-01)
+
+`erp-fin-journal-entries/journal-opening-control.helpers.ts`, dipanggil dari
+`JournalPostingService.postToLedger` untuk `journalType=OPENING_BALANCE`. Bila
+jurnal menyentuh akun kontrol yang punya saldo awal subledger (SI/PI
+`isOpeningBalance` POSTED, baris Opening Stock POSTED), saldo akun itu (jurnal
+ini + jurnal opening POSTED lain) wajib = Σ subledger (toleransi 0,01), kalau
+tidak POST ditolak. Akun non-kontrol tidak diperiksa.
+**Peringatan desain:** dokumen opening subledger (SI/PI/IB) sudah memposting GL
+sendiri; jika operator juga memasukkan akun kontrol yang sama di jurnal CoA, saldo
+GL akan dobel. Pilih satu jalur per akun kontrol (subledger *atau* jurnal CoA).

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { assertLedgerRowsPeriodOpen, assertSourceLedgerPeriodOpen } from '../erp-common/utils/ledger-period-guard';
+import { assertOpeningControlBalanced } from './journal-opening-control.helpers';
 
 const SOURCE = 'JOURNAL';
 const SOURCE_DOC_TYPE = 'fin_journal_entries';
@@ -45,6 +46,8 @@ export class JournalPostingService {
     if (totalDebit.lessThanOrEqualTo(0)) {
       throw new BadRequestException('Total jurnal harus lebih dari nol.');
     }
+
+    if (entry.journalType === 'OPENING_BALANCE') await assertOpeningControlBalanced(tx, entry);
 
     const base = {
       branchId: entry.branchId,
