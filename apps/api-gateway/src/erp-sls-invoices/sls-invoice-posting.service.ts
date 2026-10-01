@@ -1,5 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  buildLedgerRows,
+  reverseInvLedger,
+  type LedgerBase,
+  type LedgerLeg,
+} from '../erp-inv-gl/inv-gl-posting.helpers';
+
+const SLS_GL_SOURCE = 'SALES';
+const SLS_GL_DOCTYPE = 'sls_invoices';
 
 type InvoiceWithLines = Prisma.ErpSlsInvoiceGetPayload<{
   include: { lines: true };
@@ -8,61 +17,178 @@ type InvoiceWithLines = Prisma.ErpSlsInvoiceGetPayload<{
 /**
  * GL posting for Sales Invoices → fin_ledger_entries.
  *
- * A Sales Invoice is the PRIMARY financial event in the sales chain:
- * - Debit: Accounts Receivable (AR) — customer owes us money
- * - Credit: Revenue accounts per line (sales income)
- * - Credit/Debit: Tax accounts (if applicable)
+ * SI is the primary AR event in the sales chain (§2 posting matrix,
+ * DECISIONS.md "Aturan posting jurnal dan stok"):
+ *   Dr  Piutang Usaha (header receivableAccountId, fallback customer)   grandTotal
+ *   Cr  Penjualan per baris (item.salesAccountId, fallback kategori)    lineNet (per line)
+ *   Cr  PPN Keluaran per baris (tax.saleAccountId, override header)     line.tax1Amount/tax2Amount
+ *   Dr  Diskon Penjualan (header discountAccountId)                     discountAmount (bila ada)
  *
- * When POST is called, the posting service writes double-entry GL rows to
- * fin_ledger_entries and links the invoice to the AR open item via
- * `arLedgerEntryId`. When REOPEN is called, the entries are reversed.
- *
- * NOTE: Actual double-entry implementation should be completed when the
- * fin_ledger_entries schema and AR sub-ledger patterns are finalised.
- * For now the service validates readiness and marks the posting status.
- * The TODO comment marks where the real insert should go.
+ * Mirrors CashBankPostingService / InvStockMovementPostingService: append-on-post,
+ * reverseLedger hard-deletes this document's own rows before re-posting.
  */
 @Injectable()
 export class SlsInvoicePostingService {
-  /**
-   * Post Sales Invoice to GL: validate lines exist, then write AR + Revenue
-   * ledger entries. Currently records `postingStatus = POSTED` in the caller;
-   * the actual double-entry rows (TODO) will be added when fin schema is stable.
-   */
   async postToLedger(
-    _tx: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient,
     invoice: InvoiceWithLines,
-    _actorId: bigint | null,
+    actorId: bigint | null,
   ): Promise<void> {
     if (!invoice.lines.length) {
       throw new BadRequestException('Tidak bisa posting: belum ada baris item.');
     }
 
-    // TODO: Insert double-entry AR + revenue rows into fin_ledger_entries.
-    // Pattern (accrual):
-    //   DR  receivableAccountId     grandTotal
-    //   CR  revenueAccountId(line)  lineNet  (per line)
-    //   CR  tax1AccountId           tax1Amount (if any)
-    //   CR  tax2AccountId           tax2Amount (if any)
-    //
-    // After inserting, update invoice.arLedgerEntryId with the AR row's id so
-    // the AR aging report can find the open item.
-    //
-    // Until fin_ledger_entries is wired in, postToLedger is a validated no-op
-    // and the caller sets postingStatus = POSTED directly.
+    const receivableAccountId = await this.resolveReceivableAccount(tx, invoice);
+    const itemIds = [...new Set(invoice.lines.map((l) => l.itemId))];
+    const items = await tx.erpItem.findMany({
+      where: { id: { in: itemIds } },
+      select: {
+        id: true,
+        salesAccountId: true,
+        category: { select: { salesAccountId: true } },
+      },
+    });
+    const itemById = new Map(items.map((i) => [i.id.toString(), i]));
+
+    const taxIds = [
+      ...new Set(
+        invoice.lines.flatMap((l) => [l.tax1Id?.toString(), l.tax2Id?.toString()]).filter((v): v is string => !!v),
+      ),
+    ];
+    const taxes = taxIds.length
+      ? await tx.erpTax.findMany({
+          where: { id: { in: taxIds.map(BigInt) } },
+          select: { id: true, saleAccountId: true },
+        })
+      : [];
+    const taxAccountById = new Map(taxes.map((t) => [t.id.toString(), t.saleAccountId]));
+
+    const legs: LedgerLeg[] = [
+      {
+        accountId: receivableAccountId,
+        debit: new Prisma.Decimal(invoice.grandTotal),
+        credit: new Prisma.Decimal(0),
+        description: invoice.description,
+        partnerId: invoice.customerId,
+      },
+    ];
+
+    for (const line of invoice.lines) {
+      const item = itemById.get(line.itemId.toString());
+      const salesAccountId = item?.salesAccountId ?? item?.category?.salesAccountId;
+      if (!salesAccountId) {
+        throw new BadRequestException(
+          `Item pada baris ${line.lineNo} tidak punya akun penjualan (sales account) — set di master item atau kategori.`,
+        );
+      }
+      const gross = new Prisma.Decimal(line.quantity).mul(new Prisma.Decimal(line.unitValue)).mul(new Prisma.Decimal(line.unitPrice));
+      const discount = line.discountAmount
+        ? new Prisma.Decimal(line.discountAmount)
+        : line.discountPercent
+          ? gross.mul(new Prisma.Decimal(line.discountPercent)).div(100)
+          : new Prisma.Decimal(0);
+      const net = gross.sub(discount);
+
+      legs.push({
+        accountId: salesAccountId,
+        debit: new Prisma.Decimal(0),
+        credit: net,
+        description: line.notes,
+        costCenterId: line.costCenterId,
+        divisionId: line.divisionId,
+        subdivisionId: line.subdivisionId,
+        projectId: line.projectId,
+      });
+
+      if (line.tax1Id && line.tax1Amount) {
+        legs.push(this.taxLeg(invoice, line.tax1Id, line.tax1Amount, taxAccountById, invoice.tax1AccountId));
+      }
+      if (line.tax2Id && line.tax2Amount) {
+        legs.push(this.taxLeg(invoice, line.tax2Id, line.tax2Amount, taxAccountById, invoice.tax2AccountId));
+      }
+    }
+
+    if (invoice.discountAmount && new Prisma.Decimal(invoice.discountAmount).gt(0)) {
+      if (!invoice.discountAccountId) {
+        throw new BadRequestException('Ada diskon header tapi akun diskon (discountAccountId) belum diset.');
+      }
+      legs.push({
+        accountId: invoice.discountAccountId,
+        debit: new Prisma.Decimal(invoice.discountAmount),
+        credit: new Prisma.Decimal(0),
+        description: 'Diskon penjualan',
+      });
+    }
+
+    const base: LedgerBase = {
+      branchId: invoice.branchId,
+      locationId: invoice.locationId,
+      sourceDocType: SLS_GL_DOCTYPE,
+      sourceId: invoice.id,
+      docNumber: invoice.docNumber,
+      entryDate: invoice.docDate,
+      fiscalPeriodId: invoice.fiscalPeriodId,
+      currencyId: invoice.currencyId,
+      exchangeRate: invoice.exchangeRate,
+      actorId,
+    };
+
+    const rows = buildLedgerRows(base, legs).map((r) => ({ ...r, source: SLS_GL_SOURCE }));
+    const created = await tx.erpFinLedgerEntry.createMany({ data: rows });
+    void created;
+
+    const arRow = await tx.erpFinLedgerEntry.findFirst({
+      where: { sourceDocType: SLS_GL_DOCTYPE, sourceId: invoice.id, accountId: receivableAccountId },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+    await tx.erpSlsInvoice.update({
+      where: { id: invoice.id },
+      data: { arLedgerEntryId: arRow?.id ?? null },
+    });
   }
 
-  /**
-   * Reverse Sales Invoice GL entries: delete (or counter-post) the fin_ledger_entries
-   * rows that were written by `postToLedger`, and clear `arLedgerEntryId`.
-   *
-   * Currently a no-op (no rows were written). Implement when AR posting goes live.
-   */
-  async reverseLedger(
-    _tx: Prisma.TransactionClient,
-    _invoiceId: bigint,
-  ): Promise<void> {
-    // TODO: Delete or reverse-post fin_ledger_entries rows for this invoice.
-    // Clear invoice.arLedgerEntryId after reversal.
+  async reverseLedger(tx: Prisma.TransactionClient, invoiceId: bigint): Promise<void> {
+    await reverseInvLedger(tx, SLS_GL_DOCTYPE, invoiceId);
+    await tx.erpSlsInvoice.update({
+      where: { id: invoiceId },
+      data: { arLedgerEntryId: null },
+    });
+  }
+
+  private async resolveReceivableAccount(
+    tx: Prisma.TransactionClient,
+    invoice: InvoiceWithLines,
+  ): Promise<bigint> {
+    if (invoice.receivableAccountId) return invoice.receivableAccountId;
+    if (invoice.customerId) {
+      const customer = await tx.erpPartner.findUnique({
+        where: { id: invoice.customerId },
+        select: { receivableAccountId: true },
+      });
+      if (customer?.receivableAccountId) return customer.receivableAccountId;
+    }
+    throw new BadRequestException(
+      'Tidak bisa posting: akun piutang (receivable account) tidak ditemukan di dokumen maupun master pelanggan.',
+    );
+  }
+
+  private taxLeg(
+    invoice: InvoiceWithLines,
+    taxId: bigint,
+    amount: Prisma.Decimal,
+    taxAccountById: Map<string, bigint | null>,
+    headerOverrideAccountId: bigint | null,
+  ): LedgerLeg {
+    const accountId = headerOverrideAccountId ?? taxAccountById.get(taxId.toString());
+    if (!accountId) {
+      throw new BadRequestException('Pajak pada baris tidak punya akun PPN Keluaran — set di master pajak.');
+    }
+    return {
+      accountId,
+      debit: new Prisma.Decimal(0),
+      credit: new Prisma.Decimal(amount),
+      description: 'PPN Keluaran',
+    };
   }
 }

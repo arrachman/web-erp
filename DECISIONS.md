@@ -3779,3 +3779,134 @@ Aturan:
 - Mirror pola partner/item dim: `buildAccountDimRows` + include `ACCOUNT_DIM_INCLUDE`.
 - Migrasi additive: `20260714_005_erp_account_bank_multi_dims`.
 
+---
+
+## § Plan — PRD Pengembangan ERP (rantai dokumen + anti posting ganda) (2026-10-01)
+
+Sumber: `temp/PRD Pengembangan ERP.md` (Oct 1, 2026, @Patungin). Plan 4 fase
+high-level, disetujui user (gate per-fase untuk transaksi "belum didefinisikan",
+bukan skip total). Tujuan: saldo stok & GL selalu cocok dengan dokumen sumber
+tanpa posting ganda, rantai dokumen terlacak, 5 modul transaksi terdefinisi.
+
+**Status existing sebelum plan ini (jangan rebuild):** SO (Sales Order) sudah
+full (form+grid+backend, TIDAK posting GL — lihat § Sales Order). Purchasing
+M4 baseline forms sudah ada (§ Purchasing M4). CR/CD/RM/SM (Kas Masuk/Keluar,
+Bank Masuk/Keluar) sudah full shared cash-bank engine (§ Kas Masuk dst).
+Config grid + Form Builder sudah ada untuk semua famili (§ Kustomisasi Grid,
+§ Form Builder). Fase di bawah **melanjutkan**, bukan mengulang, fondasi ini.
+
+### Fase 0 — Fondasi rantai dokumen & anti posting ganda (gate pertama)
+
+Semua modul bergantung pola yang sama → dikerjakan sekali, dipakai semua fase
+berikutnya. Tidak menunggu jawaban open question (berlaku generik):
+
+1. Model referensi dokumen sumber→turunan generik (per baris, bukan per
+   header) + perhitungan sisa outstanding (qty & nominal) real-time.
+2. State machine status 5-nilai PRD (Draft/Diajukan/Posted/Closed/Batal) —
+   **selaraskan** dengan `ErpDocumentStatus` 7-nilai existing (lihat § Kas
+   Masuk), jangan reintroduce varian baru; petakan Diajukan→NEED_APPROVE,
+   Batal→VOID/CANCELLED.
+3. Aturan anti posting ganda sebagai *backend guard* reusable: dokumen turunan
+   dari sumber yang sudah posting stok/jurnal → field gudang/qty/akun dikunci,
+   tidak memicu posting baru. Implementasi di layer backend (bukan FE-only
+   validation).
+4. Pembatalan generik: jurnal & mutasi stok balik bertanggal pembatalan,
+   diblok bila (a) sudah punya turunan belum dibatalkan, (b) periode tertutup.
+5. Laporan rekonsiliasi kontrol: subledger AR/AP vs akun kontrol GL, stok
+   sistem vs akun kontrol persediaan — dibutuhkan untuk migrasi data lama juga.
+
+**Gerbang Fase 0 → Fase 1:** FR-FIN-04 (tutup periode blok posting baru) dan
+FR-FIN-06 (opening balance CoA seimbang dgn opening AR/AP/stock) harus lulus
+test sebelum fase berikutnya mulai memposting dokumen nyata.
+
+### Fase 1 — Sales core (dokumen yang aturannya sudah jelas di PRD)
+
+Urutan sesuai rantai: SQ → SO (done) → AS/IP (posting jurnal, tanpa stok) →
+PI/PL (dokumen bantu, tanpa posting) → DO (posting stok keluar) → DR (stok
+hanya jika gudang transit — **butuh keputusan FR-SLS-03 sebelum DR dibangun**)
+→ SI (posting jurnal+stok bila tanpa DO; jurnal-only bila dari DO, via Fase 0
+guard) → RNR (stok masuk retur) → SR (jurnal; stok hanya jika tanpa RNR) →
+IC (tanpa posting, agregator) → PV (jurnal pelunasan, bisa multi-SI + kurs).
+Opening AR Balance paralel dengan SI/PV (FR-FIN-06 dependency).
+
+**Gate:** RP (Freight Receivable) **di luar Fase 1** — tunggu jawaban "apakah
+ongkos kirim masuk HPP" (PRD pertanyaan terbuka). SIE (Invoice Swap) **di luar
+Fase 1** — tunggu klarifikasi makna (tukar faktur ke pelanggan lain vs ganti
+faktur salah).
+
+### Fase 2 — Purchasing core (paralel dengan Fase 1 setelah Fase 0 selesai)
+
+PR → RFQ → BS (sekaligus putuskan nasib RQ: gabung RFQ atau BS — PRD
+pertanyaan terbuka, **putuskan sebelum BS dibangun**) → PO → AP (jurnal uang
+muka) → GRN (posting stok masuk; FR-FIN perlu klarifikasi: GRN posting jurnal
+persediaan penuh atau qty-only — **gate sebelum GRN**) → PI Purchasing (jurnal;
+stok hanya jika tanpa GRN) → DNR (stok keluar retur) → PRT (direct: jurnal
+langsung potong PI; undirect: masuk saldo VPP) → VPP (agregator, tanpa
+posting) → VP (jurnal pelunasan vendor, perlu konfirmasi FR-FIN-03 soal
+Bank Disbursement otomatis). Opening AP Balance paralel.
+
+**Catatan penamaan:** kode `PI` dipakai dua kali (Proforma Invoice Sales vs
+Purchase Invoice Purchasing) — PRD tandai sebagai pertanyaan terbuka. Default
+kerja: **disambiguasi secara internal** (field/kode berbeda di DB, mis.
+`SLS_PI` vs `PUR_PI`), label menu tetap sesuai modul masing-masing — eskalasi
+ke user hanya bila ditemukan konflik penomoran nyata saat implementasi.
+
+**Gate:** PP (Freight Payable) **di luar Fase 2**, sama alasan dengan RP.
+
+### Fase 3 — Warehouse, Finance lanjutan, Production
+
+- **Warehouse:** MR → TS (keluar gudang asal) → RS (masuk gudang tujuan,
+  terima sebagian — FR-WH-02) → SP (hitung fisik) → SA (dari SP: auto-selisih,
+  FR-WH-03) → IB (opening stock, paralel dgn Fase 0 gate). Metode valuasi
+  (rata-rata tertimbang vs FIFO, FR-WH-05 + pertanyaan terbuka) **wajib
+  diputuskan sebelum SA/GRN pertama posting nilai** — pengaturan sekali,
+  dipakai semua transaksi stok.
+  - **Gate, di luar Fase 3:** PA (Price Adjustment), RF (Fuel Refill), DC
+    (Time Sheet/Daily Check), RW (Receipt Weigher) — semua "belum
+    didefinisikan" di PRD, proses bisnis harus dikonfirmasi dulu.
+- **Finance lanjutan:** General/Adjustment/Memorial Journal, Receipt/Send
+  Giro + Clearing (RM/SM sudah ada, lengkapi clearing jika belum), FX
+  Revaluation (FR-FIN-05), Opening Balance CoA, Cash/Bank Transfer.
+  - **Gate:** Receipt Memo / Send Memo — tunggu klarifikasi beda dengan
+    SR/PRT/jurnal umum (pertanyaan terbuka).
+- **Production (seluruhnya gated):** BOM lalu WO — PRD eksplisit bilang
+  "alurnya belum ada di diagram kerja, usulan awal untuk didiskusikan".
+  **Jangan mulai sebelum FR-PRD-01..05 dikonfirmasi user**, khususnya versi
+  BOM dan sumber WO (manual vs dari SO).
+
+### Fase 4 — Non-fungsional, migrasi, rilis
+
+1. Hak akses per menu+aksi+cabang/gudang (perluas `adm_role_menus` existing
+   bila belum granular per-aksi).
+2. Approval per jenis dokumen dengan batas nominal per approver.
+3. Jejak audit (siapa/kapan/nilai lama-baru) — cek `sys_audit_logs` existing,
+   perluas cakupan ke semua transaksi baru di fase 1-3.
+4. Penomoran tanpa nomor lompat saat concurrent save — audit
+   `sys_document_numberings` existing untuk locking yang benar.
+5. Label menu: kode lama tampil di samping nama baru selama masa transisi
+   (mitigasi risiko "salah menu").
+6. Jalankan laporan rekonsiliasi (dari Fase 0) terhadap data lama sebelum
+   migrasi, koreksi lewat SA/jurnal penyesuaian.
+7. Cetak per dokumen (Report Studio existing, § Desainer Laporan — reuse).
+8. Impor saldo awal dari spreadsheet dengan validasi.
+
+### Pertanyaan terbuka PRD yang jadi gate (ringkas, jawaban = prasyarat fase terkait)
+
+| Pertanyaan | Blocking fase/transaksi |
+| --- | --- |
+| DO & SI sama-sama gerak stok — aturan "dokumen pertama posting" berlaku? | Fase 1 (SI) |
+| GRN posting jurnal persediaan penuh atau qty-only? | Fase 2 (GRN) |
+| DR ubah stok kapan — ada gudang transit? | Fase 1 (DR) |
+| RQ digabung RFQ, BS, atau dihapus? | Fase 2 (BS) |
+| RP/PP — ongkos kirim masuk HPP? | Fase 1 (RP) / Fase 2 (PP), keduanya di luar scope sampai dijawab |
+| SIE = tukar faktur ke pelanggan lain atau ganti faktur salah? | Fase 1 (SIE), di luar scope sampai dijawab |
+| Proses bisnis RF/DC/RW? | Fase 3 Warehouse gate, di luar scope sampai dijawab |
+| PV/VP otomatis bikin Bank Receipt/Disbursement? | Fase 2 (VP), Fase 1 (PV) soft-gate |
+| Beda Receipt Memo/Send Memo vs SR/PRT/jurnal umum? | Fase 3 Finance, di luar scope sampai dijawab |
+| Valuasi stok: rata-rata tertimbang atau FIFO? | Fase 3 (SA, IB), dan transitif Fase 1/2 (SI/GRN yang posting nilai) |
+| Kode PI dipakai 2x (Sales vs Purchasing) — perlu dibedakan? | Default: disambiguasi internal, eskalasi hanya bila konflik nyata |
+| Nama "Payment Receipt" pindah dari PV ke IP — komunikasi ke user lama? | Fase 4 (label transisi) |
+
+Saat fase terkait tiba dan jawaban belum ada → **stop, tanya user** (skill
+`erp` disiplin interaksi #1), jangan asumsikan diam-diam.
+
