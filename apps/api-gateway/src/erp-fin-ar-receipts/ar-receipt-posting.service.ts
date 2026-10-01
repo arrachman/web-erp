@@ -1,3 +1,4 @@
+import { invoiceAdvanceApplied } from '../erp-sls-invoices/sls-invoice-advance.helpers';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
@@ -80,7 +81,7 @@ export class ArReceiptPostingService {
     const invoiceIds = [...new Set(draftAllocations.map((a) => BigInt(a.invoiceId)))];
     const invoices = await tx.erpSlsInvoice.findMany({
       where: { id: { in: invoiceIds }, deletedAt: null },
-      select: { id: true, grandTotal: true, receivableAccountId: true, customerId: true },
+      select: { id: true, grandTotal: true, receivableAccountId: true, customerId: true, advanceId: true, advanceAmount: true },
     });
     const invoiceById = new Map(invoices.map((i) => [i.id.toString(), i]));
     if (invoices.length !== invoiceIds.length) {
@@ -97,7 +98,7 @@ export class ArReceiptPostingService {
         _sum: { amount: true },
       });
       const alreadyPaid = new Prisma.Decimal(priorAllocated._sum.amount ?? 0);
-      const outstanding = new Prisma.Decimal(invoice.grandTotal).sub(alreadyPaid);
+      const outstanding = new Prisma.Decimal(invoice.grandTotal).sub(invoiceAdvanceApplied(invoice)).sub(alreadyPaid);
       if (allocatedHere.gt(outstanding)) {
         throw new BadRequestException(
           `Alokasi ke invoice ${invoiceId} (${allocatedHere}) melebihi sisa outstanding (${outstanding}).`,
@@ -189,14 +190,14 @@ export class ArReceiptPostingService {
     for (const invoiceId of invoiceIds) {
       const invoice = await tx.erpSlsInvoice.findUnique({
         where: { id: invoiceId },
-        select: { grandTotal: true },
+        select: { grandTotal: true, advanceId: true, advanceAmount: true },
       });
       if (!invoice) continue;
       const sum = await tx.erpFinSettlementAllocation.aggregate({
         where: { invoiceRef: invoiceId.toString() },
         _sum: { amount: true },
       });
-      const paid = new Prisma.Decimal(sum._sum.amount ?? 0);
+      const paid = new Prisma.Decimal(sum._sum.amount ?? 0).add(invoiceAdvanceApplied(invoice));
       const total = new Prisma.Decimal(invoice.grandTotal);
       const settlementStatus = paid.lte(0) ? 'UNPAID' : paid.gte(total) ? 'PAID' : 'PARTIAL';
       await tx.erpSlsInvoice.update({

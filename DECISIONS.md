@@ -5000,3 +5000,15 @@ dan `assertSourceLedgerPeriodOpen(tx, where)` sebelum setiap `deleteMany`
 saja; `SOFT_CLOSED` tetap boleh (sengaja — soft close = peringatan, bukan kunci).
 **Catatan:** reversal masih pola hard-delete (bukan jurnal balik bertanggal
 pembatalan seperti PRD) — gap terpisah, belum dikerjakan.
+
+### § FR-SLS-04 — SI memotong saldo Customer Advance (AS) (2026-10-01)
+
+`sls-invoice-advance.helpers.ts`: saat SI POST dengan `advanceId`+`advanceAmount`,
+validasi AS (POSTED, pelanggan sama, potongan ≤ sisa saldo & ≤ grandTotal), leg
+`Dr Uang Muka Penjualan` ditambahkan dan Piutang berkurang sebesar potongan
+(jurnal tetap balance); `AS.appliedAmount` naik + `settlementStatus` AS diupdate.
+Reopen/re-post → `releaseInvoiceAdvance` membalik. Outstanding AR Receipt
+(`ar-receipt-posting`) kini = grandTotal − potongan AS − alokasi. Akun uang muka:
+`invoice.advanceAccountId` → fallback `AS.metadata.advanceAccountId`.
+**Belum:** potongan dari IP (Payment Receipt) — IP tidak punya field saldo yang
+bisa dipotong SI; perlu keputusan bila dibutuhkan. Hanya 1 AS per SI (skema).

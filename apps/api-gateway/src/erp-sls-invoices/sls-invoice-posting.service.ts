@@ -7,6 +7,7 @@ import {
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
 import { InvStockMovementPostingService } from '../erp-inv-stock-movements/inv-stock-movement-posting.service';
+import { applyInvoiceAdvance, releaseInvoiceAdvance } from './sls-invoice-advance.helpers';
 import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const SLS_GL_SOURCE = 'SALES';
@@ -28,6 +29,8 @@ type InvoiceWithLines = Prisma.ErpSlsInvoiceGetPayload<{
  *   Cr  Penjualan per baris (item.salesAccountId, fallback kategori)    lineNet (per line)
  *   Cr  PPN Keluaran per baris (tax.saleAccountId, override header)     line.tax1Amount/tax2Amount
  *   Dr  Diskon Penjualan (header discountAccountId)                     discountAmount (bila ada)
+ *   FR-SLS-04: bila advanceId+advanceAmount diisi, Piutang berkurang sebesar potongan dan
+ *   Dr Uang Muka Penjualan ditambahkan; AS.appliedAmount naik (di-release saat reverse).
  *
  * Stock (FR-SLS-02, "Aturan anti posting ganda"): "SI yang dibuat dari DO
  * tidak boleh memotong stok lagi. SI tanpa DO memotong stok sendiri." When
@@ -78,15 +81,20 @@ export class SlsInvoicePostingService {
       : [];
     const taxAccountById = new Map(taxes.map((t) => [t.id.toString(), t.saleAccountId]));
 
+    const advanceLeg = await applyInvoiceAdvance(tx, invoice);
+    const receivableDebit = new Prisma.Decimal(invoice.grandTotal).sub(advanceLeg?.debit ?? 0);
+
     const legs: LedgerLeg[] = [
       {
         accountId: receivableAccountId,
-        debit: new Prisma.Decimal(invoice.grandTotal),
+        debit: receivableDebit,
         credit: new Prisma.Decimal(0),
         description: invoice.description,
         partnerId: invoice.customerId,
       },
     ];
+
+    if (advanceLeg) legs.push(advanceLeg);
 
     for (const line of invoice.lines) {
       const item = itemById.get(line.itemId.toString());
@@ -160,7 +168,10 @@ export class SlsInvoicePostingService {
     });
     await tx.erpSlsInvoice.update({
       where: { id: invoice.id },
-      data: { arLedgerEntryId: arRow?.id ?? null },
+      data: {
+        arLedgerEntryId: arRow?.id ?? null,
+        ...(advanceLeg && receivableDebit.lte(0) ? { settlementStatus: 'PAID' as const, settledDate: invoice.docDate } : {}),
+      },
     });
 
     if (!invoice.deliveryOrderId) {
@@ -232,6 +243,7 @@ export class SlsInvoicePostingService {
   }
 
   async reverseLedger(tx: Prisma.TransactionClient, invoiceId: bigint): Promise<void> {
+    await releaseInvoiceAdvance(tx, invoiceId);
     await reverseInvLedger(tx, SLS_GL_DOCTYPE, invoiceId);
     await tx.erpSlsInvoice.update({
       where: { id: invoiceId },
