@@ -6,6 +6,7 @@ import {
   type LedgerBase,
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
+import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const FIN_GL_SOURCE = 'FINANCE';
 const FIN_GL_DOCTYPE = 'fin_ap_payments';
@@ -190,6 +191,7 @@ export class ApPaymentPostingService {
       actorId,
     };
     const rows = buildLedgerRows(base, legs).map((r) => ({ ...r, source: FIN_GL_SOURCE }));
+    await assertLedgerRowsPeriodOpen(tx, rows);
     const created = await tx.erpFinLedgerEntry.createManyAndReturn({ data: rows });
 
     // Materialize allocation rows now that their ledger entries exist — link

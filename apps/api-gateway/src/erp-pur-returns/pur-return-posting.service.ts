@@ -6,6 +6,7 @@ import {
   type LedgerBase,
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
+import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const PUR_GL_SOURCE = 'PURCHASING';
 const PUR_GL_DOCTYPE = 'pur_returns';
@@ -208,6 +209,7 @@ export class PurReturnPostingService {
       actorId,
     };
     const rows = buildLedgerRows(base, legs).map((r) => ({ ...r, source: PUR_GL_SOURCE }));
+    await assertLedgerRowsPeriodOpen(tx, rows);
     await tx.erpFinLedgerEntry.createMany({ data: rows });
   }
 

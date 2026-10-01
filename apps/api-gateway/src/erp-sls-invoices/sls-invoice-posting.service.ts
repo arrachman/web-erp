@@ -7,6 +7,7 @@ import {
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
 import { InvStockMovementPostingService } from '../erp-inv-stock-movements/inv-stock-movement-posting.service';
+import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const SLS_GL_SOURCE = 'SALES';
 const SLS_GL_DOCTYPE = 'sls_invoices';
@@ -148,6 +149,7 @@ export class SlsInvoicePostingService {
     };
 
     const rows = buildLedgerRows(base, legs).map((r) => ({ ...r, source: SLS_GL_SOURCE }));
+    await assertLedgerRowsPeriodOpen(tx, rows);
     const created = await tx.erpFinLedgerEntry.createMany({ data: rows });
     void created;
 

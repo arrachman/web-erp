@@ -6,6 +6,7 @@ import {
   type LedgerBase,
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
+import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const PUR_GL_SOURCE = 'PURCHASING';
 const PUR_GL_DOCTYPE = 'fin_ap_payments_freight_payable';
@@ -86,6 +87,7 @@ export class PurFreightPayablePostingService {
       actorId,
     };
     const rows = buildLedgerRows(base, legs).map((r) => ({ ...r, source: PUR_GL_SOURCE }));
+    await assertLedgerRowsPeriodOpen(tx, rows);
     await tx.erpFinLedgerEntry.createMany({ data: rows });
   }
 

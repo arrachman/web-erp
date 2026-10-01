@@ -4989,3 +4989,14 @@ Sisa scope PRD yang genuinely belum bisa dikerjakan: RF/DC/RW/BOM/WO,
 semuanya menunggu klarifikasi proses bisnis dari user/tim operasional —
 bukan lagi keputusan yang bisa diambil sendiri tanpa menebak.
 
+
+### § FR-FIN-04 — periode CLOSED memblokir posting & pembatalan (2026-10-01)
+
+Sebelumnya hanya GRN yang cek periode. Sekarang guard terpusat
+`erp-common/utils/ledger-period-guard.ts`: `assertLedgerRowsPeriodOpen(tx, rows)`
+dipanggil sebelum **setiap** `erpFinLedgerEntry.createMany*` (17 posting service)
+dan `assertSourceLedgerPeriodOpen(tx, where)` sebelum setiap `deleteMany`
+(reverse; 3 service langsung + `reverseInvLedger`). Status yang diblok = `CLOSED`
+saja; `SOFT_CLOSED` tetap boleh (sengaja — soft close = peringatan, bukan kunci).
+**Catatan:** reversal masih pola hard-delete (bukan jurnal balik bertanggal
+pembatalan seperti PRD) — gap terpisah, belum dikerjakan.

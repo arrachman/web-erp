@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { assertLedgerRowsPeriodOpen, assertSourceLedgerPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const SOURCE = 'CASH_BANK';
 const SOURCE_DOC_TYPE = 'fin_cash_bank_transactions';
@@ -97,11 +98,13 @@ export class CashBankPostingService {
       });
     });
 
+    await assertLedgerRowsPeriodOpen(tx, rows);
     await tx.erpFinLedgerEntry.createMany({ data: rows });
   }
 
   /** Remove this document's posted ledger rows (used by REOPEN / re-post). */
   async reverseLedger(tx: Prisma.TransactionClient, txnId: bigint) {
+    await assertSourceLedgerPeriodOpen(tx, { sourceDocType: SOURCE_DOC_TYPE, sourceId: txnId });
     await tx.erpFinLedgerEntry.deleteMany({
       where: { sourceDocType: SOURCE_DOC_TYPE, sourceId: txnId },
     });

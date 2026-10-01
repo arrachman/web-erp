@@ -8,6 +8,7 @@ import {
   type LedgerBase,
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
+import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 type AdjustmentWithLines = Prisma.ErpInvStockAdjustmentGetPayload<{
   include: { lines: true };
@@ -102,6 +103,7 @@ export class InvStockAdjustmentPostingService {
     };
 
     const rows = buildLedgerRows(base, legs);
+    await assertLedgerRowsPeriodOpen(tx, rows);
     await tx.erpFinLedgerEntry.createMany({ data: rows });
   }
 

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { assertLedgerRowsPeriodOpen, assertSourceLedgerPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 const SOURCE = 'GIRO';
 const SOURCE_DOC_TYPE = 'fin_giro_entries';
@@ -85,11 +86,13 @@ export class GiroPostingService {
       });
     }
 
+    await assertLedgerRowsPeriodOpen(tx, rows);
     if (rows.length) await tx.erpFinLedgerEntry.createMany({ data: rows });
   }
 
   /** Remove this document's posted ledger rows (used by REOPEN / re-post). */
   async reverseLedger(tx: Prisma.TransactionClient, entryId: bigint) {
+    await assertSourceLedgerPeriodOpen(tx, { sourceDocType: SOURCE_DOC_TYPE, sourceId: entryId });
     await tx.erpFinLedgerEntry.deleteMany({
       where: { sourceDocType: SOURCE_DOC_TYPE, sourceId: entryId },
     });

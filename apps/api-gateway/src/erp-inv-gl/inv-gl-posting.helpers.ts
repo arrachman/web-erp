@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSourceLedgerPeriodOpen } from '../erp-common/utils/ledger-period-guard';
 
 /**
  * Accepts either the root PrismaService or a transaction client — the setting
@@ -180,6 +181,7 @@ export async function reverseInvLedger(
   sourceDocType: string,
   sourceId: bigint,
 ): Promise<void> {
+  await assertSourceLedgerPeriodOpen(tx, { sourceDocType, sourceId });
   await tx.erpFinLedgerEntry.deleteMany({
     where: { sourceDocType, sourceId },
   });
