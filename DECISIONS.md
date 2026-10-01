@@ -4412,3 +4412,41 @@ AS dan outstanding-tracking/anti-double-posting generik (infra Fase 0 yang
 dari awal direncanakan terpisah). RP/PP/SIE tetap di luar scope sesuai gate
 plan awal.
 
+### § AS (Customer Advance) GL posting — direct, BUKAN via AR Receipt (2026-10-01)
+
+Rencana awal (dari § AR Receipt di atas): "AS perlu auto-create AR Receipt
+saat di-POST, posting AS jadi reklasifikasi seperti PI dari GRN." **Rencana
+ini SALAH setelah dicek ulang** — dibatalkan, diganti pendekatan direct.
+
+**Kenapa AR Receipt tidak cocok:** `ErpFinSettlementAllocation` yang dipakai
+AR Receipt WAJIB alokasi ke `sls_invoices` outstanding tertentu
+(`invoiceRef`) — AS belum punya invoice untuk dilunasi (dia justru uang
+muka SEBELUM ada SI). Memaksakan AS lewat AR Receipt berarti harus bikin
+allocation row tanpa invoice nyata, melanggar validasi yang sudah ditulis
+(`invoice tidak ditemukan`). AS adalah **Dr Kas/Bank, Cr Uang Muka
+Penjualan (liability)** — beda akun kredit total dari AR Receipt (Cr
+Piutang Usaha). Jadi AS diposting **langsung**, mirror SI/SR (self-
+contained, tidak reuse AR Receipt).
+
+**Gap skema ditemukan:** `sls_customer_advances` **tidak punya kolom**
+`bankAccountId` maupun `advanceAccountId` sama sekali (beda dari SI yang
+punya `receivableAccountId`/`discountAccountId` dkk eksplisit). Diselesaikan
+tanpa migrasi: dua field baru di `CreateSlsCustomerAdvanceDto`/
+`UpdateSlsCustomerAdvanceDto` (`bankAccountId`, `advanceAccountId`,
+keduanya opsional saat create — supaya AS bisa diinput di DRAFT sebelum
+akun diketahui), disimpan di `metadata` (pola sama dengan DO/GRN
+traceability), **wajib diisi saat POST** (posting service throw error
+eksplisit kalau kosong, bukan silent fallback).
+
+**GL:** Dr `metadata.bankAccountId` / Cr `metadata.advanceAccountId`,
+nominal = `advance.amount`. Reuse `buildLedgerRows`/`reverseInvLedger`.
+
+**Diverifikasi end-to-end terhadap database nyata:** AS dibuat (amount
+5000000, bankAccountId+advanceAccountId terisi) → SUBMIT→APPROVE→POST → 2
+baris ledger balanced (Dr 5000000 Bank/Cr 5000000 Uang Muka Penjualan) →
+REOPEN → ledger terhapus bersih.
+
+**Sebelas unit kerja total selesai sesi ini.** Fase 1 (Sales) PRD sekarang
+**benar-benar selesai** kecuali SIE (di-gate). AS menutup gap terakhir yang
+tercatat di checkpoint sebelumnya.
+

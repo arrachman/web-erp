@@ -128,6 +128,10 @@ export class ErpSlsCustomerAdvancesService {
           legacyCode: dto.legacyCode ?? null,
           status: 'DRAFT',
           postingStatus: 'UNPOSTED',
+          metadata: {
+            ...(dto.bankAccountId ? { bankAccountId: dto.bankAccountId } : {}),
+            ...(dto.advanceAccountId ? { advanceAccountId: dto.advanceAccountId } : {}),
+          },
           createdById: actor,
           updatedById: actor,
         },
@@ -208,6 +212,13 @@ export class ErpSlsCustomerAdvancesService {
         data.order = oid ? { connect: { id: oid } } : { disconnect: true };
       }
       if (dto.legacyCode !== undefined) data.legacyCode = dto.legacyCode;
+      if (dto.bankAccountId !== undefined || dto.advanceAccountId !== undefined) {
+        data.metadata = {
+          ...((existing.metadata as object) ?? {}),
+          ...(dto.bankAccountId !== undefined ? { bankAccountId: dto.bankAccountId } : {}),
+          ...(dto.advanceAccountId !== undefined ? { advanceAccountId: dto.advanceAccountId } : {}),
+        };
+      }
 
       if (dto.docDate !== undefined) {
         data.docDate = new Date(dto.docDate);

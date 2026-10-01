@@ -96,6 +96,22 @@ export class CreateSlsCustomerAdvanceDto {
   @IsString()
   orderId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Akun kas/bank (md_accounts) penerima uang muka — wajib diisi sebelum POST',
+  })
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Akun Uang Muka Penjualan / Customer Advance Liability (md_accounts) — wajib diisi sebelum POST. ' +
+      'Tidak ada kolom tersendiri di sls_customer_advances; disimpan di metadata (pola sama dengan DO/GRN traceability).',
+  })
+  @IsOptional()
+  @IsString()
+  advanceAccountId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

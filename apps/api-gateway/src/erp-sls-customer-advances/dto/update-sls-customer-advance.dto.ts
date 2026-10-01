@@ -92,4 +92,14 @@ export class UpdateSlsCustomerAdvanceDto {
   @IsOptional()
   @IsString()
   legacyCode?: string;
+
+  @ApiPropertyOptional({ description: 'Akun kas/bank (md_accounts) penerima uang muka — wajib diisi sebelum POST' })
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional({ description: 'Akun Uang Muka Penjualan (md_accounts) — wajib diisi sebelum POST' })
+  @IsOptional()
+  @IsString()
+  advanceAccountId?: string;
 }
