@@ -4695,3 +4695,26 @@ transaksi** yang disentuh sesi ini: SI, DO, GRN, RNR, SR, PI, PRT/DNR, AR
 Receipt, AP Payment, AS, AP — semua terverifikasi bersih atau sudah
 diperbaiki.
 
+### § GRN←PO outstanding-qty (FR-PUR-01) (2026-10-01)
+
+Mirror persis DO←SO/SI←DO, sekarang untuk GRN←PO. **Beda kecil dari dua
+pendahulunya:** GRN sudah punya field line **`orderLineId`** sejak awal
+(bukan `sourceLineId` generik) — sudah tersimpan tapi tanpa validasi
+outstanding sama sekali (pola gap yang sama).
+
+`pur-goods-receipt-outstanding.helpers.ts` (baru):
+- `validateSourcePurchaseOrderOutstanding` — dipanggil di `create()` saat
+  `dto.orderId` diisi. PO harus `status === 'POSTED'`, setiap `orderLineId`
+  harus milik PO itu, dan **outstanding diukur dari `acceptedQty`** (bukan
+  `quantity` yang diminta) — qty ditolak QC tidak mengurangi outstanding PO
+  karena vendor tetap berutang qty yang diterima, bukan yang diminta.
+- `maybeCloseSourcePurchaseOrder` — set `closedDate` (bukan `status`, sama
+  alasan `CLOSED` tidak ada di `ErpDocumentStatus`) begitu semua baris PO
+  fully-received.
+
+**Diverifikasi end-to-end terhadap database nyata:** PO qty=10 POSTED →
+GRN1 terima 6 (sukses) → GRN2 coba terima 5 lagi (11>10, **ditolak**) →
+GRN3 terima sisa 4 pas (sukses) → PO `closedDate` otomatis terisi.
+
+**Tujuh belas unit kerja total selesai sesi ini.**
+

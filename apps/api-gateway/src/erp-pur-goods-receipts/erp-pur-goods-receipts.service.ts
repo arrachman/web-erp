@@ -8,6 +8,7 @@ import { QueryPurGoodsReceiptsDto } from './dto/query-pur-goods-receipts.dto';
 import { UpdatePurGoodsReceiptDto } from './dto/update-pur-goods-receipt.dto';
 import { PurGoodsReceiptTransitionAction as A, TransitionPurGoodsReceiptDto } from './dto/transition-pur-goods-receipt.dto';
 import { toBigInt, EDITABLE, NEXT, buildPurGrnWhere, mapGrnLine, computeTotals } from './pur-goods-receipt.helpers';
+import { validateSourcePurchaseOrderOutstanding, maybeCloseSourcePurchaseOrder } from './pur-goods-receipt-outstanding.helpers';
 
 const DOC_CODE = 'GRN';
 const FALLBACK_PREFIX = 'GRN';
@@ -51,6 +52,10 @@ export class ErpPurGoodsReceiptsService {
     const { subtotal, grandTotal } = computeTotals(dto.lines, dto);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.orderId) {
+        await validateSourcePurchaseOrderOutstanding(tx, BigInt(dto.orderId), dto.lines);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;
@@ -80,6 +85,10 @@ export class ErpPurGoodsReceiptsService {
         },
         select: { id: true },
       });
+
+      if (dto.orderId) {
+        await maybeCloseSourcePurchaseOrder(tx, BigInt(dto.orderId));
+      }
       return row;
     });
     return this.one(created.id);
