@@ -9,6 +9,6 @@ import { ErpInvStockMovementsService } from './erp-inv-stock-movements.service';
   imports: [PrismaModule, ErpInvGlModule],
   controllers: [ErpInvStockMovementsController],
   providers: [ErpInvStockMovementsService, InvStockMovementPostingService],
-  exports: [ErpInvStockMovementsService],
+  exports: [ErpInvStockMovementsService, InvStockMovementPostingService],
 })
 export class ErpInvStockMovementsModule {}

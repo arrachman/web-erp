@@ -3979,3 +3979,48 @@ sourceLineId wiring saat create DO/SI dari SO. Itu langkah berikutnya,
 transaksi-per-transaksi, bukan infra generik sekaligus — ikuti urutan Fase 1
 di atas setelah pilot ini divalidasi user.
 
+### § DO (Delivery Order) stock posting — langkah kedua Fase 1 (2026-10-01)
+
+`src/erp-sls-delivery-orders/sls-delivery-order-posting.service.ts` — ganti
+NO-OP jadi posting stok nyata ke `inv_stock_movements` (sesuai "Barang keluar
+ke pelanggan diposting oleh DO" di §Aturan anti posting ganda). Konfirmasi
+riset: GRN juga NO-OP dengan alasan sama ("deferred to a dedicated pass that
+wires inv_* stock movements") — jadi DO ini sekaligus **membuka jalan pola**
+yang sama akan dipakai GRN berikutnya.
+
+**Pola:**
+- POST → buat 1 `ErpInvStockMovement` (`movementType: ISSUE`,
+  `status/postingStatus: POSTED`) + 1 baris per baris DO (qty, unit, warehouse
+  dari line atau fallback header), lalu delegasikan GL valuation (COGS/
+  inventory, digerbang `glPostingEnabled` setting) ke
+  `InvStockMovementPostingService.postMovement` yang **sudah ada** — tidak
+  menulis ulang logic costing.
+- **Traceability tanpa migrasi:** `ErpInvStockMovement` tidak punya kolom FK
+  balik ke dokumen sumber (ia transaksi independen, beda dari
+  `ErpFinLedgerEntry` yang punya `sourceDocType`/`sourceId`). Daripada
+  menambah migrasi skema untuk pilot kecil ini, link disimpan di
+  `metadata: { sourceDocType: 'sls_delivery_orders', sourceId }` (JSON,
+  sudah ada kolomnya di semua model) — dipakai `reverseLedger` untuk mencari
+  movement yang harus dihapus saat DO di-REOPEN. **Catatan untuk Fase 0
+  lanjutan:** kalau pola traceability generik via kolom FK (bukan metadata
+  ad-hoc) jadi kebutuhan lintas banyak dokumen, itu saatnya migrasi skema
+  `relatedDocType`/`relatedDocId` di `ErpInvStockMovement` — belum sekarang.
+- **Doc numbering:** movement type `ISSUE` di `DOC_CODE_BY_TYPE` existing
+  sudah dipakai kode `RF` (untuk transaksi Fuel Refill yang di-gate PRD) —
+  BUKAN dipakai untuk DO. DO posting ini membuat movement langsung lewat
+  Prisma (bukan lewat `ErpInvStockMovementsService.create`), dengan kode
+  dokumen sendiri **`DOI`** (DO Issue), reuse `erpDocumentNumbering` fallback
+  count-based yang sama persis dengan pola SI/DO/dst.
+- Module wiring: `ErpInvStockMovementsModule` sekarang **export**
+  `InvStockMovementPostingService` juga (sebelumnya cuma `...Service`), dan
+  `ErpSlsDeliveryOrdersModule` meng-import modul itu.
+- **Diverifikasi end-to-end terhadap database nyata** (bukan cuma typecheck):
+  create DO dummy → `postToLedger` → 1 movement + 1 line ter-create,
+  `status=POSTED` → `reverseLedger` → movement terhapus bersih. Script test
+  dihapus setelah lulus (bukan bagian permanen repo).
+
+**Belum disentuh:** GRN stock posting (pola identik, giliran berikutnya),
+guard supaya SI yang dibuat DARI DO tidak posting stok lagi (FR-SLS-02 —
+perlu dulu SI punya cara "dibuat dari DO" yang belum ada sama sekali di
+service SI saat ini), outstanding-qty tracking.
+
