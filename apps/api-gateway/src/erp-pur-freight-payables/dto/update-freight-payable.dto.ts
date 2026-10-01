@@ -17,4 +17,6 @@ export class UpdateFreightPayableDto {
   @ApiPropertyOptional() @IsOptional() @IsNumberString() exchangeRate?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumberString() amount?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() bankAccountId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() expenseAccountId?: string;
 }

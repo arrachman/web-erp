@@ -54,4 +54,18 @@ export class CreateFreightPayableDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ description: 'Akun kas/bank (md_accounts) pembayaran ongkos kirim — wajib diisi sebelum POST' })
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Akun Beban Angkut Pembelian / Freight Expense (md_accounts) — wajib diisi sebelum POST. ' +
+      'Ongkos kirim dicatat terpisah dari HPP (dikonfirmasi user) — bukan menambah nilai persediaan.',
+  })
+  @IsOptional()
+  @IsString()
+  expenseAccountId?: string;
 }

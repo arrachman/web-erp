@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PurFreightPayablePostingService } from './pur-freight-payable-posting.service';
 import { CreateFreightPayableDto } from './dto/create-freight-payable.dto';
 import { UpdateFreightPayableDto } from './dto/update-freight-payable.dto';
 import { QueryFreightPayableDto } from './dto/query-freight-payable.dto';
@@ -17,17 +18,21 @@ const FALLBACK_PREFIX = 'PP';
 /** Statuses that allow document edits. */
 const EDITABLE = new Set(['DRAFT', 'REJECTED']);
 
-/** State machine transitions. */
+/** State machine transitions (§2.7). */
 const NEXT: Record<string, Partial<Record<A, string>>> = {
   DRAFT:        { [A.SUBMIT]: 'NEED_APPROVE' },
   NEED_APPROVE: { [A.APPROVE]: 'APPROVED', [A.REJECT]: 'REJECTED' },
   REJECTED:     { [A.SUBMIT]: 'NEED_APPROVE' },
   APPROVED:     { [A.POST]: 'POSTED', [A.REOPEN]: 'DRAFT' },
+  POSTED:       { [A.REOPEN]: 'DRAFT' },
 };
 
 @Injectable()
 export class ErpPurFreightPayablesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly posting: PurFreightPayablePostingService,
+  ) {}
 
   // ── Auto-numbering ─────────────────────────────────────────────────────────
   private async genDocNumber(tx: Prisma.TransactionClient): Promise<string> {
@@ -113,9 +118,11 @@ export class ErpPurFreightPayablesService {
           exchangeRate: new Prisma.Decimal(dto.exchangeRate),
           amount: new Prisma.Decimal(dto.amount),
           allocatedAmount: new Prisma.Decimal('0'),
+          bankAccountId: dto.bankAccountId ? BigInt(dto.bankAccountId) : null,
           paymentStatus: 'UNPAID',
           status: 'DRAFT',
-          postingStatus: 'UNPOSTED', // TODO: implement GL posting when ledger mapping for PP is ready
+          postingStatus: 'UNPOSTED',
+          metadata: dto.expenseAccountId ? { expenseAccountId: dto.expenseAccountId } : undefined,
           createdById: actor,
           updatedById: actor,
         },
@@ -196,6 +203,13 @@ export class ErpPurFreightPayablesService {
     if (dto.exchangeRate !== undefined) data.exchangeRate = new Prisma.Decimal(dto.exchangeRate);
     if (dto.amount !== undefined) data.amount = new Prisma.Decimal(dto.amount);
     if (dto.notes !== undefined) data.notes = dto.notes;
+    if (dto.bankAccountId !== undefined) data.bankAccountId = dto.bankAccountId ? BigInt(dto.bankAccountId) : null;
+    if (dto.expenseAccountId !== undefined) {
+      data.metadata = {
+        ...((existing.metadata as object) ?? {}),
+        expenseAccountId: dto.expenseAccountId,
+      };
+    }
 
     const updated = await this.prisma.erpFinApPayment.update({ where: { id }, data });
     return { success: true, data: await this.enrichOne(updated) };
@@ -230,17 +244,52 @@ export class ErpPurFreightPayablesService {
       throw new BadRequestException('Alasan reject wajib diisi.');
     }
 
-    // TODO: implement GL posting when ledger mapping for PP is ready.
+    if (dto.action === A.POST) {
+      const period = await this.prisma.erpFiscalPeriod.findUnique({
+        where: { id: item.fiscalPeriodId },
+        select: { status: true },
+      });
+      if (period?.status === 'CLOSED') {
+        throw new BadRequestException('Periode fiskal sudah ditutup — tidak bisa posting.');
+      }
+      await this.prisma.$transaction(async (tx) => {
+        await this.posting.reverseLedger(tx, item.id);
+        await this.posting.postToLedger(tx, item, actor);
+        await tx.erpFinApPayment.update({
+          where: { id },
+          data: {
+            status: 'POSTED',
+            previousStatus: item.status as never,
+            postingStatus: 'POSTED',
+            postedAt: new Date(),
+            updatedById: actor,
+          },
+        });
+      });
+      return this.findOne(id);
+    }
+
+    if (dto.action === A.REOPEN) {
+      await this.prisma.$transaction(async (tx) => {
+        await this.posting.reverseLedger(tx, item.id);
+        await tx.erpFinApPayment.update({
+          where: { id },
+          data: {
+            status: 'DRAFT',
+            previousStatus: item.status as never,
+            postingStatus: 'UNPOSTED',
+            postedAt: null,
+            updatedById: actor,
+          },
+        });
+      });
+      return this.findOne(id);
+    }
+
     const data: Prisma.ErpFinApPaymentUpdateInput = {
       status: next as never,
       previousStatus: item.status as never,
       updatedById: actor,
-      ...(next === 'POSTED'
-        ? { postingStatus: 'UNPOSTED', postedAt: new Date() } // TODO: change postingStatus to 'POSTED' after GL posting
-        : {}),
-      ...(dto.action === A.REOPEN
-        ? { postingStatus: 'UNPOSTED', postedAt: null }
-        : {}),
       ...(dto.action === A.REJECT
         ? {
             metadata: {

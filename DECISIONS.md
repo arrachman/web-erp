@@ -4888,3 +4888,33 @@ customer B, partnerId berbeda per baris) → REOPEN → ledger terhapus bersih.
 
 **Dua puluh empat unit kerja total selesai sesi ini.**
 
+### § PP (Freight Payable) — gate dibuka, klarifikasi user diterima (2026-10-01)
+
+Klarifikasi user: ongkos kirim **terpisah dari HPP** — dicatat sebagai
+beban operasional, tidak menambah nilai persediaan. Gate dibuka.
+
+Sama pola dengan AP (Vendor Advance): `erp-pur-freight-payables` **tidak
+punya model Prisma sendiri** — menumpang `fin_ap_payments`, `source='PP'`.
+Levelnya sama dengan AP sebelum dikerjakan: `transition()` ada tapi
+`postingStatus` stuck `UNPOSTED`, tanpa `$transaction`, `NEXT` map tanpa
+`POSTED: { REOPEN }`.
+
+**GL (arah dikonfirmasi user):** **Dr** Beban Angkut Pembelian (metadata
+`expenseAccountId`, tidak ada kolom khusus) **/ Cr** Kas-Bank
+(`bankAccountId`, kolom asli di `fin_ap_payments`, dipakai bersama VP/AP).
+**sourceDocType terpisah** (`fin_ap_payments_freight_payable`) dari VP
+(`fin_ap_payments`) dan AP (`fin_ap_payments_vendor_advance`) — tiga
+"source" berbagi satu tabel+id space, isolasi namespace wajib supaya
+REOPEN salah satu tidak menyentuh ledger yang lain.
+
+**Bug fix sekalian** (sama seperti AP): `transition()` dibungkus
+`$transaction` + `NEXT['POSTED']` ditambahkan.
+
+**Diverifikasi end-to-end lewat service layer penuh:** PP dibuat (amount
+750000) → SUBMIT→APPROVE→POST → `postingStatus` benar `POSTED` → 2 baris
+ledger balanced (Dr 750000 Beban Angkut/Cr 750000 Bank) → **dikonfirmasi
+ledger PP tidak bocor ke namespace VP maupun AP** → REOPEN berhasil,
+ledger terhapus bersih.
+
+**Dua puluh lima unit kerja total selesai sesi ini.**
+
