@@ -23,6 +23,7 @@ import {
   mapExistingSlsDeliveryOrderLines,
   buildSlsDeliveryOrderTotalsInput,
 } from './sls-delivery-order-persistence.mapper';
+import { validateSourceOrderOutstanding, maybeCloseSourceOrder } from './sls-delivery-order-outstanding.helpers';
 
 const DOC_CODE = 'DO';
 const FALLBACK_PREFIX = 'DO';
@@ -127,6 +128,10 @@ export class ErpSlsDeliveryOrdersService {
     const dueDate = await this.resolveDueDate(dto.paymentTermId, dto.docDate, dto.dueDate);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.orderId) {
+        await validateSourceOrderOutstanding(tx, BigInt(dto.orderId), dto.lines);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;
@@ -147,6 +152,10 @@ export class ErpSlsDeliveryOrdersService {
         computedLines,
       });
       const row = await tx.erpSlsDeliveryOrder.create({ data, select: { id: true } });
+
+      if (dto.orderId) {
+        await maybeCloseSourceOrder(tx, BigInt(dto.orderId));
+      }
       return row;
     });
     return this.one(created.id);

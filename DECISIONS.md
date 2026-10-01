@@ -4500,3 +4500,56 @@ juga **lengkap** untuk semua transaksi non-gated PRD (PR, RFQ/BS belum
 disentuh tapi PRD bilang Jurnal=Tidak/Stok=Tidak untuk keduanya — cek
 ulang sebelum declare selesai total).
 
+### § Fase 0 pilot pertama — outstanding-qty DO-dari-SO (FR-SLS-01) (2026-10-01)
+
+Unit kerja baru (bukan isi NO-OP) — fondasi "create dari dokumen sumber"
+yang sebelumnya tidak ada sama sekali untuk pasangan DO←SO. Dipilih sebagai
+pilot karena paling sering dirujuk PRD dan field FK-nya sudah ada di
+schema (`sls_delivery_order_lines.sourceLineId` — ada sejak awal, 0 match
+di grep sebelum ini).
+
+**Perubahan:**
+- `SlsDeliveryOrderLineDto.sourceLineId` (opsional) — baris DO yang menarik
+  SO wajib isi ini menunjuk `sls_order_lines.id`.
+- `mapDeliveryOrderLine` (helpers) meneruskan `sourceLineId` ke create data
+  (sebelumnya field itu di-drop diam-diam meski sudah ada di schema).
+- `sls-delivery-order-outstanding.helpers.ts` (baru):
+  - `validateSourceOrderOutstanding` — dipanggil di `create()` saat
+    `dto.orderId` diisi. Cek (a) SO exists & `status === 'POSTED'` (SO
+    belum final kalau belum POSTED — walau SO sendiri no-op GL/stok), (b)
+    tiap `sourceLineId` benar milik SO itu, (c) **qty yang diminta tidak
+    melebihi sisa outstanding** = `soLine.quantity − SUM(qty semua DO lain
+    yang sudah menarik baris SO itu)`, dihitung on-the-fly (tidak ada
+    kolom `remainingQty` tersimpan, pola sama dengan AR Receipt/AP
+    Payment).
+  - `maybeCloseSourceOrder` — dipanggil setelah create sukses. Kalau SEMUA
+    baris SO sudah fully-taken, tandai closed.
+- **Gap skema ditemukan saat implementasi:** `ErpDocumentStatus` **tidak
+  punya nilai `CLOSED`** (cuma DRAFT/NEED_APPROVE/APPROVE_1-4/APPROVED/
+  REJECTED/POSTED/VOID/CANCELLED) — menambah value butuh migrasi `ALTER
+  TYPE ADD VALUE`, di luar scope pilot ini. **Solusi tanpa migrasi:** pakai
+  kolom `closedDate` (nullable, sudah ada di schema sejak awal, persis
+  untuk tujuan ini) sebagai sinyal "closed" — `status` tetap `POSTED`,
+  `closedDate` terisi = outstanding sudah nol. **Siapa pun yang bikin
+  laporan/UI "SO yang masih open"**: cek `closedDate IS NULL`, BUKAN
+  `status != 'CLOSED'` (status itu tidak akan pernah jadi CLOSED).
+
+**Sengaja belum disentuh (scope pilot dijaga kecil):**
+- `update()`/`remove()` DO tidak re-sync `closedDate` SO (kalau DO yang
+  menarik SO di-edit/dihapus, SO bisa salah ke-skip "closed" status).
+  Perlu panggil `maybeCloseSourceOrder` juga di sana — follow-up.
+- Pasangan SO→SI langsung (tanpa lewat DO) belum dicek — pola sama persis
+  tapi di `erp-sls-invoices`, giliran berikutnya kalau mau extend pilot ini.
+- Guard anti-double-posting lintas dokumen (SR dari RNR vs tanpa RNR, dst)
+  masih terpisah, belum disentuh.
+
+**Diverifikasi end-to-end terhadap database nyata:** SO qty=10 POSTED → DO1
+tarik 6 (sukses, SO belum closed) → DO2 coba tarik 5 lagi (total 11>10,
+**ditolak** dengan pesan sisa outstanding yang jelas) → DO3 tarik sisa 4
+pas (sukses) → SO otomatis `closedDate` terisi begitu outstanding = 0.
+
+**Tiga belas unit kerja total selesai sesi ini.** Fase 0 dimulai (pilot
+pertama), bukan selesai — masih banyak pasangan dokumen lain yang perlu
+pola serupa (GRN←PO, SI←DO, PI←GRN, dst — semua sudah punya field FK tapi
+belum ada validasi outstanding).
+
