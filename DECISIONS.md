@@ -4861,3 +4861,30 @@ SIE GL, RF, DC, RW, BOM/WO) — semuanya butuh klarifikasi proses bisnis
 dari user sebelum bisa dikerjakan, sesuai gate yang sudah ditetapkan sejak
 plan awal.
 
+### § SIE (Invoice Swap) — gate dibuka, klarifikasi user diterima (2026-10-01)
+
+Klarifikasi user: **SIE = realokasi saldo antar invoice** (sesuai asumsi
+yang sudah tertanam di komentar kode lama), bukan "ganti faktur salah
+terbit". Gate dibuka, posting GL diimplementasikan.
+
+`sls-invoice-swap-posting.service.ts` — per baris swap: **Cr**
+`fromInvoice.receivableAccountId` (fallback customer) **/ Dr**
+`toInvoice.receivableAccountId` (fallback customer) — murni reklasifikasi
+AR, nominal sama (tidak ada perubahan total, sesuai sifat "swap"). Tiap
+leg bawa `partnerId` invoice masing-masing, bukan satu partner — penting
+karena `fromInvoice`/`toInvoice` **bisa beda customer** (field header
+`swap.customerId` hanya kontak utama dokumen, bukan pembatas).
+
+**`toInvoiceId` nullable di schema tapi WAJIB diisi di validasi ini** —
+baris tanpa tujuan berarti write-off, yang butuh akun kontra tersendiri
+(di luar scope, berbeda dari "swap" yang murni reklasifikasi tanpa ubah
+nilai). Ditolak eksplisit dengan pesan jelas, bukan di-skip diam-diam.
+
+**Diverifikasi end-to-end lewat service layer penuh (SUBMIT→APPROVE→
+POST→REOPEN):** SI A grandTotal=100000 (customer A) + SI B grandTotal=
+50000 (customer B, beda customer) → SIE realokasi 30000 dari A ke B →
+2 baris ledger balanced (Cr 30000 akun AR customer A / Dr 30000 akun AR
+customer B, partnerId berbeda per baris) → REOPEN → ledger terhapus bersih.
+
+**Dua puluh empat unit kerja total selesai sesi ini.**
+
