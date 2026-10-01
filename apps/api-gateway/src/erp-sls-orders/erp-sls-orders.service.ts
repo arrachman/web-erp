@@ -24,6 +24,10 @@ import {
   buildSlsOrderTotalsInput,
   mapExistingSlsOrderLines,
 } from './sls-order-persistence.mapper';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'SO';
 const FALLBACK_PREFIX = 'SO';
@@ -302,6 +306,18 @@ export class ErpSlsOrdersService {
 
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Delivery Order',
+            findFirst: (args) => tx.erpSlsDeliveryOrder.findFirst(args as never),
+            where: { orderId: order.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+          {
+            label: 'Customer Advance',
+            findFirst: (args) => tx.erpSlsCustomerAdvance.findFirst(args as never),
+            where: { orderId: order.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, order.id);
         await tx.erpSlsOrder.update({
           where: { id },

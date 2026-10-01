@@ -4814,3 +4814,50 @@ PI←GRN, RNR←SI, SR, DNR/PRT) **selesai**. Sisa plan: guard anti-double-
 posting generik lintas dokumen, dan transaksi ter-gate PRD (RP, PP, SIE
 GL, RF, DC, RW, BOM/WO).
 
+### § Guard anti-double-posting generik — "Aturan pembatalan" PRD (2026-10-01)
+
+Infra Fase 0 terakhir yang direncanakan dari awal sesi: "Dokumen yang
+sudah dipakai sebagai sumber dokumen lain tidak bisa dibatalkan sebelum
+dokumen turunannya dibatalkan" (§Aturan pembatalan, PRD).
+
+`src/erp-common/guards/source-document-lock.helper.ts` (baru) —
+`assertNoActiveDerivedDocuments(checks[])`: dipanggil di awal `$transaction`
+REOPEN sebelum `reverseLedger` dipanggil. Tiap `check` = satu kemungkinan
+dokumen turunan (label untuk pesan error + Prisma `findFirst` delegate +
+where clause "menunjuk ke dokumen ini, status masih aktif"). **Sengaja
+tidak introspeksi relasi Prisma otomatis** — field FK "ini sumberku"
+berbeda nama per pasangan (`orderId`/`deliveryOrderId`/`goodsReceiptId`/
+`invoiceId`), jadi tiap call site menyatakan check-nya sendiri daripada
+helper menebak. `INACTIVE_STATUSES = ['VOID', 'CANCELLED', 'REJECTED']` —
+dokumen turunan dengan status itu tidak menghalangi (sudah dianggap batal).
+
+**Dipasang di 6 modul (REOPEN, sebelum reverseLedger):**
+- SO: cek DO + AS aktif.
+- DO: cek SI aktif.
+- SI: cek RNR + SR aktif.
+- PO: cek GRN + PI aktif.
+- GRN: cek PI + PRT aktif.
+- PI: cek PRT aktif.
+
+**Diverifikasi end-to-end terhadap database nyata, 2 pasangan (lintas
+domain Sales & Purchasing untuk pastikan konsisten):**
+- SO→DO: SO POSTED dengan DO aktif → REOPEN SO **ditolak** dengan pesan
+  jelas "sudah ditarik oleh Delivery Order ... masih aktif" → DO di-VOID
+  → REOPEN SO berhasil.
+- GRN→PI: GRN POSTED dengan PI aktif → REOPEN GRN **ditolak** → PI di-
+  CANCELLED → REOPEN GRN berhasil.
+
+**Belum dipasang (di luar scope pass ini, kandidat lanjutan):** RNR, SR,
+PRT/DNR sendiri belum punya guard REOPEN terhadap turunannya (RNR/SR
+sendiri biasanya adalah ujung rantai, jarang punya turunan lagi — kecuali
+SIE yang di-gate). VP/IP/AS/AP (fin) juga belum dipasang guard ini (saat
+di-REOPEN, allocation row dihapus otomatis sudah oleh posting service
+masing-masing, jadi risiko lebih kecil — tapi belum diverifikasi formal).
+
+**Dua puluh tiga unit kerja total selesai sesi ini.** Seluruh scope Fase 0
+yang direncanakan (outstanding-tracking 6 pasangan + guard anti-double-
+posting generik) **selesai**. Sisa plan: transaksi ter-gate PRD (RP, PP,
+SIE GL, RF, DC, RW, BOM/WO) — semuanya butuh klarifikasi proses bisnis
+dari user sebelum bisa dikerjakan, sesuai gate yang sudah ditetapkan sejak
+plan awal.
+

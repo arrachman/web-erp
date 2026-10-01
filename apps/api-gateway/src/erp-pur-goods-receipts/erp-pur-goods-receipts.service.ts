@@ -9,6 +9,10 @@ import { UpdatePurGoodsReceiptDto } from './dto/update-pur-goods-receipt.dto';
 import { PurGoodsReceiptTransitionAction as A, TransitionPurGoodsReceiptDto } from './dto/transition-pur-goods-receipt.dto';
 import { toBigInt, EDITABLE, NEXT, buildPurGrnWhere, mapGrnLine, computeTotals } from './pur-goods-receipt.helpers';
 import { validateSourcePurchaseOrderOutstanding, maybeCloseSourcePurchaseOrder } from './pur-goods-receipt-outstanding.helpers';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'GRN';
 const FALLBACK_PREFIX = 'GRN';
@@ -191,6 +195,18 @@ export class ErpPurGoodsReceiptsService {
     }
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Purchase Invoice',
+            findFirst: (args) => tx.erpPurInvoice.findFirst(args as never),
+            where: { goodsReceiptId: grn.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+          {
+            label: 'Purchase Return',
+            findFirst: (args) => tx.erpPurReturn.findFirst(args as never),
+            where: { goodsReceiptId: grn.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, grn.id);
         await tx.erpPurGoodsReceipt.update({ where: { id }, data: { status: 'DRAFT', previousStatus: grn.status as never, postingStatus: 'UNPOSTED', postedAt: null, updatedById: actor } });
       });

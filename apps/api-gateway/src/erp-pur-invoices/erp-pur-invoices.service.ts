@@ -19,6 +19,10 @@ import {
   computeTotals,
 } from './pur-invoice.helpers';
 import { validateSourceGoodsReceiptOutstanding } from './pur-invoice-outstanding.helpers';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'PI';
 const FALLBACK_PREFIX = 'PI';
@@ -331,6 +335,13 @@ export class ErpPurInvoicesService {
 
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Purchase Return',
+            findFirst: (args) => tx.erpPurReturn.findFirst(args as never),
+            where: { invoiceId: invoice.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, invoice.id);
         await tx.erpPurInvoice.update({
           where: { id },

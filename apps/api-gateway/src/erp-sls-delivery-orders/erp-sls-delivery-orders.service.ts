@@ -24,6 +24,10 @@ import {
   buildSlsDeliveryOrderTotalsInput,
 } from './sls-delivery-order-persistence.mapper';
 import { validateSourceOrderOutstanding, maybeCloseSourceOrder } from './sls-delivery-order-outstanding.helpers';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'DO';
 const FALLBACK_PREFIX = 'DO';
@@ -304,6 +308,13 @@ export class ErpSlsDeliveryOrdersService {
 
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Sales Invoice',
+            findFirst: (args) => tx.erpSlsInvoice.findFirst(args as never),
+            where: { deliveryOrderId: deliveryOrder.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, deliveryOrder.id);
         await tx.erpSlsDeliveryOrder.update({
           where: { id },

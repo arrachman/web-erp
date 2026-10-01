@@ -24,6 +24,10 @@ import {
   buildSlsInvoiceTotalsInput,
 } from './sls-invoice-persistence.mapper';
 import { validateSourceDeliveryOrderOutstanding } from './sls-invoice-outstanding.helpers';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'SI';
 const FALLBACK_PREFIX = 'SI';
@@ -299,6 +303,18 @@ export class ErpSlsInvoicesService {
 
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Return Receipt',
+            findFirst: (args) => tx.erpSlsReturnReceipt.findFirst(args as never),
+            where: { invoiceId: invoice.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+          {
+            label: 'Sales Return',
+            findFirst: (args) => tx.erpSlsReturn.findFirst(args as never),
+            where: { invoiceId: invoice.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, invoice.id);
         await tx.erpSlsInvoice.update({
           where: { id },

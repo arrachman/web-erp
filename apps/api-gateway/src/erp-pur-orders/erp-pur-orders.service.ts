@@ -18,6 +18,10 @@ import {
   mapOrderLine,
   computeTotals,
 } from './pur-order.helpers';
+import {
+  assertNoActiveDerivedDocuments,
+  INACTIVE_STATUSES,
+} from '../erp-common/guards/source-document-lock.helper';
 
 const DOC_CODE = 'PO';
 const FALLBACK_PREFIX = 'PO';
@@ -314,6 +318,18 @@ export class ErpPurOrdersService {
 
     if (dto.action === A.REOPEN) {
       await this.prisma.$transaction(async (tx) => {
+        await assertNoActiveDerivedDocuments([
+          {
+            label: 'Goods Receipt',
+            findFirst: (args) => tx.erpPurGoodsReceipt.findFirst(args as never),
+            where: { orderId: order.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+          {
+            label: 'Purchase Invoice',
+            findFirst: (args) => tx.erpPurInvoice.findFirst(args as never),
+            where: { orderId: order.id, deletedAt: null, status: { notIn: INACTIVE_STATUSES } },
+          },
+        ]);
         await this.posting.reverseLedger(tx, order.id);
         await tx.erpPurOrder.update({
           where: { id },
