@@ -4553,3 +4553,38 @@ pertama), bukan selesai — masih banyak pasangan dokumen lain yang perlu
 pola serupa (GRN←PO, SI←DO, PI←GRN, dst — semua sudah punya field FK tapi
 belum ada validasi outstanding).
 
+### § FR-SLS-02 — SI stock posting anti-double (dari DO vs mandiri) (2026-10-01)
+
+`src/erp-sls-invoices/sls-invoice-posting.service.ts` — tambahkan stock
+posting yang sebelumnya 100% absen (SI dari awal sesi ini hanya posting
+GL, tidak pernah menyentuh stok sama sekali). Sesuai FR-SLS-02 persis:
+"SI yang dibuat dari DO tidak boleh memotong stok lagi. SI tanpa DO
+memotong stok sendiri."
+
+- **Jika `invoice.deliveryOrderId` terisi:** TIDAK ada stock movement baru
+  — barang sudah keluar lewat DO. Cukup posting GL (perilaku yang sudah
+  ada sebelumnya, tidak diubah).
+- **Jika `deliveryOrderId` null (SI mandiri):** buat `ErpInvStockMovement`
+  sendiri (`movementType: ISSUE`), 1 baris per baris SI, delegasi penuh ke
+  `InvStockMovementPostingService.postMovement` — sama seperti DO (arah
+  ISSUE untuk penjualan itu benar secara akuntansi, beda dari kasus
+  GRN/PI/DNR yang butuh GL manual).
+- Doc number movement: kode baru **`SII`** (SI Issue).
+- Module wiring: `ErpSlsInvoicesModule` sekarang import
+  `ErpInvStockMovementsModule`.
+
+**Sengaja belum disentuh (scope dijaga kecil, follow-up terpisah):**
+outstanding-qty validasi SI←DO (mirror `validateSourceOrderOutstanding` DO←
+SO dari pilot sebelumnya) — SI line DTO belum punya `sourceLineId`, dan SI
+header belum divalidasi terhadap qty DO yang belum ditagih. Saat ini kalau
+`deliveryOrderId` diisi, SI percaya begitu saja tanpa cek qty — bisa
+nagih lebih dari yang dikirim DO. Itu langkah berikutnya untuk menutup
+FR-SLS-02 sepenuhnya.
+
+**Diverifikasi end-to-end terhadap database nyata:** PATH A (SI dari DO,
+qty=5) → posting sukses, **nol** stock movement tercipta (dikonfirmasi).
+PATH B (SI mandiri, qty=4) → posting sukses, 1 stock movement ISSUE qty=4
+tercipta, reverse membersihkan movement-nya.
+
+**Empat belas unit kerja total selesai sesi ini.**
+

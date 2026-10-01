@@ -6,16 +6,20 @@ import {
   type LedgerBase,
   type LedgerLeg,
 } from '../erp-inv-gl/inv-gl-posting.helpers';
+import { InvStockMovementPostingService } from '../erp-inv-stock-movements/inv-stock-movement-posting.service';
 
 const SLS_GL_SOURCE = 'SALES';
 const SLS_GL_DOCTYPE = 'sls_invoices';
+const MOVEMENT_SOURCE = 'SLS_INVOICE';
+const MOVEMENT_DOC_CODE = 'SII';
 
 type InvoiceWithLines = Prisma.ErpSlsInvoiceGetPayload<{
   include: { lines: true };
 }>;
 
 /**
- * GL posting for Sales Invoices → fin_ledger_entries.
+ * GL + stock posting for Sales Invoices → fin_ledger_entries /
+ * inv_stock_movements.
  *
  * SI is the primary AR event in the sales chain (§2 posting matrix,
  * DECISIONS.md "Aturan posting jurnal dan stok"):
@@ -24,11 +28,21 @@ type InvoiceWithLines = Prisma.ErpSlsInvoiceGetPayload<{
  *   Cr  PPN Keluaran per baris (tax.saleAccountId, override header)     line.tax1Amount/tax2Amount
  *   Dr  Diskon Penjualan (header discountAccountId)                     discountAmount (bila ada)
  *
+ * Stock (FR-SLS-02, "Aturan anti posting ganda"): "SI yang dibuat dari DO
+ * tidak boleh memotong stok lagi. SI tanpa DO memotong stok sendiri." When
+ * `invoice.deliveryOrderId` is set, stock was already moved by that DO —
+ * no new movement here. When it's null (stand-alone SI), this creates its
+ * own ISSUE movement, delegated fully to InvStockMovementPostingService
+ * (ISSUE's Dr COGS/Cr Inventory direction is correct for a sale — same
+ * reasoning as SlsDeliveryOrderPostingService).
+ *
  * Mirrors CashBankPostingService / InvStockMovementPostingService: append-on-post,
  * reverseLedger hard-deletes this document's own rows before re-posting.
  */
 @Injectable()
 export class SlsInvoicePostingService {
+  constructor(private readonly invPosting: InvStockMovementPostingService) {}
+
   async postToLedger(
     tx: Prisma.TransactionClient,
     invoice: InvoiceWithLines,
@@ -146,6 +160,73 @@ export class SlsInvoicePostingService {
       where: { id: invoice.id },
       data: { arLedgerEntryId: arRow?.id ?? null },
     });
+
+    if (!invoice.deliveryOrderId) {
+      await this.postStockMovement(tx, invoice, actorId);
+    }
+  }
+
+  private async postStockMovement(
+    tx: Prisma.TransactionClient,
+    invoice: InvoiceWithLines,
+    actorId: bigint | null,
+  ): Promise<void> {
+    const missingWarehouse = invoice.lines.find((l) => !l.warehouseId && !invoice.warehouseId);
+    if (missingWarehouse) {
+      throw new BadRequestException(
+        `Baris ${missingWarehouse.lineNo} tidak punya gudang (warehouse) — set di header atau baris.`,
+      );
+    }
+
+    const docNumber = await this.genMovementDocNumber(tx);
+    const movement = await tx.erpInvStockMovement.create({
+      data: {
+        docNumber,
+        autoNumber: docNumber,
+        movementType: 'ISSUE',
+        branchId: invoice.branchId,
+        locationId: invoice.locationId,
+        sourceWarehouseId: invoice.warehouseId,
+        source: MOVEMENT_SOURCE,
+        movementDate: invoice.docDate,
+        fiscalPeriodId: invoice.fiscalPeriodId,
+        requestedPartnerId: invoice.customerId,
+        referenceNo: invoice.docNumber,
+        referenceDate: invoice.docDate,
+        description: `Barang keluar SI ${invoice.docNumber} (tanpa DO)`,
+        status: 'POSTED',
+        postingStatus: 'UNPOSTED',
+        postedAt: new Date(),
+        metadata: { sourceDocType: SLS_GL_DOCTYPE, sourceId: invoice.id.toString() },
+        createdById: actorId,
+        updatedById: actorId,
+        lines: {
+          create: invoice.lines.map((l, i) => ({
+            itemId: l.itemId,
+            quantity: l.quantity,
+            unitId: l.unitId,
+            unitValue: l.unitValue,
+            baseQuantity: l.baseQuantity,
+            baseUnitId: l.baseUnitId,
+            unitCost: l.unitCost,
+            sourceWarehouseId: l.warehouseId ?? invoice.warehouseId,
+            costCenterId: l.costCenterId,
+            divisionId: l.divisionId,
+            subdivisionId: l.subdivisionId,
+            projectId: l.projectId,
+            notes: l.notes,
+            lineNo: i + 1,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+
+    await this.invPosting.postMovement(tx, movement, actorId);
+    await tx.erpInvStockMovement.update({
+      where: { id: movement.id },
+      data: { postingStatus: 'POSTED' },
+    });
   }
 
   async reverseLedger(tx: Prisma.TransactionClient, invoiceId: bigint): Promise<void> {
@@ -154,6 +235,35 @@ export class SlsInvoicePostingService {
       where: { id: invoiceId },
       data: { arLedgerEntryId: null },
     });
+
+    const movements = await tx.erpInvStockMovement.findMany({
+      where: {
+        source: MOVEMENT_SOURCE,
+        deletedAt: null,
+        metadata: { path: ['sourceId'], equals: invoiceId.toString() },
+      },
+    });
+    for (const movement of movements) {
+      await this.invPosting.reverseMovement(tx, movement.id);
+      await tx.erpInvStockMovementLine.deleteMany({ where: { stockMovementId: movement.id } });
+      await tx.erpInvStockMovement.delete({ where: { id: movement.id } });
+    }
+  }
+
+  private async genMovementDocNumber(tx: Prisma.TransactionClient): Promise<string> {
+    const numbering = await tx.erpDocumentNumbering.findFirst({
+      where: { documentCode: MOVEMENT_DOC_CODE, deletedAt: null },
+    });
+    if (numbering) {
+      const seq = numbering.nextNumber;
+      await tx.erpDocumentNumbering.update({
+        where: { id: numbering.id },
+        data: { nextNumber: seq + 1 },
+      });
+      return `${numbering.prefix}${String(seq).padStart(numbering.digitCount, '0')}`;
+    }
+    const count = await tx.erpInvStockMovement.count();
+    return `${MOVEMENT_DOC_CODE}${String(count + 1).padStart(6, '0')}`;
   }
 
   private async resolveReceivableAccount(
