@@ -5012,3 +5012,14 @@ Reopen/re-post → `releaseInvoiceAdvance` membalik. Outstanding AR Receipt
 `invoice.advanceAccountId` → fallback `AS.metadata.advanceAccountId`.
 **Belum:** potongan dari IP (Payment Receipt) — IP tidak punya field saldo yang
 bisa dipotong SI; perlu keputusan bila dibutuhkan. Hanya 1 AS per SI (skema).
+
+### § Laporan kontrol — rekonsiliasi AR/AP vs akun kontrol GL (2026-10-01)
+
+`GET /erp/fin/reports/control-reconciliation?asOf=&branchId=`
+(`erp-fin-reports/control-reconciliation.service.ts`). Subledger AR = Σ SI POSTED
+− potongan AS − Σ SR POSTED − Σ alokasi AR Receipt; AP = Σ PI − Σ PRT − Σ alokasi
+AP Payment. GL = saldo ledger (≤ asOf) pada akun piutang/utang yang dipakai
+dokumen & master partner. `isBalanced` toleransi 0,01. **Belum:** rekonsiliasi
+stok (Σ nilai saldo stok vs akun persediaan) dan halaman frontend; endpoint
+**belum diuji terhadap data live** (hanya typecheck) — jalankan dulu sebelum
+dipercaya untuk migrasi data lama.

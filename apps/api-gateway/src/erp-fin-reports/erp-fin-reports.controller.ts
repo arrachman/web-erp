@@ -10,6 +10,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ErpJwtAuthGuard } from '../erp-auth/guards/erp-jwt-auth.guard';
 import { QueryReportDto } from './dto/query-report.dto';
+import { ControlReconciliationService } from './control-reconciliation.service';
 import { ErpFinReportsExtService } from './erp-fin-reports-ext.service';
 import { ErpFinReportsService } from './erp-fin-reports.service';
 import { ReportExportService } from './report-export.service';
@@ -24,7 +25,14 @@ export class ErpFinReportsController {
     private readonly service: ErpFinReportsService,
     private readonly ext: ErpFinReportsExtService,
     private readonly exporter: ReportExportService,
+    private readonly reconciliation: ControlReconciliationService,
   ) {}
+
+  @Get('control-reconciliation')
+  @ApiOperation({ summary: 'Rekonsiliasi subledger AR/AP vs akun kontrol GL (laporan kontrol PRD)' })
+  controlReconciliation(@Query() q: QueryReportDto) {
+    return this.reconciliation.build(q.asOf, q.branchId);
+  }
 
   @Get('trial-balance')
   @ApiOperation({ summary: 'Trial balance (Neraca Saldo)' })
