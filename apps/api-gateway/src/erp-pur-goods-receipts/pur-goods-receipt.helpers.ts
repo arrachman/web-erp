@@ -15,6 +15,7 @@ export const NEXT: Record<string, Partial<Record<A, string>>> = {
   REJECTED: { [A.SUBMIT]: 'NEED_APPROVE' },
   NEED_APPROVE: { [A.APPROVE]: 'APPROVED', [A.REJECT]: 'REJECTED' },
   APPROVED: { [A.POST]: 'POSTED', [A.REOPEN]: 'DRAFT' },
+  POSTED: { [A.REOPEN]: 'DRAFT' },
 };
 
 const dec = (v?: string | null) => new Prisma.Decimal(v ?? 0);

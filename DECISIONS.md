@@ -4292,3 +4292,33 @@ terhapus bersih + SI balik `UNPAID` → SUBMIT→APPROVE→POST lagi → ledger
 terbentuk ulang dari draft metadata (tanpa re-input) — membuktikan desain
 draft-di-metadata bekerja untuk siklus reopen/repost berulang.
 
+### § Fix bug laten: REOPEN dari status POSTED tertolak di 16 modul (2026-10-01)
+
+Ditemukan saat membangun AR Receipt (lihat section di atas): `NEXT` map di
+setiap `*.helpers.ts` hanya punya `APPROVED: { POST, REOPEN }` — **tidak
+ada** entry `POSTED: { REOPEN }`. `transition()` di semua service mengecek
+`next = NEXT[status]?.[action]` di awal dan **throw kalau falsy, SEBELUM**
+sampai ke branch `if (action === REOPEN)`. Akibatnya: memanggil REOPEN saat
+dokumen sudah `POSTED` **selalu gagal** dengan "Aksi REOPEN tidak valid dari
+status POSTED" — padahal itu justru skenario paling umum (user POST dulu,
+baru nanti perlu reopen untuk koreksi). Satu-satunya modul yang sudah benar
+dari awal: `erp-inv-stock-movements` (punya `POSTED: { REOPEN: 'DRAFT' }`).
+
+**Diperbaiki (tambah 1 baris `POSTED: { [A.REOPEN]: 'DRAFT' }` per file,
+mekanis, tanpa ambiguitas) di 16 modul:** SI, DO, GRN, RNR, SR, PI, PRT
+(tujuh yang disentuh sesi ini) + PR (`erp-pur-requisitions`), PO
+(`erp-pur-orders`), AS (`erp-sls-customer-advances`), DR
+(`erp-sls-delivery-reports`), SQ (`erp-sls-quotations`), SIE
+(`erp-sls-invoice-swaps`), PL (`erp-sls-packing-lists`), PI-Proforma
+(`erp-sls-proforma-invoices`), SO (`erp-sls-orders`).
+
+**Sengaja TIDAK disentuh:** `erp-mfg-boms`/`erp-mfg-work-orders` (BOM/WO) —
+punya bentuk `NEXT` yang berbeda (tidak ada aksi POST sama sekali di
+APPROVED), dan modul Production ini di-gate total oleh PRD (§Fase 3 Plan,
+"usulan awal, belum ada di diagram kerja") — di luar scope relevan sekarang,
+workflow-nya sendiri belum final.
+
+**Diverifikasi:** typecheck bersih di semua 16 file; test nyata terhadap
+database — DO di-POST lalu `NEXT['POSTED']['REOPEN']` dicek langsung (guard
+yang sama dipakai `transition()`), hasil `'DRAFT'` (sebelumnya `undefined`).
+
