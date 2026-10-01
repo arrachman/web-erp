@@ -3910,3 +3910,72 @@ ke user hanya bila ditemukan konflik penomoran nyata saat implementasi.
 Saat fase terkait tiba dan jawaban belum ada → **stop, tanya user** (skill
 `erp` disiplin interaksi #1), jangan asumsikan diam-diam.
 
+### Koreksi premis plan setelah riset kode nyata (2026-10-01, sore)
+
+Riset lapangan (bukan asumsi) menemukan premis Fase 0 di atas **salah**:
+backend untuk **hampir semua ~40 transaksi PRD sudah punya folder
+service/controller nyata** di `apps/api-gateway/src/erp-{sls,pur,inv,fin}-*`
+(990-1045 baris per modul Sales), termasuk Invoice Swap (SIE) dan Freight
+Payable (PP) yang PRD tandai "belum didefinisikan". DECISIONS.md historis
+(berhenti di SO + Purchasing baseline, 2026-06-02/03) sudah tertinggal jauh
+dari kode aktual.
+
+**Temuan konkret (jangan rebuild, lanjutkan):**
+- `ErpDocumentStatus` 11-nilai + `adm_role_doc_policies` (role→allowed status
+  per document_type) sudah ada sejak migration `20260607_00x` — ini infra
+  approval Fase 4, sudah lebih maju dari rencana.
+- Pola posting GL generik **sudah established**: `CashBankPostingService`
+  (ad-hoc per modul) dan `erp-inv-gl/inv-gl-posting.helpers.ts`
+  (`buildLedgerRows`/`LedgerBase`/`LedgerLeg`/`reverseInvLedger` — murni,
+  Prisma-agnostic, dipakai 3 modul inventory). **Helper ini yang dipakai
+  ulang**, bukan ditulis dari nol, untuk posting GL modul lain.
+- Stok = **derived view** `inv_stock_balances` dari movement `POSTED`
+  (bukan ledger terpisah); `InvStockMovementPostingService` sudah implement
+  moving-average costing + `glPostingEnabled` toggle (default OFF) + GL
+  ISSUE/RETURN. Lebih maju dari perkiraan Fase 3.
+- **Tapi** sebagian besar posting GL transaksi Sales/Purchasing masih
+  **sengaja NO-OP berlabel TODO** (konfirmasi: SI, DO, Invoice Swap) —
+  komentar di kode eksplisit "to be implemented when GL spec confirmed".
+- Field rantai dokumen `sourceLineId`/`sourceDocType` **ada di schema**
+  (tiap line table) tapi **TIDAK dipakai di service manapun** — di-grep 0
+  match. Header-level reference (mis. `ErpSlsInvoice.orderId`/
+  `deliveryOrderId`) ada FK langsung, tapi tanpa outstanding-qty tracking
+  (tidak ada kolom `remainingQty`/`invoicedQty` dsb di schema manapun).
+- Account resolution sudah termodel lengkap: `ErpItem.salesAccountId`
+  (fallback `ErpItemCategory.salesAccountId`), `ErpPartner.receivableAccountId`,
+  `ErpTax.saleAccountId`/`purchaseAccountId` — dipakai account-resolution SI
+  (lihat di bawah).
+
+**Keputusan user:** jangan susun ulang plan 4-fase dulu secara global.
+Kerjakan **satu transaksi nyata dulu** sebagai pilot bukti-konsep, lalu
+lanjut bertahap. Pilot pertama = **Sales Invoice (SI) GL posting**.
+
+### § SI (Sales Invoice) GL posting — pilot pertama Fase 0 (2026-10-01)
+
+`src/erp-sls-invoices/sls-invoice-posting.service.ts` — ganti NO-OP jadi
+posting nyata, reuse `buildLedgerRows`/`reverseInvLedger` dari
+`erp-inv-gl/inv-gl-posting.helpers.ts` (override `source: 'SALES'` setelah
+build, helper generiknya Prisma-agnostic jadi aman dipakai lintas modul).
+
+Pola jurnal (sesuai tabel "Pola jurnal usulan" §Aturan posting di atas):
+- **Dr** Piutang Usaha — `invoice.receivableAccountId`, fallback
+  `customer.receivableAccountId`; error eksplisit bila keduanya kosong.
+- **Cr** Penjualan per baris — `item.salesAccountId`, fallback
+  `item.category.salesAccountId`; error per-baris bila kosong (bukan silent
+  skip).
+- **Cr** PPN Keluaran per baris — `tax.saleAccountId` (dari `line.tax1Id`/
+  `tax2Id`), override oleh `invoice.tax1AccountId`/`tax2AccountId` bila diisi
+  manual di header.
+- **Dr** Diskon Penjualan — `invoice.discountAccountId`, hanya bila
+  `discountAmount > 0`; error bila diskon ada tapi akun belum diset.
+- Balance check + append-on-post + hard-delete-on-reverse mewarisi
+  `buildLedgerRows`/`reverseInvLedger` (sama seperti pola inventory).
+- `arLedgerEntryId` di-stamp ke baris ledger Piutang Usaha yang baru dibuat
+  (dipakai laporan AR aging — sudah disiapkan kolomnya, baru sekarang diisi).
+
+**Belum disentuh pilot ini (scope sengaja kecil):** DO/GRN stock posting,
+outstanding-qty tracking, guard anti-double-posting antar dokumen,
+sourceLineId wiring saat create DO/SI dari SO. Itu langkah berikutnya,
+transaksi-per-transaksi, bukan infra generik sekaligus — ikuti urutan Fase 1
+di atas setelah pilot ini divalidasi user.
+
