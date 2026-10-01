@@ -18,6 +18,10 @@ import {
   mapReturnLine,
   computeTotals,
 } from './pur-return.helpers';
+import {
+  validateSourceGoodsReceiptReturnOutstanding,
+  validateSourceInvoiceRemainingPayable,
+} from './pur-return-outstanding.helpers';
 
 /** Doc numbering differs per returnType: DEBIT_NOTE → DNR, RETURN_TO_VENDOR → PRT. */
 const DOC_CODE: Record<string, string> = { DEBIT_NOTE: 'DNR', RETURN_TO_VENDOR: 'PRT' };
@@ -85,6 +89,13 @@ export class ErpPurReturnsService {
     const { subtotal, grandTotal } = computeTotals(dto.lines, dto);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.returnType === 'RETURN_TO_VENDOR' && dto.goodsReceiptId) {
+        await validateSourceGoodsReceiptReturnOutstanding(tx, BigInt(dto.goodsReceiptId), dto.lines);
+      }
+      if (dto.invoiceId) {
+        await validateSourceInvoiceRemainingPayable(tx, BigInt(dto.invoiceId), grandTotal);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx, dto.returnType) : dto.docNumber;

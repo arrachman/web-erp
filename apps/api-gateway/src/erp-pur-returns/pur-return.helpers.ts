@@ -89,6 +89,10 @@ export function mapReturnLine(
     divisionId: toBigInt(line.divisionId),
     subdivisionId: toBigInt(line.subdivisionId),
     projectId: toBigInt(line.projectId),
+    // goodsReceiptLineId has a @relation — use connect rather than raw scalar setter.
+    ...(line.goodsReceiptLineId
+      ? { goodsReceiptLine: { connect: { id: BigInt(line.goodsReceiptLineId) } } }
+      : {}),
     notes: line.notes ?? null,
     lineNo: line.lineNo,
   };

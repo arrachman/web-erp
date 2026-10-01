@@ -4776,3 +4776,41 @@ mencakup 6 pasangan/validasi: DO←SO, SI←DO, GRN←PO, PI←GRN, RNR←SI, SR
 (nominal). Sisa: DNR/PRT←PI (Purchasing return chain, cek dulu arahnya
 sebelum implementasi — jangan ulangi kesalahan arah SR←RNR).
 
+### § DNR/PRT outstanding — qty-side dari GRN + nominal-side dari PI (2026-10-01)
+
+Arah rantai dicek dulu (pelajaran dari kesalahan SR←RNR): `ErpPurReturn`
+punya FK **langsung** ke `orderId`, `goodsReceiptId`, **dan** `invoiceId`
+— arah benar, tidak perlu dibalik. DNR/PRT = satu model dibedakan
+`returnType` (lihat § PRT/DNR posting sebelumnya), jadi tidak ada "DNR
+terpisah" untuk dirujuk PRT — guard qty-side relevan justru terhadap GRN
+langsung (saat `returnType === 'RETURN_TO_VENDOR'`), bukan "PRT dari DNR".
+
+**Qty-side** (`validateSourceGoodsReceiptReturnOutstanding`, dalam
+`pur-return-outstanding.helpers.ts` baru) — mirror RNR←SI: dipanggil hanya
+saat `returnType === 'RETURN_TO_VENDOR'` dan `goodsReceiptId` diisi. GRN
+harus `POSTED`, outstanding diukur dari `acceptedQty` GRN line dikurangi
+total qty retur lain. `goodsReceiptLineId` ditambah ke `PurReturnLineDto`
+(punya `@relation`, pakai `connect` sama seperti PI).
+
+**Nominal-side** (`validateSourceInvoiceRemainingPayable`) — mirror SR vs
+SI (FR-SLS-06), sekarang FR-PUR-05 direct mode: dipanggil saat `invoiceId`
+diisi (independen dari `returnType` — baik DEBIT_NOTE maupun
+RETURN_TO_VENDOR bisa punya `invoiceId` direct). Outstanding AP PI =
+`grandTotal − SUM(alokasi AP Payment) − SUM(grandTotal PRT lain aktif
+untuk invoice itu)`. **Undirect mode (`invoiceId` kosong) sengaja
+dilewati** — jadi saldo umum ditarik VPP, tidak ada PI spesifik untuk
+dicek.
+
+**Diverifikasi end-to-end terhadap database nyata, kedua jalur:**
+- Qty-side: GRN acceptedQty=10 POSTED → DNR1 retur 6 (sukses) → DNR2 coba
+  retur 5 lagi (11>10, **ditolak**).
+- Nominal-side: PI grandTotal=150000 POSTED → PRT1 retur 80000 (sukses) →
+  PRT2 coba retur 80000 lagi (160000>150000, **ditolak** dengan pesan sisa
+  utang jelas: 70000).
+
+**Dua puluh dua unit kerja total selesai sesi ini.** Semua enam pasangan/
+validasi outstanding-tracking yang direncanakan (DO←SO, SI←DO, GRN←PO,
+PI←GRN, RNR←SI, SR, DNR/PRT) **selesai**. Sisa plan: guard anti-double-
+posting generik lintas dokumen, dan transaksi ter-gate PRD (RP, PP, SIE
+GL, RF, DC, RW, BOM/WO).
+

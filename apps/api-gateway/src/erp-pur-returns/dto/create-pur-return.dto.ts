@@ -109,6 +109,15 @@ export class PurReturnLineDto {
   @ApiPropertyOptional() @IsOptional() @IsString() projectId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'pur_goods_receipt_lines id yang diretur — wajib diisi per baris saat header.goodsReceiptId diisi dan returnType=RETURN_TO_VENDOR (FR-PUR-06). ' +
+      'Server menolak bila qty melebihi sisa GRN acceptedQty yang belum diretur.',
+  })
+  @IsOptional()
+  @IsString()
+  goodsReceiptLineId?: string;
+
   @ApiProperty({ example: 1 })
   @IsInt()
   @Min(1)
