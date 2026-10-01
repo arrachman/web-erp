@@ -23,6 +23,7 @@ import {
   mapExistingSlsInvoiceLines,
   buildSlsInvoiceTotalsInput,
 } from './sls-invoice-persistence.mapper';
+import { validateSourceDeliveryOrderOutstanding } from './sls-invoice-outstanding.helpers';
 
 const DOC_CODE = 'SI';
 const FALLBACK_PREFIX = 'SI';
@@ -125,6 +126,10 @@ export class ErpSlsInvoicesService {
     const dueDate = await this.resolveDueDate(dto.paymentTermId, dto.docDate, dto.dueDate);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.deliveryOrderId) {
+        await validateSourceDeliveryOrderOutstanding(tx, BigInt(dto.deliveryOrderId), dto.lines);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;

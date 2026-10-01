@@ -111,6 +111,15 @@ export class SlsInvoiceLineDto {
   @IsOptional()
   customFields?: Record<string, unknown>;
 
+  @ApiPropertyOptional({
+    description:
+      'sls_delivery_order_lines id yang ditagih — wajib diisi per baris saat header.deliveryOrderId diisi (FR-SLS-02: SI menagih sisa outstanding DO baris ini). ' +
+      'Server menolak bila qty melebihi sisa DO (quantity − total SI lain yang sudah menagih baris ini).',
+  })
+  @IsOptional()
+  @IsString()
+  sourceLineId?: string;
+
   @ApiProperty({ example: 1 })
   @IsInt()
   @Min(1)

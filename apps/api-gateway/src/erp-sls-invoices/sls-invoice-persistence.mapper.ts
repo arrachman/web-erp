@@ -81,7 +81,7 @@ export function buildSlsInvoiceCreateData(
     taxInvoiceNo: dto.taxInvoiceNo ?? null,
     channel: (dto.channel ?? 'STANDARD') as never,
     isOpeningBalance: dto.isOpeningBalance ?? false,
-    settlementStatus: 'UNSETTLED' as never,
+    settlementStatus: 'UNPAID' as never,
     subtotal,
     discountPercent: dto.discountPercent != null ? new Prisma.Decimal(dto.discountPercent) : null,
     discountAmount,

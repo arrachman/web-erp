@@ -89,6 +89,7 @@ export function mapInvoiceLine(
     divisionId: toBigInt(line.divisionId),
     subdivisionId: toBigInt(line.subdivisionId),
     projectId: toBigInt(line.projectId),
+    sourceLineId: toBigInt(line.sourceLineId),
     notes: line.notes ?? null,
     lineNo: line.lineNo,
   };

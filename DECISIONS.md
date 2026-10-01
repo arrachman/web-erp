@@ -4588,3 +4588,42 @@ tercipta, reverse membersihkan movement-nya.
 
 **Empat belas unit kerja total selesai sesi ini.**
 
+### § FR-SLS-02 outstanding-qty SI-dari-DO + bug kritis `settlementStatus` (2026-10-01)
+
+Menutup gap yang dicatat di section sebelumnya: `sourceLineId` ditambah ke
+`SlsInvoiceLineDto`, diteruskan `mapInvoiceLine`, dan
+`sls-invoice-outstanding.helpers.ts` (baru) —
+`validateSourceDeliveryOrderOutstanding`, **mirror persis**
+`validateSourceOrderOutstanding` (DO←SO) tapi untuk SI←DO: SI line dengan
+`sourceLineId` tidak boleh menagih melebihi sisa qty DO line
+(`doLine.quantity − SUM(qty SI lain yang sudah menagih baris itu)`), DO
+harus `status === 'POSTED'`. Dipanggil di `create()` saat `dto.
+deliveryOrderId` diisi.
+
+**Bug kritis ditemukan & diperbaiki saat testing (di luar scope langsung,
+tapi memblokir verifikasi dan jelas-jelas bug nyata):**
+`sls-invoice-persistence.mapper.ts` set `settlementStatus: 'UNSETTLED' as
+never` — nilai itu **tidak ada** di enum `ErpSettlementStatus`
+(`UNPAID`/`PARTIAL`/`PAID` saja). `as never` membungkam TypeScript tapi
+Prisma tetap menolaknya di runtime dengan `Invalid value for argument
+settlementStatus`. **Akibatnya: `ErpSlsInvoicesService.create()` SELALU
+GAGAL sejak awal** — setiap SI yang dibuat sesi ini sebelumnya (SI pilot GL
+posting, SR, VP test, dll) dibuat lewat **raw Prisma langsung** di script
+test (bypass service), bukan lewat `service.create()` — jadi bug ini tidak
+pernah ketahuan sampai sekarang karena ini test pertama yang benar-benar
+memanggil `ErpSlsInvoicesService.create()`. Diperbaiki jadi
+`'UNPAID'` (status awal yang benar, sejalan field lain seperti AS/SR/PI).
+**Implikasi:** service SI kemungkinan tidak pernah dipanggil end-to-end
+lewat endpoint API sejak dibangun — worth flagging ke user/QA kalau ada
+ekspektasi SI sudah "berfungsi" di frontend.
+
+**Diverifikasi end-to-end terhadap database nyata, kali ini LEWAT SERVICE
+LAYER (bukan raw Prisma):** DO qty=10 POSTED → SI1 (via `service.create()`)
+tagih 6 (sukses) → SI2 coba tagih 5 lagi (total 11>10, **ditolak**
+dengan pesan sisa outstanding jelas) → SI3 tagih sisa 4 pas (sukses).
+
+**Lima belas unit kerja total selesai sesi ini.** FR-SLS-01 (DO←SO) dan
+FR-SLS-02 (SI←DO) qty-side kini sama-sama lengkap dengan pola konsisten.
+Kandidat berikutnya untuk pola serupa: GRN←PO, PI←GRN, RNR←SI, SR←RNR,
+dan pasangan Purchasing (DNR/PRT←PI).
+
