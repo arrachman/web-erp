@@ -4171,3 +4171,50 @@ vs undirect mode per FR-PUR-05), DNR (Return Shipment, mirror RNR tapi
 barang keluar ke vendor). Levelnya sepadan SI/DO/GRN/RNR/SR/PI — kandidat
 langkah berikutnya.
 
+### § PRT/DNR (Purchase Return) stock + GL posting — langkah ketujuh Fase 2 (2026-10-01)
+
+`src/erp-pur-returns/pur-return-posting.service.ts`. **Beda struktural dari
+Sales:** di Purchasing, DNR (Return Shipment) dan PRT (Purchase Return) itu
+**satu model `ErpPurReturn`**, dibedakan field `returnType` (enum
+`ErpPurchaseReturnType`: `RETURN_TO_VENDOR` / `DEBIT_NOTE`) — bukan dua tabel
+terpisah seperti RNR/SR di Sales. Jangan cari 2 model Purchasing yang
+terpisah untuk ini.
+
+- **`RETURN_TO_VENDOR`** (= DNR, barang fisik keluar ke vendor): posting
+  stock movement (`movementType: ISSUE`, qty-wise barang keluar) **+** jurnal
+  reversal. Movement **sengaja tidak** lewat
+  `InvStockMovementPostingService.postMovement` (sama alasan GRN/PI: arah
+  auto-GL `ISSUE` = Dr COGS/Cr Inventory mengasumsikan penjualan, padahal
+  retur pembelian itu Dr **Utang Usaha**/Cr **Persediaan**) — GL ditulis
+  manual. Doc number movement kode baru **`DNRI`**.
+- **`DEBIT_NOTE`** (= PRT tanpa gerak fisik): **tidak ada** stock movement
+  sama sekali, jurnal saja.
+- **GL (kedua tipe):** **Dr** Utang Usaha (`header.payableAccountId`,
+  fallback `supplier.payableAccountId`) + **Cr** persediaan/retur
+  pembelian — `RETURN_TO_VENDOR` pakai `line.inventoryAccountId` (reverse
+  langsung ke akun persediaan), `DEBIT_NOTE` pakai
+  `header.returnPurchaseAccountId` fallback `item.purchaseReturnAccountId`
+  (tidak ada stok fisik, jadi bukan akun persediaan) — **Cr** PPN Masukan
+  reversal per baris (kebalikan dari PI).
+- **Di luar scope (sengaja):** FR-PUR-05 direct/undirect — apakah retur ini
+  langsung memotong sisa bayar `invoiceId` tertentu (direct) atau masuk
+  saldo umum ditarik VPP nanti (undirect). Itu **outstanding-amount
+  tracking**, infra Fase 0 yang masih belum dibangun sama sekali di
+  manapun — unit kerja ini cuma GL+stok, sama persis scope SI/DO/GRN/RNR/
+  SR/PI sebelumnya.
+
+**Diverifikasi end-to-end terhadap database nyata, kedua `returnType`:**
+`RETURN_TO_VENDOR` → 1 movement ISSUE qty=4, ledger Dr 60000 AP/Cr 60000
+Persediaan, reverse bersih. `DEBIT_NOTE` → nol movement, ledger Dr 30000
+AP/Cr 30000 akun retur pembelian item, reverse bersih.
+
+**Tujuh transaksi selesai total sejak awal sesi ini:** SI, DO, GRN, RNR, SR,
+PI, PRT/DNR — semua reuse `buildLedgerRows`/`reverseInvLedger`, semua
+tervalidasi end-to-end terhadap database nyata (bukan cuma typecheck), semua
+pola call-site (`postToLedger`/`reverseLedger` dipanggil dari
+`transition()` POST/REOPEN) tidak diubah. **Belum ada satupun** guard
+anti-double-posting lintas dokumen (mis. SR dari RNR vs tanpa RNR,
+disebutkan di §Aturan anti posting ganda) — itu tetap infra Fase 0 yang
+tertunda, dicatat berulang di tiap section agar tidak terlupa saat
+lanjut.
+
