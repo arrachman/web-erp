@@ -4078,3 +4078,54 @@ setelah lulus.
 stok lagi (FR-PUR-03 — PI service belum punya cara "dibuat dari GRN" sama
 sekali, sama seperti SI/DO), outstanding-qty tracking per baris PO.
 
+### § RNR (Return Receipt) + SR (Sales Return) posting — langkah keempat/kelima Fase 1 (2026-10-01)
+
+Dua transaksi, pasangan sama seperti DO+SI (§Aturan anti posting ganda:
+"Barang retur dari pelanggan diposting oleh RNR", FR-SLS-05/06 — SR dari RNR
+tidak menggerakkan stok lagi, SR tanpa RNR menggerakkan stok sendiri).
+**Catatan: guard "SR dari RNR tidak posting stok lagi" BELUM dibangun** —
+bagian ini baru posting stok RNR dan jurnal SR secara independen; keduanya
+masih bisa double-post kalau user posting SR yang sama dari RNR DAN tanpa
+RNR. Guard anti-double-posting itu infra Fase 0 yang masih tertunda.
+
+**RNR** (`src/erp-sls-return-receipts/sls-return-receipt-posting.service.ts`):
+stock movement `movementType: RETURN` ke `inv_stock_movements`, 1 movement +
+1 baris per baris RNR, delegasi penuh ke
+`InvStockMovementPostingService.postMovement` (**beda dari GRN**: untuk RNR,
+`RETURN` type di engine existing — Dr Inventory/Cr COGS — secara akuntansi
+**benar**, karena RNR membalikkan ISSUE yang sudah di-debit COGS saat DO,
+bukan transaksi baru seperti pembelian). Doc number kode baru **`RNRI`**.
+Module `ErpSlsReturnReceiptsModule` sekarang import `ErpInvStockMovementsModule`.
+
+**SR** (`src/erp-sls-returns/sls-return-posting.service.ts`): jurnal GL,
+mirror persis `SlsInvoicePostingService` tapi debit/kredit terbalik:
+- **Dr** Retur Penjualan per baris — `item.salesReturnAccountId`, fallback
+  `item.category.salesAccountId`.
+- **Dr** PPN Keluaran per baris (retur) — `tax.saleAccountId`, override
+  header `tax1AccountId`/`tax2AccountId`.
+- **Cr** Piutang Usaha — `return.receivableAccountId`, fallback
+  `customer.receivableAccountId`.
+- Reuse `buildLedgerRows`/`reverseInvLedger` yang sama, `source: 'SALES'`.
+
+**Diverifikasi end-to-end terhadap database nyata** (dua script test terpisah,
+dihapus setelah lulus): RNR → 1 movement RETURN ter-create, reverse bersih.
+SR → 2 baris ledger balanced (Dr 50000 Retur / Cr 50000 AR, akun sesuai item
+& header), reverse bersih.
+
+**Dilewati sementara (level kerja beda, bukan unit sepadan):** AS (Customer
+Advance) dan IP (Payment Receipt) — ditelusuri tapi **tidak dikerjakan**.
+Temuan: `ErpFinArReceipt` (AR Receipt, tujuan `arReceiptId` di AS) belum
+punya `transition`/workflow/posting service sama sekali — baru CRUD polos
+(create/findAll/findOne/update/remove, tanpa POST/REOPEN). AS sendiri juga
+**tidak punya field akun kas/bank** di schema maupun DTO — desainnya
+sengaja mendelegasikan sisi kas ke AR Receipt terkait
+(`ErpSlsCustomerAdvance.arReceiptId`), tapi rantai itu putus karena AR
+Receipt belum dibangun. `ErpFinSettlementAllocation` (alokasi AR
+Receipt/AP Payment ke invoice-invoice tertentu, FK wajib ke
+`fin_ledger_entries.id`) juga ada di schema tanpa logic apapun di service.
+Membangun AS/IP/PV dengan benar = membangun dulu AR Receipt
+workflow+posting+allocation — unit kerja jauh lebih besar dari SI/DO/GRN/
+RNR/SR (yang semua "isi NO-OP yang polanya sudah ada"). **Jangan
+dikerjakan sambil lalu** — perlu desain allocation flow dulu, eskalasi ke
+user sebelum mulai.
+
