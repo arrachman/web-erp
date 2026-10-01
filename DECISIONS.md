@@ -4718,3 +4718,22 @@ GRN3 terima sisa 4 pas (sukses) → PO `closedDate` otomatis terisi.
 
 **Tujuh belas unit kerja total selesai sesi ini.**
 
+### § PI←GRN outstanding-qty (FR-PUR-03 billed-side) (2026-10-01)
+
+Mirror SI←DO, sekarang PI←GRN. `goodsReceiptLineId` ditambah ke
+`PurInvoiceLineDto` (belum ada di DTO walau sudah ada di schema line),
+diteruskan `mapInvoiceLine` via `connect` (field punya `@relation`, bukan
+scalar langsung — beda dari `sourceLineId` di SI/DO yang scalar polos).
+`pur-invoice-outstanding.helpers.ts` (baru):
+`validateSourceGoodsReceiptOutstanding` — GRN harus `POSTED`, outstanding
+diukur dari `acceptedQty` GRN line dikurangi total qty PI lain yang sudah
+menagih baris itu.
+
+**Diverifikasi end-to-end terhadap database nyata:** GRN acceptedQty=10
+POSTED → PI1 tagih 6 (sukses) → PI2 coba tagih 5 lagi (11>10, **ditolak**)
+→ PI3 tagih sisa 4 pas (sukses).
+
+**Delapan belas unit kerja total selesai sesi ini.** Outstanding-qty kini
+lengkap untuk 4 pasangan: DO←SO, SI←DO, GRN←PO, PI←GRN. Sisa pasangan:
+RNR←SI, SR←RNR, DNR/PRT←PI — levelnya sama, kandidat berikutnya.
+

@@ -99,6 +99,15 @@ export class PurInvoiceLineDto {
   @ApiPropertyOptional() @IsOptional() @IsString() projectId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'pur_goods_receipt_lines id yang ditagih — wajib diisi per baris saat header.goodsReceiptId diisi (FR-PUR-03: PI dari GRN tidak menambah stok, hanya reklasifikasi accrual). ' +
+      'Server menolak bila qty melebihi sisa GRN acceptedQty yang belum ditagih.',
+  })
+  @IsOptional()
+  @IsString()
+  goodsReceiptLineId?: string;
+
   @ApiProperty({ example: 1 })
   @IsInt()
   @Min(1)

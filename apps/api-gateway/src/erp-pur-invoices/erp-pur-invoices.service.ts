@@ -18,6 +18,7 @@ import {
   mapInvoiceLine,
   computeTotals,
 } from './pur-invoice.helpers';
+import { validateSourceGoodsReceiptOutstanding } from './pur-invoice-outstanding.helpers';
 
 const DOC_CODE = 'PI';
 const FALLBACK_PREFIX = 'PI';
@@ -84,6 +85,10 @@ export class ErpPurInvoicesService {
     const { subtotal, grandTotal } = computeTotals(dto.lines, dto);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.goodsReceiptId) {
+        await validateSourceGoodsReceiptOutstanding(tx, BigInt(dto.goodsReceiptId), dto.lines);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;
