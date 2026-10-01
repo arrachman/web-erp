@@ -4024,3 +4024,57 @@ guard supaya SI yang dibuat DARI DO tidak posting stok lagi (FR-SLS-02 —
 perlu dulu SI punya cara "dibuat dari DO" yang belum ada sama sekali di
 service SI saat ini), outstanding-qty tracking.
 
+### § GRN (Goods Receipt) stock + GL posting — langkah ketiga Fase 1/2 (2026-10-01)
+
+`src/erp-pur-goods-receipts/pur-goods-receipt-posting.service.ts` — ganti
+NO-OP jadi posting nyata (sesuai "Barang masuk dari vendor diposting oleh
+GRN" di §Aturan anti posting ganda). Dua bagian, keduanya baru:
+
+1. **Stock movement (qty, QC-gated):** 1 `ErpInvStockMovement` per GRN
+   (`movementType: TRANSFER_RECEIPT`, bukan `ISSUE`/`RETURN`), 1 baris per
+   baris GRN **hanya untuk `acceptedQty > 0`** (rejected/quarantine qty tidak
+   menambah stok — field QC `acceptedQty`/`rejectedQty`/`quarantineQty` sudah
+   ada di schema sejak awal tapi belum pernah dipakai). Movement masuk ke
+   `destinationWarehouseId` dari header/line GRN.
+   - **Kenapa `TRANSFER_RECEIPT`, bukan dipaksa lewat
+     `InvStockMovementPostingService.postMovement` seperti DO:** engine GL
+     otomatis punya type `ISSUE`→(Dr COGS/Cr Inventory) dan
+     `RETURN`→kebalikannya (Dr Inventory/Cr **COGS**). Memakai `RETURN` untuk
+     GRN akan salah secara akuntansi (pembelian itu Dr Inventory/Cr **Hutang/
+     Accrual**, bukan Cr COGS). `TRANSFER_RECEIPT` sengaja **tidak**
+     men-trigger auto-GL di `postMovement` ("TRANSFER / TRANSFER_RECEIPT /
+     REQUEST: no GL valuation" — lihat komentar `inv-stock-movement-posting.
+     service.ts`), jadi dipakai murni untuk update `inv_stock_balances`
+     (derived view), GL-nya ditulis manual (poin 2). **Kalau butuh pola ini
+     lagi untuk transaksi lain**, jangan asumsikan semua movement bisa lewat
+     `postMovement` — cek dulu arah akuntansinya cocok ISSUE/RETURN atau
+     tidak.
+2. **GL accrual** (reuse `buildLedgerRows`/`reverseInvLedger`, pola sama
+   seperti SI):
+   - **Dr** Persediaan — `line.inventoryAccountId`, fallback `item.
+     inventoryAccountId`.
+   - **Cr** Barang Diterima Belum Ditagih (GR/IR Accrual) —
+     `line.accruedPayableAccountId`, fallback header `grn.payableAccountId`.
+   - Nominal = `acceptedQty × netUnitCost` (unit cost bersih setelah diskon
+     baris, fungsi `netUnitCost` dipertahankan dari kode lama).
+3. Item cost stamping (`purchasePrice`/`lastHpp`/seed `averageCost`)
+   dipertahankan persis seperti sebelumnya — tidak diubah.
+
+**Doc numbering movement:** kode baru **`GRI`** (GRN Issue→in, dibuat manual
+lewat Prisma seperti pola `DOI` di DO, bukan lewat
+`ErpInvStockMovementsService.create`).
+
+Module wiring: **tidak perlu** import `ErpInvStockMovementsModule` (tidak
+pakai `InvStockMovementPostingService` sama sekali — beda dari DO).
+
+**Diverifikasi end-to-end terhadap database nyata:** GRN qty=10,
+acceptedQty=8, rejectedQty=2 → movement hanya punya 1 baris qty=8 (bukan 10)
+→ 2 baris ledger balanced Dr 120000 (8×15000) akun persediaan / Cr 120000
+akun accrual (fallback header) → item `purchasePrice`/`lastHpp` ter-stamp
+15000 → reverse menghapus movement + ledger rows bersih. Script test dihapus
+setelah lulus.
+
+**Belum disentuh:** PI Purchasing yang dibuat dari GRN tidak boleh menambah
+stok lagi (FR-PUR-03 — PI service belum punya cara "dibuat dari GRN" sama
+sekali, sama seperti SI/DO), outstanding-qty tracking per baris PO.
+
