@@ -103,6 +103,15 @@ export class SlsReturnReceiptLineDto {
   @IsOptional()
   customFields?: Record<string, unknown>;
 
+  @ApiPropertyOptional({
+    description:
+      'sls_invoice_lines id yang diretur — wajib diisi per baris saat header.invoiceId diisi (FR-SLS-05: RNR menerima sisa outstanding SI baris ini). ' +
+      'Server menolak bila qty melebihi sisa SI (quantity − total RNR lain yang sudah menerima retur baris itu).',
+  })
+  @IsOptional()
+  @IsString()
+  sourceLineId?: string;
+
   @ApiProperty({ example: 1 })
   @IsInt()
   @Min(1)

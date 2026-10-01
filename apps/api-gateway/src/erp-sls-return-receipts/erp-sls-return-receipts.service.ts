@@ -23,6 +23,7 @@ import {
   mapExistingSlsReturnReceiptLines,
   buildSlsReturnReceiptTotalsInput,
 } from './sls-return-receipt-persistence.mapper';
+import { validateSourceInvoiceOutstanding } from './sls-return-receipt-outstanding.helpers';
 
 const DOC_CODE = 'RNR';
 const FALLBACK_PREFIX = 'RNR';
@@ -125,6 +126,10 @@ export class ErpSlsReturnReceiptsService {
     const dueDate = await this.resolveDueDate(dto.paymentTermId, dto.docDate, dto.dueDate);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.invoiceId) {
+        await validateSourceInvoiceOutstanding(tx, BigInt(dto.invoiceId), dto.lines);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;

@@ -4737,3 +4737,42 @@ POSTED → PI1 tagih 6 (sukses) → PI2 coba tagih 5 lagi (11>10, **ditolak**)
 lengkap untuk 4 pasangan: DO←SO, SI←DO, GRN←PO, PI←GRN. Sisa pasangan:
 RNR←SI, SR←RNR, DNR/PRT←PI — levelnya sama, kandidat berikutnya.
 
+### § RNR←SI (qty) + SR (nominal) outstanding — koreksi arah rantai (2026-10-01)
+
+**Temuan penting sebelum implementasi:** rencana awal "SR←RNR" **salah
+arah**. Cek skema: `ErpSlsReturn` (SR) tidak punya FK ke RNR sama sekali
+— yang ada **RNR punya FK opsional `returnId` ke SR** (`ErpSlsReturnReceipt.
+returnId`). Arah rantai sebenarnya sesuai PRD tabel Sales: **RNR dibuat
+dari SI** (`Manual, SI`), **SR dibuat dari RNR atau SI** (`Manual, RNR,
+SI`). Jadi pasangan qty-side yang benar adalah **RNR←SI**, bukan SR←RNR.
+
+**RNR←SI** (`sls-return-receipt-outstanding.helpers.ts`, baru): mirror
+persis SI←DO. `sourceLineId` ditambah ke `SlsReturnReceiptLineDto`
+(scalar polos, sudah ada di schema line), `validateSourceInvoiceOutstanding`
+— SI harus `POSTED`, outstanding diukur dari `SI line.quantity` dikurangi
+total qty RNR lain yang sudah menerima retur baris itu.
+
+**SR** (`sls-return-outstanding.helpers.ts`, baru) — **bukan qty-side**,
+karena SR sendiri tidak pernah posting stok (`SlsReturnPostingService`
+GL-only, RNR sudah pegang stok). Yang relevan FR-SLS-06: **"Nominal SR
+tidak boleh melebihi sisa SI ditambah potongan AS/IP yang sudah dipakai."**
+`validateSourceInvoiceRemainingBalance` — validasi **nominal** terhadap
+`invoiceId` SR: outstanding AR SI = `grandTotal − SUM(alokasi AR Receipt
+untuk invoice itu) − SUM(grandTotal SR lain yang sudah dibuat terhadap
+invoice itu, status aktif)`. **Catatan: "potongan AS/IP" di FR-SLS-06
+belum ikut dihitung** — itu perlu nilai `appliedAmount` dari AS yang sudah
+dipotong ke SI (field ada tapi belum ada logic pemotongan AS→SI sama
+sekali di manapun, infra terpisah, di luar scope pass ini).
+
+**Diverifikasi end-to-end terhadap database nyata:**
+- RNR←SI: SI qty=10 POSTED → RNR1 retur 6 (sukses) → RNR2 coba retur 5
+  lagi (11>10, **ditolak**) → RNR3 retur sisa 4 pas (sukses).
+- SR: SI grandTotal=200000 POSTED → SR1 retur 120000 (sukses) → SR2 coba
+  retur 100000 lagi (220000>200000, **ditolak** dengan pesan sisa
+  piutang jelas) → SR3 retur sisa 80000 pas (sukses).
+
+**Dua puluh unit kerja total selesai sesi ini.** Outstanding-tracking kini
+mencakup 6 pasangan/validasi: DO←SO, SI←DO, GRN←PO, PI←GRN, RNR←SI, SR
+(nominal). Sisa: DNR/PRT←PI (Purchasing return chain, cek dulu arahnya
+sebelum implementasi — jangan ulangi kesalahan arah SR←RNR).
+

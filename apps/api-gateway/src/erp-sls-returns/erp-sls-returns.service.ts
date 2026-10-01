@@ -23,6 +23,7 @@ import {
   buildSlsReturnTotalsInput,
   mapExistingSlsReturnLines,
 } from './sls-return-persistence.mapper';
+import { validateSourceInvoiceRemainingBalance } from './sls-return-outstanding.helpers';
 
 const DOC_CODE = 'SR';
 const FALLBACK_PREFIX = 'SR';
@@ -127,6 +128,10 @@ export class ErpSlsReturnsService {
     const dueDate = await this.resolveDueDate(dto.paymentTermId, dto.docDate, dto.dueDate);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      if (dto.invoiceId) {
+        await validateSourceInvoiceRemainingBalance(tx, BigInt(dto.invoiceId), grandTotal);
+      }
+
       const fiscalPeriodId = await this.resolvePeriod(tx, dto.fiscalPeriodId, dto.docDate);
       const wantAuto = dto.auto !== false && !dto.docNumber;
       const docNumber = wantAuto ? await this.genDocNumber(tx) : dto.docNumber;
