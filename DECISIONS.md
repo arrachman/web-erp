@@ -4387,3 +4387,28 @@ Receipt auto-create, outstanding-qty tracking generik, guard anti-double-
 posting generik, VPP (payment schedule, agregator AP mirip IC — kemungkinan
 sama seperti IC, sengaja tanpa posting), semua transaksi ter-gate PRD.
 
+### § Checkpoint — status Fase 1/2 Sales+Purchasing inti (2026-10-01)
+
+Audit menyeluruh semua modul Sales+Purchasing untuk pastikan tidak ada
+transaksi lain yang "TODO posting" terlewat. Hasil (cek marker "Intentionally
+no"/"TODO.*posting" per file):
+
+**Posting sudah nyata (dikerjakan sesi ini):** SI, DO, GRN, RNR, SR, PI, PRT/
+DNR, IP (AR Receipt), VP (AP Payment).
+
+**"Intentionally no" — BENAR & FINAL, sesuai tabel PRD (Jurnal=Tidak,
+Stok=Tidak), bukan TODO terlewat:** SQ, SO, PI-Proforma (Sales), PL, DR, IC
+(agregator, FR-SLS-07), PR, PO, VPP (agregator, FR-PUR-07 — mirror IC).
+**Jangan "perbaiki" ini di masa depan tanpa cek ulang PRD** — no-op-nya
+memang desain, bukan utang teknis.
+
+**Masih gap, dicatat jelas di section masing-masing:** AS (Customer Advance)
+— field akun kas/bank tidak ada by design, perlu auto-create AR Receipt
+saat AS di-POST (unit kerja baru, belum dikerjakan). SIE (Invoice Swap) —
+di-gate PRD, nunggu klarifikasi bisnis.
+
+**Fase 1 (Sales) & Fase 2 (Purchasing) inti PRD — status: SELESAI** kecuali
+AS dan outstanding-tracking/anti-double-posting generik (infra Fase 0 yang
+dari awal direncanakan terpisah). RP/PP/SIE tetap di luar scope sesuai gate
+plan awal.
+
