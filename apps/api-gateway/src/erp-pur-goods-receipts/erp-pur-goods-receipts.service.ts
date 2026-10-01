@@ -31,8 +31,8 @@ export class ErpPurGoodsReceiptsService {
   private async genDocNumber(tx: Prisma.TransactionClient): Promise<string> {
     const n = await tx.erpDocumentNumbering.findFirst({ where: { documentCode: DOC_CODE, deletedAt: null } });
     if (n) {
-      await tx.erpDocumentNumbering.update({ where: { id: n.id }, data: { nextNumber: n.nextNumber + 1 } });
-      return `${n.prefix}${String(n.nextNumber).padStart(n.digitCount, '0')}`;
+      const bumped = await tx.erpDocumentNumbering.update({ where: { id: n.id }, data: { nextNumber: { increment: 1 } }, select: { nextNumber: true } });
+      return `${n.prefix}${String(bumped.nextNumber - 1).padStart(n.digitCount, '0')}`;
     }
     const count = await tx.erpPurGoodsReceipt.count();
     return `${FALLBACK_PREFIX}${String(count + 1).padStart(6, '0')}`;

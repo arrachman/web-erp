@@ -5035,3 +5035,14 @@ tidak POST ditolak. Akun non-kontrol tidak diperiksa.
 **Peringatan desain:** dokumen opening subledger (SI/PI/IB) sudah memposting GL
 sendiri; jika operator juga memasukkan akun kontrol yang sama di jurnal CoA, saldo
 GL akan dobel. Pilih satu jalur per akun kontrol (subledger *atau* jurnal CoA).
+
+### § Penomoran dokumen — increment atomik (2026-10-01)
+
+Audit PRD "tanpa nomor lompat saat simpan bersamaan": semua pembangkit nomor
+(`getNextNumber` + 43 `genDocNumber` per modul) membaca `nextNumber` lalu
+`update { nextNumber: seq + 1 }` → dua simpan bersamaan bisa dapat nomor sama
+(tabrakan unique `doc_number`). Sekarang `update { nextNumber: { increment: 1 } }`
+dan nomor = nilai hasil update − 1: row lock UPDATE menserialkan pemanggil, dan
+rollback transaksi ikut membatalkan increment (tidak ada nomor lompat). Tetap
+per `documentCode` — penomoran per cabang/periode (PRD) belum ada di skema.
+Belum diuji dengan beban konkuren nyata.

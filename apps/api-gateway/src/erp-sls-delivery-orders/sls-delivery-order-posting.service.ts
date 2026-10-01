@@ -120,11 +120,13 @@ export class SlsDeliveryOrderPostingService {
       where: { documentCode: MOVEMENT_DOC_CODE, deletedAt: null },
     });
     if (numbering) {
-      const seq = numbering.nextNumber;
-      await tx.erpDocumentNumbering.update({
+      // Atomic increment: row lock serializes concurrent saves (no duplicate / skipped numbers).
+      const bumped = await tx.erpDocumentNumbering.update({
         where: { id: numbering.id },
-        data: { nextNumber: seq + 1 },
+        data: { nextNumber: { increment: 1 } },
+        select: { nextNumber: true },
       });
+      const seq = bumped.nextNumber - 1;
       return `${numbering.prefix}${String(seq).padStart(numbering.digitCount, '0')}`;
     }
     const count = await tx.erpInvStockMovement.count();

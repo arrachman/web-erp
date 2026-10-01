@@ -172,14 +172,15 @@ export class ErpDocumentNumberingsService {
         throw new NotFoundException(`Document numbering for code "${documentCode}" not found`);
       }
 
-      const seq = numbering.nextNumber;
+      // Atomic increment: the UPDATE row lock serializes concurrent callers.
+      const bumped = await tx.erpDocumentNumbering.update({
+        where: { id: numbering.id },
+        data: { nextNumber: { increment: 1 } },
+        select: { nextNumber: true },
+      });
+      const seq = bumped.nextNumber - 1;
       const padded = String(seq).padStart(numbering.digitCount, '0');
       const docNumber = `${numbering.prefix}${padded}`;
-
-      await tx.erpDocumentNumbering.update({
-        where: { id: numbering.id },
-        data: { nextNumber: seq + 1 },
-      });
 
       return { documentCode, docNumber, sequence: seq };
     });
