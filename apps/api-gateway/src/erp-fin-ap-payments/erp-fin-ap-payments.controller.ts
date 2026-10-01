@@ -15,6 +15,7 @@ import { ErpJwtAuthGuard } from '../erp-auth/guards/erp-jwt-auth.guard';
 import { CreateApPaymentDto } from './dto/create-ap-payment.dto';
 import { QueryApPaymentDto } from './dto/query-ap-payment.dto';
 import { UpdateApPaymentDto } from './dto/update-ap-payment.dto';
+import { TransitionApPaymentDto } from './dto/transition-ap-payment.dto';
 import { ErpFinApPaymentsService } from './erp-fin-ap-payments.service';
 
 @ApiTags('ERP Fin AP Payments')
@@ -56,5 +57,15 @@ export class ErpFinApPaymentsController {
   @ApiOperation({ summary: 'Delete AP payment' })
   remove(@Param('id') id: string, @Request() req: any) {
     return this.service.remove(BigInt(id), req.user?.id);
+  }
+
+  @Post(':id/transition')
+  @ApiOperation({ summary: 'Transition AP payment workflow status (§2.7)' })
+  transition(
+    @Param('id') id: string,
+    @Body() dto: TransitionApPaymentDto,
+    @Request() req: any,
+  ) {
+    return this.service.transition(BigInt(id), dto, req.user?.id);
   }
 }

@@ -4322,3 +4322,68 @@ workflow-nya sendiri belum final.
 database — DO di-POST lalu `NEXT['POSTED']['REOPEN']` dicek langsung (guard
 yang sama dipakai `transition()`), hasil `'DRAFT'` (sebelumnya `undefined`).
 
+### § PV ternyata = AR Receipt — tidak ada unit kerja terpisah (2026-10-01)
+
+Sebelum membangun AP Payment, dicek: PRD membedakan **IP (Payment Receipt,
+dari SO langsung)** vs **PV (AR Payment, dari IC/SI/SR/AS/IP, multi-invoice
++ kurs)** sebagai dua alur. Tapi **tidak ada model/folder PV terpisah** di
+codebase — tidak ada `erp-sls-*-payments` atau sejenis. Konfirmasi: `fin_ar_receipts`
+(yang jadi dasar AR Receipt yang baru dibangun) **sudah generik** — multi-
+allocation ke invoice manapun + `exchangeRate` header — cukup untuk
+menangani kedua kebutuhan IP dan PV sekaligus, dibedakan hanya lewat field
+opsional `source` (default `'IP'`, user bisa kirim `'PV'` saat create untuk
+flow dari IC). **Jadi PV sudah selesai** sebagai efek dari membangun AR
+Receipt — tidak ada unit kerja tambahan.
+
+Juga dicek IC (`erp-sls-ar-collections`): sudah punya `transition()` sendiri
+tapi `postingStatus` sengaja tetap `UNPOSTED` (ada TODO comment) — ini
+**benar secara desain**, FR-SLS-07 PRD eksplisit "IC tidak memposting
+jurnal. IC hanya mengelompokkan dokumen yang ditagih dan menjadi sumber
+PV." Tidak perlu diperbaiki.
+
+### § VP (Vendor Payment / AP Payment) — reuse pola AR Receipt, dibangun dari nol (2026-10-01)
+
+`ErpFinApPayment` levelnya sama seperti `ErpFinArReceipt` sebelum dikerjakan
+— CRUD polos 237 baris, tanpa transition/posting. Dibangun penuh, mirror
+`ArReceiptPostingService` dengan arah dibalik (Dr Utang Usaha, bukan Cr
+Piutang Usaha) + tambahan FX gain/loss & term discount (field header
+`fxGainLossAccountId`/`termDiscountAccountId` sudah ada di schema sejak
+awal — "added for VP/VPP reuse" sesuai komentar schema — belum dipakai
+sampai sekarang, FR-PUR-08 "mencatat selisih kurs bila ada").
+
+**File baru:** `dto/transition-ap-payment.dto.ts`, `ap-payment.helpers.ts`
+(include `POSTED: { REOPEN: 'DRAFT' }` sejak awal — lesson dari bug fix di
+atas, tidak perlu ditemukan ulang), `ap-payment-posting.service.ts`. DTO
+create ditulis ulang dengan `instruments[]` + `allocations[]` (allocation
+ke `pur_invoices`, bukan `sls_invoices`) + field opsional per-allocation
+`fxGainLossAmount`/`termDiscountAmount`. Pola allocation-draft-di-metadata
+**identik** AR Receipt (alasan sama: `ledgerEntryId` NOT NULL).
+
+**Identitas balance (PENTING, beda dari kelihatannya sepintas):**
+```
+Dr Utang Usaha (allocationTotal)  [+ Dr Selisih Kurs rugi, bila fx < 0]
+= [Cr Selisih Kurs laba, bila fx > 0] + Cr Potongan Termin + Cr Kas/Bank (instrumentTotal)
+
+→ instrumentTotal = allocationTotal − fxGainLossNet − termDiscountNet
+```
+**Bug sempat salah tulis saat development** (`instrumentTotal + fxNet +
+termDiscountNet == allocationTotal` — salah tanda, gagal di test pertama
+dengan pesan error yang jelas "95000 + (-3000) + 2000 ≠ 100000") — diperbaiki
+sebelum commit ke rumus yang benar di atas. Dicatat di sini supaya kalau PI/
+SI/transaksi lain nanti butuh pola serupa (instrument vs allocation dengan
+offset tambahan), jangan asumsikan tanda offset itu simetris — turunkan
+dari struktur jurnal dulu, baru tulis validasi.
+
+**Diverifikasi end-to-end terhadap database nyata:** PI POSTED (grandTotal
+100000, PATH B tanpa GRN) → VP dibuat (instrument TRANSFER 101000, alokasi
+100000 ke PI + fx −3000 + term discount 2000) → SUBMIT→APPROVE→POST → 4
+baris ledger balanced (Dr AP 100000, Dr FX rugi 3000, Cr Discount 2000, Cr
+Bank 101000 — total 103000=103000) → PI `settlementStatus` jadi `PAID` →
+REOPEN → ledger+allocation terhapus bersih + PI balik `UNPAID`.
+
+**Sepuluh unit kerja total selesai sesi ini** (7 isi-NO-OP + AR Receipt +
+bug fix 16 modul + AP Payment). Sisa besar yang belum disentuh: AS→AR
+Receipt auto-create, outstanding-qty tracking generik, guard anti-double-
+posting generik, VPP (payment schedule, agregator AP mirip IC — kemungkinan
+sama seperti IC, sengaja tanpa posting), semua transaksi ter-gate PRD.
+
