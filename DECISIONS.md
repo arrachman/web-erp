@@ -5085,5 +5085,6 @@ stok turunan di-set `VOID` (keluar dari on-hand & moving average, yang memfilter
 `postingStatus=UNPOSTED` (laporan AR & rekonsiliasi kontrol memfilter `POSTED`, jadi SI
 VOID otomatis keluar dari subledger sementara GL net nol). Diblokir bila sudah ada
 alokasi AR Receipt aktif atau Return/Return Receipt aktif (`sls-invoice-void.helpers.ts`).
-REOPEN tetap hard-delete (koreksi sebelum final). **Belum:** VOID GRN (blokir bila ada PI/
-Return aktif, balik stok), tombol VOID di frontend, VOID dokumen lain; belum diuji ke DB nyata.
+REOPEN tetap hard-delete (koreksi sebelum final). Frontend: item kebab **Void** (danger, hanya status POSTED) di `sls-invoices-page.tsx` →
+`confirmAction` + prompt alasan → `transition VOID`. **Belum:** VOID GRN (blokir bila ada PI/
+Return aktif, balik stok) & dokumen lain; belum diuji ke DB nyata.

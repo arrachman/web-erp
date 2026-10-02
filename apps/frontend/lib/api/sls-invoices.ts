@@ -155,7 +155,7 @@ export type UpdateSlsInvoicePayload = Partial<Omit<CreateSlsInvoicePayload, 'lin
   lines?: SlsOrderLinePayload[];
 };
 
-export type SlsInvoiceTransition = 'SUBMIT' | 'APPROVE' | 'REJECT' | 'POST' | 'REOPEN';
+export type SlsInvoiceTransition = 'SUBMIT' | 'APPROVE' | 'REJECT' | 'POST' | 'REOPEN' | 'VOID';
 
 export interface ListSlsInvoicesParams extends PaginationParams {
   sortBy?: string;

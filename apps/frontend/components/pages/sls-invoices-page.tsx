@@ -15,6 +15,7 @@ import {
   type SummaryConfig,
 } from '@/components/organisms/erp-list-layout';
 import { SlsInvoiceFilters, emptySlsSiFilters, type SlsSiFilters } from './sls-invoice-filters';
+import type { RowActionItem } from '@/components/molecules/row-actions-menu';
 import { confirmAction, notify } from '@/lib/feedback';
 import { cashBankWorkflowActions } from '@/lib/fin-cash-bank-workflow';
 import { trxNewRoute, trxEditRoute, type TrxFormPageProps } from '@/lib/trx-route';
@@ -142,10 +143,24 @@ export function ErpSlsInvoicesPage({ formMode, recordId, onNavigate }: TrxFormPa
   const runTransition = async (r: ErpSlsInvoice, action: SlsInvoiceTransition) => {
     let reason: string | undefined;
     if (action === 'REJECT') { reason = window.prompt('Alasan menolak dokumen ini?') ?? undefined; if (!reason) return; }
-    const verb: Record<SlsInvoiceTransition, string> = { SUBMIT: 'mengajukan', APPROVE: 'menyetujui', REJECT: 'menolak', POST: 'memposting', REOPEN: 'membuka kembali' };
+    if (action === 'VOID') { reason = window.prompt('Alasan membatalkan (void) invoice ini?')?.trim() || undefined; if (!reason) return; }
+    const verb: Record<SlsInvoiceTransition, string> = { SUBMIT: 'mengajukan', APPROVE: 'menyetujui', REJECT: 'menolak', POST: 'memposting', REOPEN: 'membuka kembali', VOID: 'membatalkan (void)' };
     try { await transitionSlsInvoice(r.id, action, reason); notify(`Berhasil ${verb[action]} ${r.docNumber}`, 'success'); reload(); }
     catch (e: unknown) { notify(e instanceof Error ? e.message : 'Gagal', 'danger'); }
   };
+
+  const handleVoid = (r: ErpSlsInvoice) =>
+    confirmAction({
+      title: 'Void Sales Invoice?',
+      message: `${r.docNumber} akan dibatalkan dengan jurnal pembalik bertanggal hari ini; stok dikembalikan. Tidak bisa di-undo.`,
+      variant: 'danger', confirmLabel: 'Void',
+      onConfirm: () => runTransition(r, 'VOID'),
+    });
+
+  const workflowActions = (r: ErpSlsInvoice): RowActionItem[] => [
+    ...cashBankWorkflowActions(r.status, (a) => runTransition(r, a)),
+    ...(r.status === 'POSTED' ? [{ label: 'Void', onSelect: () => handleVoid(r), danger: true }] : []),
+  ];
 
   const handleDelete = (r: ErpSlsInvoice) =>
     confirmAction({
@@ -213,7 +228,7 @@ export function ErpSlsInvoicesPage({ formMode, recordId, onNavigate }: TrxFormPa
         onSelectAll={(checked) => setSelected(checked ? new Set(rows.map((r) => r.id)) : new Set())}
         onOpen={openEdit}
         onDelete={handleDelete}
-        extraActions={(r) => cashBankWorkflowActions(r.status, (a) => runTransition(r, a))}
+        extraActions={workflowActions}
       />
     </ErpListLayout>
   );
