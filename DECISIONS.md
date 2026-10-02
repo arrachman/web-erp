@@ -5046,3 +5046,19 @@ dan nomor = nilai hasil update − 1: row lock UPDATE menserialkan pemanggil, da
 rollback transaksi ikut membatalkan increment (tidak ada nomor lompat). Tetap
 per `documentCode` — penomoran per cabang/periode (PRD) belum ada di skema.
 Belum diuji dengan beban konkuren nyata.
+
+### § FX Revaluation — FR-FIN-05 (2026-10-02)
+
+Modul `apps/api-gateway/src/erp-fin-fx-revaluations/` (`POST erp/fin/fx-revaluations/run`,
+`GET erp/fin/fx-revaluations`). Per periode fiskal: saldo akun bermata uang asing
+(`md_accounts.currencyId` ≠ base; kas/bank, kontrol piutang/utang) dari ledger POSTED
+s/d akhir periode (Σ debitFx−creditFx vs Σ debit−credit) dinilai ulang ke kurs
+`md_currency_rates` terakhir ≤ tanggal akhir periode. Selisih belum terealisasi
+diposting ke akun laba/rugi dari `sys_settings` (module=`finance`, group=`accounts`,
+key `fxUnrealizedGainAccountId` / `fxUnrealizedLossAccountId`) — ditolak bila belum diset
+atau kurs hilang. Hasil disimpan di `fin_fx_revaluation_runs/lines`; reversal otomatis
+dengan tanggal hari pertama periode berikutnya (sourceDocType `fin_fx_revaluation_reversals`)
+bila periode itu ada. Satu run COMPLETED per periode. Guard periode CLOSED (FR-FIN-04) berlaku.
+Logika murni di `fx-revaluation.helpers.ts` (+spec). Saldo debit-signed: utang naik = rugi.
+**Belum:** dua key setting belum di-seed/UI Setting; halaman FE `fin-revaluations-page`
+masih wrapper jurnal (belum tombol "Jalankan revaluasi"); service belum diuji terhadap DB nyata.

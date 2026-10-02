@@ -37,6 +37,7 @@ import { ErpFinGirosModule } from './erp-fin-giros/erp-fin-giros.module';
 import { ErpFinJournalEntriesModule } from './erp-fin-journal-entries/erp-fin-journal-entries.module';
 import { ErpFinLedgerModule } from './erp-fin-ledger/erp-fin-ledger.module';
 import { ErpFinReportsModule } from './erp-fin-reports/erp-fin-reports.module';
+import { ErpFinFxRevaluationsModule } from './erp-fin-fx-revaluations/erp-fin-fx-revaluations.module';
 import { ErpFiscalPeriodsModule } from './erp-fiscal-periods/erp-fiscal-periods.module';
 import { ErpFormFieldsModule } from './erp-form-fields/erp-form-fields.module';
 import { ErpHomeWidgetsModule } from './erp-home-widgets/erp-home-widgets.module';
@@ -187,6 +188,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpFinJournalEntriesModule,
     ErpFinLedgerModule,
     ErpFinReportsModule,
+    ErpFinFxRevaluationsModule,
     ErpFiscalPeriodsModule,
     ErpFormFieldsModule,
     ErpHomeWidgetsModule,
