@@ -5062,3 +5062,14 @@ bila periode itu ada. Satu run COMPLETED per periode. Guard periode CLOSED (FR-F
 Logika murni di `fx-revaluation.helpers.ts` (+spec). Saldo debit-signed: utang naik = rugi.
 **Belum:** dua key setting belum di-seed/UI Setting; halaman FE `fin-revaluations-page`
 masih wrapper jurnal (belum tombol "Jalankan revaluasi"); service belum diuji terhadap DB nyata.
+
+### § Jurnal pembalik bertanggal — helper `reverseWithOffset` (2026-10-02)
+
+`erp-inv-gl/ledger-offset.helpers.ts`: salin baris ledger sumber dengan debit/kredit
+(dan Fx) ditukar, bertanggal & berperiode baru, `sourceDocType = <tipe>:void`, docNumber
+`<no>-V`; baris asli tidak disentuh; menolak pembalikan ganda dan periode CLOSED.
+**Temuan:** SI dan GRN **tidak punya aksi VOID/cancel** — hanya REOPEN (POSTED→DRAFT) yang
+hard-delete ledger (tetap dipakai untuk koreksi di periode sama). Helper ini belum
+di-wire ke dokumen mana pun; menambah aksi VOID butuh keputusan (lihat di bawah).
+**Keputusan tertunda:** VOID SI juga harus membalik pergerakan stok (HPP), uang muka (AS) &
+alokasi receipt; VOID GRN harus membalik stok & memblokir bila sudah ada PI/Return aktif.
