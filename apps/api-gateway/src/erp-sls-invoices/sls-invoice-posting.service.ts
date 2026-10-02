@@ -9,6 +9,7 @@ import {
 import { InvStockMovementPostingService } from '../erp-inv-stock-movements/inv-stock-movement-posting.service';
 import { applyInvoiceAdvance, releaseInvoiceAdvance } from './sls-invoice-advance.helpers';
 import { assertLedgerRowsPeriodOpen } from '../erp-common/utils/ledger-period-guard';
+import { reverseWithOffset } from '../erp-inv-gl/ledger-offset.helpers';
 
 const SLS_GL_SOURCE = 'SALES';
 const SLS_GL_DOCTYPE = 'sls_invoices';
@@ -261,6 +262,36 @@ export class SlsInvoicePostingService {
       await this.invPosting.reverseMovement(tx, movement.id);
       await tx.erpInvStockMovementLine.deleteMany({ where: { stockMovementId: movement.id } });
       await tx.erpInvStockMovement.delete({ where: { id: movement.id } });
+    }
+  }
+
+  /**
+   * VOID dokumen POSTED: jurnal AR/pendapatan & HPP dibalik dengan baris offset bertanggal
+   * (bukan hard-delete), movement stok turunan ditandai VOID (keluar dari on-hand), potongan
+   * uang muka dikembalikan. Baris ledger asli tetap sebagai jejak audit.
+   */
+  async voidLedger(
+    tx: Prisma.TransactionClient,
+    invoiceId: bigint,
+    opts: { entryDate: Date; fiscalPeriodId: bigint; actorId: bigint | null },
+  ): Promise<void> {
+    await releaseInvoiceAdvance(tx, invoiceId);
+    await reverseWithOffset(tx, SLS_GL_DOCTYPE, invoiceId, opts);
+    const movements = await tx.erpInvStockMovement.findMany({
+      where: {
+        source: MOVEMENT_SOURCE,
+        deletedAt: null,
+        status: 'POSTED',
+        metadata: { path: ['sourceId'], equals: invoiceId.toString() },
+      },
+      select: { id: true },
+    });
+    for (const movement of movements) {
+      await reverseWithOffset(tx, 'inv_stock_movements', movement.id, { ...opts, allowEmpty: true });
+      await tx.erpInvStockMovement.update({
+        where: { id: movement.id },
+        data: { status: 'VOID', updatedById: opts.actorId },
+      });
     }
   }
 

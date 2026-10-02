@@ -8,6 +8,8 @@ export interface OffsetOptions {
   entryDate: Date;
   fiscalPeriodId: bigint;
   actorId: bigint | null;
+  /** Kembalikan 0 (bukan error) bila sumber tidak punya baris ledger (mis. GL posting nonaktif). */
+  allowEmpty?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export async function reverseWithOffset(
     where: { sourceDocType, sourceId, deletedAt: null },
     orderBy: { lineNo: 'asc' },
   });
+  if (!originals.length && opts.allowEmpty) return 0;
   if (!originals.length) throw new BadRequestException('Tidak ada jurnal terposting untuk dibalik.');
 
   const rows: Prisma.ErpFinLedgerEntryCreateManyInput[] = originals.map((o, i) => ({

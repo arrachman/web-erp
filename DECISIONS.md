@@ -5073,3 +5073,17 @@ hard-delete ledger (tetap dipakai untuk koreksi di periode sama). Helper ini bel
 di-wire ke dokumen mana pun; menambah aksi VOID butuh keputusan (lihat di bawah).
 **Keputusan tertunda:** VOID SI juga harus membalik pergerakan stok (HPP), uang muka (AS) &
 alokasi receipt; VOID GRN harus membalik stok & memblokir bila sudah ada PI/Return aktif.
+
+### § VOID Sales Invoice — jurnal pembalik bertanggal (2026-10-02)
+
+Aksi baru `VOID` (POSTED → VOID, `reason` wajib) di `erp-sls-invoices`. Dipakai
+`SlsInvoicePostingService.voidLedger` + `reverseWithOffset`: jurnal AR/pendapatan/pajak SI
+dan jurnal HPP movement turunan dibalik dengan baris offset bertanggal **hari ini** di
+periode yang memuatnya (baris asli tak berubah → periode lampau/CLOSED aman); movement
+stok turunan di-set `VOID` (keluar dari on-hand & moving average, yang memfilter
+`status='POSTED'`); potongan uang muka (AS) dikembalikan. SI diset `status=VOID`,
+`postingStatus=UNPOSTED` (laporan AR & rekonsiliasi kontrol memfilter `POSTED`, jadi SI
+VOID otomatis keluar dari subledger sementara GL net nol). Diblokir bila sudah ada
+alokasi AR Receipt aktif atau Return/Return Receipt aktif (`sls-invoice-void.helpers.ts`).
+REOPEN tetap hard-delete (koreksi sebelum final). **Belum:** VOID GRN (blokir bila ada PI/
+Return aktif, balik stok), tombol VOID di frontend, VOID dokumen lain; belum diuji ke DB nyata.

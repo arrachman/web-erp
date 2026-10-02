@@ -23,6 +23,7 @@ import {
   mapExistingSlsInvoiceLines,
   buildSlsInvoiceTotalsInput,
 } from './sls-invoice-persistence.mapper';
+import { assertInvoiceVoidable, resolveVoidPeriod } from './sls-invoice-void.helpers';
 import { validateSourceDeliveryOrderOutstanding } from './sls-invoice-outstanding.helpers';
 import {
   assertNoActiveDerivedDocuments,
@@ -276,6 +277,7 @@ export class ErpSlsInvoicesService {
     if (dto.action === A.REJECT && !dto.reason?.trim()) {
       throw new BadRequestException('Alasan reject wajib diisi.');
     }
+    if (dto.action === A.VOID) return this.voidInvoice(invoice, dto.reason, actor);
 
     if (dto.action === A.POST) {
       const period = await this.prisma.erpFiscalPeriod.findUnique({
@@ -349,5 +351,31 @@ export class ErpSlsInvoicesService {
       },
     });
     return this.one(id);
+  }
+
+  /** VOID SI POSTED: blokir bila sudah ada pelunasan/turunan aktif; pembalikan bertanggal hari ini. */
+  private async voidInvoice(
+    invoice: Awaited<ReturnType<ErpSlsInvoicesService['findRaw']>>,
+    reason: string | undefined,
+    actor: bigint | null,
+  ) {
+    if (!reason?.trim()) throw new BadRequestException('Alasan VOID wajib diisi.');
+    await this.prisma.$transaction(async (tx) => {
+      await assertInvoiceVoidable(tx, invoice.id);
+      const entryDate = new Date();
+      const fiscalPeriodId = await resolveVoidPeriod(tx, entryDate);
+      await this.posting.voidLedger(tx, invoice.id, { entryDate, fiscalPeriodId, actorId: actor });
+      await tx.erpSlsInvoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: 'VOID',
+          postingStatus: 'UNPOSTED',
+          previousStatus: invoice.status as never,
+          metadata: { ...((invoice.metadata as object) ?? {}), voidReason: reason, voidedAt: entryDate.toISOString() },
+          updatedById: actor,
+        },
+      });
+    });
+    return this.one(invoice.id);
   }
 }

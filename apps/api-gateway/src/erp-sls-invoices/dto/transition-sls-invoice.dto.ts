@@ -8,6 +8,7 @@ export enum SlsInvoiceTransitionAction {
   REJECT = 'REJECT', // NEED_APPROVE -> REJECTED
   POST = 'POST', // APPROVED -> POSTED (+ create AR ledger entry)
   REOPEN = 'REOPEN', // APPROVED -> DRAFT (reverse AR)
+  VOID = 'VOID', // POSTED -> VOID (dated reversing journal, alasan wajib)
 }
 
 export class TransitionSlsInvoiceDto {
@@ -15,7 +16,7 @@ export class TransitionSlsInvoiceDto {
   @IsEnum(SlsInvoiceTransitionAction)
   action!: SlsInvoiceTransitionAction;
 
-  @ApiPropertyOptional({ description: 'Required for REJECT' })
+  @ApiPropertyOptional({ description: 'Required for REJECT and VOID' })
   @IsOptional()
   @IsString()
   reason?: string;
