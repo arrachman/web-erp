@@ -102,7 +102,7 @@ Minimum yang harus tersedia:
 - audit perubahan status dan referensi ke dokumen sales, delivery, invoice,
   receipt, serta BAST.
 
-> **Status 2026-10-04: selesai & live.** Kanal (SIPLah/sales/admin + portal disiapkan), external order ID unik per kanal, sumber dana BOS/non-BOS + tahun/tahap anggaran, dan tanda produksi pada ; status terpadu BARU → … → LUNAS diturunkan dari rantai dokumen dengan audit transisi di ; halaman antrean Order Hub (); impor SIPLah idempotent dari file ekspor (API merchant menyusul bila akses tersedia). Migration .
+> **Status 2026-10-04: selesai & live.** Kanal (SIPLah/sales/admin + portal disiapkan), external order ID unik per kanal, sumber dana BOS/non-BOS + tahun/tahap anggaran, dan tanda produksi pada kolom  di ; status terpadu BARU → … → LUNAS diturunkan dari rantai dokumen dengan audit transisi di ; halaman antrean Order Hub (, menu ); impor SIPLah idempotent dari file ekspor (API merchant menyusul bila akses tersedia), fee marketplace + referensi pencairan tersimpan per order. Migration .
 
 ### A3 — Dokumen pengadaan
 
@@ -263,7 +263,7 @@ prasyarat operasional dan non-fungsional MVP:
 |---|---|---|---|
 | Fondasi admin/master | Auth ERP, user/role/permission, scope cabang/gudang/lokasi, audit, fiscal period, numbering, setting, item/partner/account/tax/currency | 2FA, verifikasi retensi audit/backup, kelengkapan data go-live | **Sebagian besar ada** |
 | A1 CRM sekolah | Partner, alamat, kontak, kategori, salesman, dimensi wilayah; profil sekolah (NPSN, jenjang, negeri/swasta, wilayah, pagu BOS, tahap BOS), role kontak baku (kepala sekolah/bendahara/operator/TU), log kunjungan/negosiasi, pipeline prospek→lunas, siswa per kelas, alert belum belanja & kontrak berakhir, histori pesanan | — | **Selesai (live 2026-10-04)** |
-| A2 Order Hub | Sales quotation/order/delivery/invoice/receipt dan workflow generik | model kanal, external ID/idempotency, import/API SIPLah, status hub/BAST, pencairan dan fee SIPLah | **Fondasi ada, hub belum ada** |
+| A2 Order Hub | Sales quotation/order/delivery/invoice/receipt dan workflow generik; model kanal + external ID unik per kanal, status hub turunan rantai dokumen (DITERIMA mensyaratkan BAST), audit di , impor SIPLah idempotent + fee/pencairan | API merchant SIPLah langsung (menunggu akses; MVP memakai impor file ekspor) | **Selesai (live 2026-10-04)** |
 | A3 Dokumen | Report Studio/report engine, attachment transaksi, numbering | paket dokumen pengadaan, template BOS, e-sign/stempel, BAST + foto, arsip sekolah/tahun | **Fondasi renderer ada** |
 | A4 Pajak | Master pajak, posting PPN, model `fin_tax_entries` dan withholding certificate | service/API/UI tax subledger, PPh 22/23, bukti potong, Coretax/export, rekonsiliasi dan laporan bulanan | **Model DB ada, aplikasi belum** |
 | D1 Katalog | Item/category/brand/class/media/attachment, harga dasar/tier model | paket/bundling penuh ditunda Fase 3 | **Selesai (live 2026-10-04)** |
