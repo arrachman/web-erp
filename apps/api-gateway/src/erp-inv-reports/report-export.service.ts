@@ -30,7 +30,10 @@ const CONTENT_TYPE: Record<ReportFormat, string> = {
 
 @Injectable()
 export class ReportExportService {
-  constructor(private readonly engine: ReportEngineService) {}
+  constructor(
+    private readonly engine: ReportEngineService,
+    private readonly reportModule = 'inv',
+  ) {}
 
   async render(dataset: ReportDataset, format: ReportFormat): Promise<RenderedReport> {
     if (dataset.rows.length > MAX_EXPORT_ROWS) {
@@ -47,7 +50,7 @@ export class ReportExportService {
         // Template-driven render when a Report Designer template is bound
         // (`inv.<key>`, or the `inv.__default` module template); else pdfmake.
         const templated = await this.engine.renderReport(
-          `inv.${dataset.key}`,
+          `${this.reportModule}.${dataset.key}`,
           datasetColumns(dataset),
           datasetContext(dataset),
         );

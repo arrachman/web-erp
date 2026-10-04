@@ -24,6 +24,7 @@ import type { Lang } from '@/lib/shell-constants';
 import { ERP_PAGES } from './shell-routes/erp-page-routes';
 import {
   renderReportHubRoute,
+  renderFinanceDocumentReportRoute,
   renderWarehouseReportRoute,
   renderPurchasingReportRoute,
   renderSerialCardsRoute,
@@ -51,6 +52,10 @@ export function renderRoute(
   // ── Report hubs: /{finance,warehouse,purchasing,sales}/reports catalog ──────
   const reportHub = renderReportHubRoute(route, onNavigate);
   if (reportHub !== null) return reportHub;
+
+  // ── Finance document reports: one generic page driven by the report key ────
+  const finDocumentReport = renderFinanceDocumentReportRoute(route);
+  if (finDocumentReport !== null) return finDocumentReport;
 
   // ── Warehouse (M3) reports: one generic page driven by the report key ──────
   const invReport = renderWarehouseReportRoute(route);

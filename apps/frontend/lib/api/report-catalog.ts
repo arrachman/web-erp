@@ -12,6 +12,7 @@
  */
 
 import { apiGet } from './client';
+import { getDocumentReportCatalog } from './fin-doc-reports';
 
 /** A module whose reports are collected in a hub page. */
 export type ReportModule = 'fin' | 'inv' | 'pur' | 'sls';
@@ -72,15 +73,23 @@ export async function getReportCatalog(
 }
 
 async function fetchFinance(): Promise<ReportCatalogEntry[]> {
-  const res = await apiGet<CatalogResponse<FinanceItem>>(
-    '/fin/reports/catalog',
-  );
-  return unwrap(res).map(({ key, title, group, route }) => ({
+  const [statementResponse, documentReports] = await Promise.all([
+    apiGet<CatalogResponse<FinanceItem>>('/fin/reports/catalog'),
+    getDocumentReportCatalog(),
+  ]);
+  const statements = unwrap(statementResponse).map(({ key, title, group, route }) => ({
     key,
     title,
     group,
     route,
   }));
+  const documents = documentReports.map(({ key, title, group }) => ({
+    key,
+    title,
+    group: group === 'transaction' ? 'document' : group,
+    route: `/finance/reports/${key}`,
+  }));
+  return [...statements, ...documents];
 }
 
 async function fetchRegistry(

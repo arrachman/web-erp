@@ -11,6 +11,7 @@
  */
 
 import * as React from 'react';
+import { FinDocReportPage } from '@/components/pages/fin-doc-report-page';
 import { InvReportPage } from '@/components/pages/inv-report-page';
 import { invReportOptions } from '@/lib/inv-report-options';
 import { PurReportPage } from '@/components/pages/pur-report-page';
@@ -52,11 +53,20 @@ export function renderReportHubRoute(
   );
 }
 
+/** Base path for the generic Finance document-report pages. */
+const FIN_DOC_REPORT_PREFIX = '/finance/reports/';
+
 /** Base path for the generic Warehouse (M3) report pages. */
 const INV_REPORT_PREFIX = '/warehouse/reports/';
 
 /** Base path for the generic Purchasing (M4) report pages. */
 const PUR_REPORT_PREFIX = '/purchasing/reports/';
+
+export function renderFinanceDocumentReportRoute(route: string): React.ReactNode {
+  if (!route.startsWith(FIN_DOC_REPORT_PREFIX)) return null;
+  const reportKey = route.slice(FIN_DOC_REPORT_PREFIX.length);
+  return reportKey ? <FinDocReportPage reportKey={reportKey} /> : null;
+}
 
 export function renderWarehouseReportRoute(route: string): React.ReactNode {
   if (route.startsWith(INV_REPORT_PREFIX)) {
