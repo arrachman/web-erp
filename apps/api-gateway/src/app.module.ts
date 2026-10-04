@@ -101,6 +101,7 @@ import { ReportEngineModule } from './erp-report-engine/report-engine.module';
 import { ErpRoleDocPoliciesModule } from './erp-role-doc-policies/erp-role-doc-policies.module';
 import { ErpRolesModule } from './erp-roles/erp-roles.module';
 import { ErpSectionsModule } from './erp-sections/sections.module';
+import { ErpSchoolsModule } from './erp-schools/erp-schools.module';
 import { ErpSettingsModule } from './erp-settings/erp-settings.module';
 import { ErpSizesModule } from './erp-sizes/sizes.module';
 import { ErpSlsArCollectionsModule } from './erp-sls-ar-collections/erp-sls-ar-collections.module';
@@ -252,6 +253,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpRoleDocPoliciesModule,
     ErpRolesModule,
     ErpSectionsModule,
+    ErpSchoolsModule,
     ErpSettingsModule,
     ErpSizesModule,
     // ERP m5 Sales
