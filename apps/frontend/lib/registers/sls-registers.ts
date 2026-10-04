@@ -55,6 +55,11 @@ import {
   type ListSlsInvoicesParams,
 } from '@/lib/api/sls-invoices';
 import {
+  listSlsFreightReceivables,
+  type ErpSlsFreightReceivable,
+  type ListSlsFreightReceivablesParams,
+} from '@/lib/api/sls-freight-receivables';
+import {
   listSlsReturnReceipts,
   type ErpSlsReturnReceipt,
   type ListSlsReturnReceiptsParams,
@@ -322,21 +327,30 @@ const invoiceSwaps: DocumentRegisterConfig<ErpSlsInvoiceSwap> = {
   ],
 };
 
-// Freight Receivable (RP) — same backend as Sales Invoice. NOTE: ListSlsInvoicesParams
-// has no code/docCode filter, so this register lists ALL invoices (cannot isolate SLS.RP).
-const freightReceivables: DocumentRegisterConfig<ErpSlsInvoice> = {
+// Freight Receivable (RP) — standalone backend (erp-sls-freight-receivables,
+// own table sls_freight_receivables, DOC_CODE 'RP').
+const freightReceivables: DocumentRegisterConfig<ErpSlsFreightReceivable> = {
   group: GROUP,
   title: 'Freight Receivable (RP)',
   code: 'RP',
   icon: 'database',
   editBase: '/sales/freight-receivables',
   sortBy: 'docNumber',
-  list: (p) => listSlsInvoices(p as unknown as ListSlsInvoicesParams),
+  list: (p) => listSlsFreightReceivables(p as unknown as ListSlsFreightReceivablesParams),
   getId: (r) => r.id,
   getDocNumber: (r) => r.docNumber,
-  getDocDate: (r) => r.docDate,
+  getDocDate: (r) => r.transactionDate,
   getStatus: (r) => r.status,
-  columns: itemColumns<ErpSlsInvoice>(),
+  columns: [
+    { header: 'Customer', render: (r) => dash(r.customer?.name), csv: (r) => r.customer?.name ?? '' },
+    { header: 'Uraian', render: (r) => dash(r.description), csv: (r) => r.description ?? '' },
+    {
+      header: 'Jumlah',
+      align: 'right',
+      render: (r) => formatNumber(Number(r.amount ?? 0), 2),
+      csv: (r) => r.amount ?? '0',
+    },
+  ],
 };
 
 // Opening AR Balance — Sales Invoices flagged isOpeningBalance.

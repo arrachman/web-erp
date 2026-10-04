@@ -75,22 +75,59 @@ export class ErpSlsFreightReceivablesService {
   }
 
   private async enrichOne(item: { customerId: bigint; [k: string]: unknown }) {
-    const customer = await this.prisma.erpPartner.findFirst({
-      where: { id: item.customerId },
-      select: { id: true, code: true, name: true },
-    });
-    return { ...item, customer };
+    const [enriched] = await this.enrichMany([item]);
+    return enriched;
   }
 
   private async enrichMany(items: Array<{ customerId: bigint; [k: string]: unknown }>) {
     if (!items.length) return items;
-    const ids = [...new Set(items.map((i) => i.customerId))];
-    const customers = await this.prisma.erpPartner.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, code: true, name: true },
-    });
-    const map = new Map(customers.map((c) => [c.id.toString(), c]));
-    return items.map((i) => ({ ...i, customer: map.get(i.customerId.toString()) ?? null }));
+    const uniqIds = (vals: unknown[]) => [
+      ...new Set(vals.filter((v) => v != null).map((v) => String(v))),
+    ].map((s) => BigInt(s));
+    const refSelect = { id: true, code: true, name: true } as const;
+    const [customers, branches, currencies, accounts] = await Promise.all([
+      this.prisma.erpPartner.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.customerId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpBranch.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.branchId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpCurrency.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.currencyId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpAccount.findMany({
+        where: {
+          id: {
+            in: uniqIds([
+              ...items.map((i) => i.receivableAccountId),
+              ...items.map((i) => i.incomeAccountId),
+            ]),
+          },
+        },
+        select: refSelect,
+      }),
+    ]);
+    const byId = (rows: Array<{ id: bigint }>) =>
+      new Map(rows.map((r) => [r.id.toString(), r]));
+    const customerMap = byId(customers);
+    const branchMap = byId(branches);
+    const currencyMap = byId(currencies);
+    const accountMap = byId(accounts);
+    const pick = (
+      map: Map<string, unknown>,
+      v: unknown,
+    ) => (v != null ? map.get(String(v)) ?? null : null);
+    return items.map((i) => ({
+      ...i,
+      customer: pick(customerMap, i.customerId),
+      branch: pick(branchMap, i.branchId),
+      currency: pick(currencyMap, i.currencyId),
+      receivableAccount: pick(accountMap, i.receivableAccountId),
+      incomeAccount: pick(accountMap, i.incomeAccountId),
+    }));
   }
 
   private async one(id: bigint) {

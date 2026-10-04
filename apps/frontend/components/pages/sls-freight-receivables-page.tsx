@@ -1,7 +1,8 @@
 'use client';
 
 // Freight Receivable (RP) — list + form. URL: /sales/freight-receivables · /new · /:id.
-// Billing pengiriman ke customer (sls_invoices, transaction code SLS.RP).
+// Standalone document on its own backend (erp-sls-freight-receivables,
+// table sls_freight_receivables) — NOT a Sales Invoice view.
 
 import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -23,24 +24,22 @@ import { useListPagination } from '@/lib/use-list-pagination';
 import { formatNumber } from '@/lib/format';
 import { statusBadgeVariant, statusLabel } from '@/lib/status';
 import {
-  listSlsInvoices, createSlsInvoice, updateSlsInvoice,
-  deleteSlsInvoice, getSlsInvoice, transitionSlsInvoice,
-  type ErpSlsInvoice, type SlsInvoiceTransition,
-} from '@/lib/api/sls-invoices';
-import { useAllowedCreationStatuses } from '@/lib/use-allowed-creation-statuses';
+  listSlsFreightReceivables, createSlsFreightReceivable, updateSlsFreightReceivable,
+  deleteSlsFreightReceivable, getSlsFreightReceivable, transitionSlsFreightReceivable,
+  type ErpSlsFreightReceivable, type SlsFreightReceivableTransition,
+} from '@/lib/api/sls-freight-receivables';
 import {
   SlsFreightReceivableForm,
-  defaultSlsInvoiceForm, fromSlsInvoice, toSlsInvoicePayload,
-  type SlsInvoiceFormData,
+  defaultSlsFreightReceivableForm, fromSlsFreightReceivable, toSlsFreightReceivablePayload,
+  type SlsFreightReceivableFormData,
 } from './sls-freight-receivable-form';
 
 const BASE = '/sales/freight-receivables';
 
 export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }: TrxFormPageProps = {}) {
   const mode: 'list' | 'form' = formMode ? 'form' : 'list';
-  const [form, setForm] = React.useState<SlsInvoiceFormData>(defaultSlsInvoiceForm());
+  const [form, setForm] = React.useState<SlsFreightReceivableFormData>(defaultSlsFreightReceivableForm());
   const [saving, setSaving] = React.useState(false);
-  const { statuses: allowedCreationStatuses } = useAllowedCreationStatuses('SLS.RP');
 
   const formReady =
     formMode === 'create' ||
@@ -57,7 +56,7 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
   }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listSlsInvoices({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docNumber', sortDir: 'desc' }),
+    () => listSlsFreightReceivables({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch],
   );
   React.useEffect(() => { setPage(1); }, [debouncedSearch, pageSize]);
@@ -68,14 +67,14 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
   const pageCount = meta?.totalPages ?? 1;
 
   const openCreate = () => onNavigate?.(trxNewRoute(BASE));
-  const openEdit = (r: ErpSlsInvoice) => onNavigate?.(trxEditRoute(BASE, r.id));
+  const openEdit = (r: ErpSlsFreightReceivable) => onNavigate?.(trxEditRoute(BASE, r.id));
 
   const loadForm = React.useCallback(() => {
-    if (formMode === 'create') { setForm(defaultSlsInvoiceForm()); return undefined; }
+    if (formMode === 'create') { setForm(defaultSlsFreightReceivableForm()); return undefined; }
     if (formMode === 'edit' && recordId) {
       let alive = true;
-      getSlsInvoice(recordId)
-        .then((full) => alive && setForm(fromSlsInvoice(full)))
+      getSlsFreightReceivable(recordId)
+        .then((full) => alive && setForm(fromSlsFreightReceivable(full)))
         .catch(() => { if (!alive) return; notify('Gagal memuat Freight Receivable', 'danger'); goList(); });
       return () => { alive = false; };
     }
@@ -84,45 +83,47 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
   React.useEffect(() => loadForm(), [loadForm]);
 
   const persist = async (closeAfter: boolean, newAfter = false) => {
-    if (!form.branchId || !form.docDate || !form.currencyId) {
+    if (!form.branchId || !form.transactionDate || !form.currencyId) {
       notify('Cabang, Tanggal, dan Mata Uang wajib diisi.', 'warn'); return;
     }
-    if (!form.lines.some((l) => l.itemId && Number(l.quantity) > 0)) {
-      notify('Minimal satu baris item dengan qty > 0.', 'warn'); return;
+    if (!form.customerId) { notify('Customer wajib diisi.', 'warn'); return; }
+    if (!form.description.trim()) { notify('Keterangan wajib diisi.', 'warn'); return; }
+    if (!(Number(form.amount) > 0)) {
+      notify('Jumlah tagihan harus lebih besar dari 0.', 'warn'); return;
     }
     setSaving(true);
     try {
-      const payload = toSlsInvoicePayload(form);
-      if (form.id) { await updateSlsInvoice(form.id, payload); notify('Freight Receivable diperbarui', 'success'); }
-      else { await createSlsInvoice(payload); notify('Freight Receivable dibuat', 'success'); }
+      const payload = toSlsFreightReceivablePayload(form);
+      if (form.id) { await updateSlsFreightReceivable(form.id, payload); notify('Freight Receivable diperbarui', 'success'); }
+      else { await createSlsFreightReceivable(payload); notify('Freight Receivable dibuat', 'success'); }
       reload();
-      if (newAfter) { setForm(defaultSlsInvoiceForm()); onNavigate?.(trxNewRoute(BASE)); }
+      if (newAfter) { setForm(defaultSlsFreightReceivableForm()); onNavigate?.(trxNewRoute(BASE)); }
       else if (closeAfter) { goList(); }
     } catch (e: unknown) {
       notify(e instanceof Error ? e.message : 'Gagal menyimpan', 'danger');
     } finally { setSaving(false); }
   };
 
-  const runTransition = async (r: ErpSlsInvoice, action: SlsInvoiceTransition) => {
+  const runTransition = async (r: ErpSlsFreightReceivable, action: SlsFreightReceivableTransition) => {
     let reason: string | undefined;
     if (action === 'REJECT') { reason = window.prompt('Alasan menolak?') ?? undefined; if (!reason) return; }
-    try { await transitionSlsInvoice(r.id, action, reason); notify(`Berhasil: ${r.docNumber}`, 'success'); reload(); }
+    try { await transitionSlsFreightReceivable(r.id, action, reason); notify(`Berhasil: ${r.docNumber}`, 'success'); reload(); }
     catch (e: unknown) { notify(e instanceof Error ? e.message : 'Gagal', 'danger'); }
   };
 
-  const handleDelete = (r: ErpSlsInvoice) =>
+  const handleDelete = (r: ErpSlsFreightReceivable) =>
     confirmAction({
       title: 'Hapus Freight Receivable?', message: `${r.docNumber} akan dihapus permanen.`,
       variant: 'danger', confirmLabel: 'Hapus', confirmIcon: 'trash',
       onConfirm: async () => {
-        try { await deleteSlsInvoice(r.id); notify('Dihapus', 'success'); reload(); }
+        try { await deleteSlsFreightReceivable(r.id); notify('Dihapus', 'success'); reload(); }
         catch (e: unknown) { notify(e instanceof Error ? e.message : 'Gagal', 'danger'); }
       },
     });
 
-  const rowActions = (r: ErpSlsInvoice): RowActionItem[] => [
+  const rowActions = (r: ErpSlsFreightReceivable): RowActionItem[] => [
     { label: 'Edit / Lihat', onSelect: () => openEdit(r) },
-    ...cashBankWorkflowActions(r.status as never, (a) => runTransition(r, a as SlsInvoiceTransition)),
+    ...cashBankWorkflowActions(r.status as never, (a) => runTransition(r, a as SlsFreightReceivableTransition)),
     { label: 'Hapus', onSelect: () => handleDelete(r), danger: true, separatorBefore: true },
   ];
 
@@ -139,7 +140,6 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
           {formReady ? (
             <SlsFreightReceivableForm
               data={form} onChange={setForm} saving={saving}
-              allowedCreationStatuses={formMode === 'create' ? allowedCreationStatuses : undefined}
               onSave={() => persist(true)} onSaveNew={() => persist(false, true)} onReset={loadForm}
             />
           ) : (
@@ -150,10 +150,8 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
     );
   }
 
-  const sumGT = (meta as { sumGrandTotal?: string } | null)?.sumGrandTotal;
   const summary: SummaryConfig = {
     metricLabel: 'Σ Freight Receivable', rowCount: rows.length, totalCount: totalRows,
-    metricValue: sumGT ? formatNumber(Number(sumGT), 2) : undefined,
   };
   const pagination: ListPaginationConfig = { page, pageCount, pageSize, totalRows, onPage: setPage, onPageSize: setPageSize };
   const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -180,7 +178,7 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
             <TableHead>Tanggal</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Uraian</TableHead>
-            <TableHead style={{ textAlign: 'right' }}>Total</TableHead>
+            <TableHead style={{ textAlign: 'right' }}>Jumlah</TableHead>
             <TableHead>Status</TableHead>
             <TableHead style={{ width: 44 }} />
           </TableRow>
@@ -198,11 +196,11 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
                     <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSel(r.id)} />
                   </TableCell>
                   <CodeLinkCell code={r.docNumber} onOpen={() => openEdit(r)} />
-                  <TableCell>{r.docDate.slice(0, 10)}</TableCell>
+                  <TableCell>{r.transactionDate.slice(0, 10)}</TableCell>
                   <TableCell>{r.customer?.name ?? '—'}</TableCell>
                   <TableCell>{r.description ?? '—'}</TableCell>
                   <TableCell className="tabular-nums" style={{ textAlign: 'right' }}>
-                    {formatNumber(Number(r.grandTotal), 2)}
+                    {formatNumber(Number(r.amount), 2)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusBadgeVariant(r.status)} dot>{statusLabel(r.status)}</Badge>

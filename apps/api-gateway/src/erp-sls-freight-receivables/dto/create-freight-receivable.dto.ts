@@ -17,10 +17,10 @@ export class CreateFreightReceivableDto {
   @IsDateString()
   transactionDate!: string;
 
-  @ApiProperty({ example: '1', description: 'Fiscal period ID' })
+  @ApiPropertyOptional({ example: '1', description: 'Fiscal period ID (resolved from transactionDate when omitted)' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fiscalPeriodId!: string;
+  fiscalPeriodId?: string;
 
   @ApiProperty({ example: '1', description: 'Branch ID' })
   @IsString()
