@@ -111,6 +111,42 @@ export class PurGoodsReceiptPostingService {
       );
     }
 
+    // Fase 2 T1: baris ber-lotNumber membentuk lot (find-or-create per
+    // item+lotNumber); movement line dicap lotId agar saldo lot tertelusur.
+    // Lot lama hanya dilengkapi field yang masih kosong.
+    const lotByLineId = new Map<string, bigint>();
+    for (const l of acceptedLines) {
+      if (!l.lotNumber) continue;
+      let lot = await tx.erpInvLot.findFirst({
+        where: { itemId: l.itemId, lotNumber: l.lotNumber, deletedAt: null },
+      });
+      if (!lot) {
+        lot = await tx.erpInvLot.create({
+          data: {
+            lotNumber: l.lotNumber,
+            itemId: l.itemId,
+            supplierLotNo: l.supplierLotNo ?? null,
+            manufactureDate: l.manufactureDate ?? null,
+            expiryDate: l.expiryDate ?? null,
+            originGoodsReceiptId: grn.id,
+            status: 'ACTIVE',
+            createdById: actorId,
+            updatedById: actorId,
+          },
+        });
+      } else {
+        const patch: Prisma.ErpInvLotUpdateInput = {};
+        if (!lot.originGoodsReceiptId) patch.originGoodsReceiptId = grn.id;
+        if (!lot.supplierLotNo && l.supplierLotNo) patch.supplierLotNo = l.supplierLotNo;
+        if (!lot.manufactureDate && l.manufactureDate) patch.manufactureDate = l.manufactureDate;
+        if (!lot.expiryDate && l.expiryDate) patch.expiryDate = l.expiryDate;
+        if (Object.keys(patch).length) {
+          lot = await tx.erpInvLot.update({ where: { id: lot.id }, data: patch });
+        }
+      }
+      lotByLineId.set(l.id.toString(), lot.id);
+    }
+
     const docNumber = await this.genMovementDocNumber(tx);
     await tx.erpInvStockMovement.create({
       data: {
@@ -148,6 +184,7 @@ export class PurGoodsReceiptPostingService {
             subdivisionId: l.subdivisionId,
             projectId: l.projectId,
             notes: l.notes,
+            lotId: lotByLineId.get(l.id.toString()) ?? null,
             lineNo: i + 1,
           })),
         },

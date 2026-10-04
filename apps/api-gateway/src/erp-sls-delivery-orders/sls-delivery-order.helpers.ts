@@ -92,6 +92,7 @@ export function mapDeliveryOrderLine(
     subdivisionId: toBigInt(line.subdivisionId),
     projectId: toBigInt(line.projectId),
     sourceLineId: toBigInt(line.sourceLineId),
+    lotId: toBigInt(line.lotId),
     notes: line.notes ?? null,
     lineNo: line.lineNo,
   };

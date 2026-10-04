@@ -170,3 +170,14 @@ Gerbang di §6 dokumen ini dengan demikian tertutup: Fase 3 berjalan tanpa
 entitas/relasi yayasan, dan W7 pada `docs/fase-3-rencana-kerja.md` berlaku
 tanpa komponen B1. Sekolah tetap entitas utama untuk semua transaksi,
 harga, dan portal.
+
+### T1 Lot/Batch & FEFO — SELESAI & LIVE (2026-10-05)
+
+Menutup track T1 di luar 8 workstream: pelacakan lot/batch persediaan dengan pengambilan FEFO.
+
+- **Desain**: saldo lot TIDAK disimpan — selalu diturunkan dari baris pergerakan stok POSTED (per gudang), sehingga reverse/void otomatis memulihkan saldo. Lot lahir saat GRN diposting dari metadata baris GRN; nomor lot yang sama dipakai ulang. DO: pilihan lot manual per baris divalidasi saldo saat simpan; tanpa pilihan, posting DO membagi baris movement mengikuti FEFO (kadaluarsa terdekat dulu, tanpa tanggal terakhir; kekurangan tetap tanpa lot karena ERP ini tidak memblokir posting karena stok).
+- **Skema** (migrasi `20261005_023`): baris GRN += lot_number/supplier_lot_no/manufacture_date/expiry_date; baris DO += lot_id. Menu `M3.TX.LOT` "Lot & Batch" `/warehouse/lots` (grup Transaksi Gudang). Migrasi `20261005_024`: kolom grid GRN (Lot/Batch, Lot Supplier, Tgl Produksi, Kadaluarsa) + kolom Lot ID di grid DO — form mengisi lewat `customFields` baris sesuai pola QC GRN yang sudah ada.
+- **Backend**: modul `erp-inv-lots` (CRUD master lot + saldo + endpoint FEFO `GET /erp/inv/lots/fefo`), filter `lotId` di daftar pergerakan stok, hook posting GRN membentuk lot, hook posting DO mengalokasikan FEFO.
+- **Catatan sinkronisasi SF**: salinan SF untuk posting DO sebelumnya stub — kini versi penuh aktif, jadi **posting DO mulai sekarang membentuk pergerakan stok DOI + GL valuasi sungguhan** (DO BENDERA lama tidak terpengaruh). Peta transisi SF juga diselaraskan (POSTED → REOPEN) agar DO terposting bisa dibatalkan postingnya.
+- **E2E terbukti (smoke API, data dibersihkan)**: GRN berisi lot → lot lahir (saldo 5, origin GRN tercatat); lot kedua exp lebih lama; FEFO qty 8 → [lot terdekat 5, berikutnya 3]; GRN ketiga nomor sama → lot dipakai ulang (saldo 7); DO lot manual melebihi saldo → 400; DO qty 8 tanpa lot → movement ISSUE terpecah FEFO [7, 1], saldo turun [0, 4]; REOPEN → movement terhapus, saldo pulih [7, 5].
+- **Batasan v1 (follow-up)**: jalur invoice tanpa DO (SII) belum mengalokasikan lot; kolom Lot ID di form DO masih teks (picker visual menyusul); lot tidak memblokir stok (monitor-only, sejalan keputusan P6).

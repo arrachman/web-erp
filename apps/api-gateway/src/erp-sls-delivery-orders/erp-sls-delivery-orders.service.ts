@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SlsDeliveryOrderPostingService } from './sls-delivery-order-posting.service';
+import { InvLotAllocationService } from '../erp-inv-lots/inv-lot-allocation.service';
 import { enrichDeliveryOrders } from './sls-delivery-order-enrich';
 import { CreateSlsDeliveryOrderDto } from './dto/create-sls-delivery-order.dto';
 import { QuerySlsDeliveryOrdersDto } from './dto/query-sls-delivery-orders.dto';
@@ -37,7 +38,35 @@ export class ErpSlsDeliveryOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly posting: SlsDeliveryOrderPostingService,
+    private readonly lots: InvLotAllocationService,
   ) {}
+
+  /** Fase 2 T1: validasi pilihan lot manual pada baris DO. */
+  private async validateLotPicks(
+    lines: { itemId: string; quantity: string; warehouseId?: string; lotId?: string }[],
+    headerWarehouseId?: string,
+  ): Promise<void> {
+    for (const line of lines ?? []) {
+      if (!line.lotId) continue;
+      const lot = await this.prisma.erpInvLot.findFirst({
+        where: { id: BigInt(line.lotId), deletedAt: null },
+      });
+      if (!lot) throw new BadRequestException(`Lot ${line.lotId} tidak ditemukan.`);
+      if (lot.itemId.toString() !== line.itemId) {
+        throw new BadRequestException(`Lot ${lot.lotNumber} bukan untuk item pada baris ini.`);
+      }
+      if (lot.status !== 'ACTIVE') {
+        throw new BadRequestException(`Lot ${lot.lotNumber} berstatus ${lot.status} — tidak dapat dipakai.`);
+      }
+      const wh = line.warehouseId ?? headerWarehouseId;
+      const balance = await this.lots.lotBalance(this.prisma, lot.id, wh ? BigInt(wh) : undefined);
+      if (balance.lt(new Prisma.Decimal(line.quantity))) {
+        throw new BadRequestException(
+          `Saldo lot ${lot.lotNumber} hanya ${balance.toString()} — kurang dari qty baris ${line.quantity}.`,
+        );
+      }
+    }
+  }
 
   private async resolvePeriod(
     tx: Prisma.TransactionClient,
@@ -122,6 +151,7 @@ export class ErpSlsDeliveryOrdersService {
 
   // ── CRUD ────────────────────────────────────────────────────────────────────
   async create(dto: CreateSlsDeliveryOrderDto, actorId?: string) {
+    await this.validateLotPicks(dto.lines ?? [], dto.warehouseId);
     const actor = actorId ? BigInt(actorId) : null;
     const priceMode = (dto.priceMode ?? 'TAX_EXCLUSIVE') as 'TAX_EXCLUSIVE' | 'TAX_INCLUSIVE';
     const header = { currencyId: dto.currencyId, exchangeRate: dto.exchangeRate };
@@ -204,6 +234,7 @@ export class ErpSlsDeliveryOrdersService {
   }
 
   async update(id: bigint, dto: UpdateSlsDeliveryOrderDto, actorId?: string) {
+    if (dto.lines?.length) await this.validateLotPicks(dto.lines, dto.warehouseId);
     const existing = await this.findRaw(id);
     if (!EDITABLE.has(existing.status)) {
       throw new BadRequestException(

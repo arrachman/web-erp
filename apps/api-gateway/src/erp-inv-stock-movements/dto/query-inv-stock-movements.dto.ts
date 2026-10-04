@@ -30,6 +30,11 @@ export class QueryInvStockMovementsDto {
   @IsOptional()
   @IsString()
   search?: string;
+  @ApiPropertyOptional({ description: 'Filter pergerakan yang memuat lot ini' })
+  @IsOptional()
+  @IsString()
+  lotId?: string;
+
 
   @ApiPropertyOptional({ enum: INV_MOVEMENT_SORTABLE, default: 'movementDate' })
   @IsOptional()

@@ -26,6 +26,7 @@ export interface SlsDeliveryOrderListResponse {
 const BASE = '/sls/delivery-orders';
 
 export interface ErpSlsDeliveryOrderLine {
+  lotId?: string | null;
   id?: string;
   itemId: string;
   item?: ErpRef | null;
@@ -103,6 +104,9 @@ export interface ErpSlsDeliveryOrder {
   lines: ErpSlsDeliveryOrderLine[];
 }
 
+/** Baris DO = baris SO + pilihan lot manual (T1). */
+export type SlsDeliveryOrderLinePayload = SlsOrderLinePayload & { lotId?: string };
+
 export interface CreateSlsDeliveryOrderPayload {
   docNumber?: string;
   auto?: boolean;
@@ -131,11 +135,11 @@ export interface CreateSlsDeliveryOrderPayload {
   otherCostAmount?: string;
   legacyCode?: string;
   customFields?: Record<string, unknown>;
-  lines: SlsOrderLinePayload[];
+  lines: SlsDeliveryOrderLinePayload[];
 }
 
 export type UpdateSlsDeliveryOrderPayload = Partial<Omit<CreateSlsDeliveryOrderPayload, 'lines'>> & {
-  lines?: SlsOrderLinePayload[];
+  lines?: SlsDeliveryOrderLinePayload[];
 };
 
 export type SlsDeliveryOrderTransition = 'SUBMIT' | 'APPROVE' | 'REJECT' | 'POST' | 'REOPEN';

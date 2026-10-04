@@ -17,6 +17,12 @@ export enum ErpQcStatusDto { PENDING = 'PENDING', PASSED = 'PASSED', FAILED = 'F
 export class PurGoodsReceiptLineDto {
   @ApiProperty({ example: '1001', description: 'Item (md_items) id' })
   @IsString() @IsNotEmpty() itemId!: string;
+  // Fase 2 T1: metadata lot/batch penerimaan (opsional; lot dibentuk saat posting).
+  @ApiPropertyOptional({ description: 'Nomor lot/batch' }) @IsOptional() @IsString() lotNumber?: string;
+  @ApiPropertyOptional({ description: 'Nomor lot dari supplier' }) @IsOptional() @IsString() supplierLotNo?: string;
+  @ApiPropertyOptional({ example: '2026-01-01' }) @IsOptional() @IsString() manufactureDate?: string;
+  @ApiPropertyOptional({ example: '2027-01-01' }) @IsOptional() @IsString() expiryDate?: string;
+
 
   @ApiProperty({ example: '10.0000' }) @IsDecimalString() quantity!: string;
   @ApiProperty({ example: '5', description: 'Unit (md_units) id' }) @IsString() @IsNotEmpty() unitId!: string;

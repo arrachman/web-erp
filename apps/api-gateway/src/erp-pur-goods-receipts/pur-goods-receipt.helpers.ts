@@ -87,6 +87,11 @@ export function mapGrnLine(
     projectId: toBigInt(line.projectId),
     // orderLineId has a @relation — use connect/null rather than raw scalar setter.
     ...(line.orderLineId ? { orderLine: { connect: { id: toBigInt(line.orderLineId)! } } } : {}),
+    // Fase 2 T1: metadata lot — saat GRN diposting, lot dibentuk dari sini.
+    lotNumber: line.lotNumber ?? null,
+    supplierLotNo: line.supplierLotNo ?? null,
+    manufactureDate: line.manufactureDate ? new Date(line.manufactureDate) : null,
+    expiryDate: line.expiryDate ? new Date(line.expiryDate) : null,
     notes: line.notes ?? null,
     lineNo: line.lineNo,
   };

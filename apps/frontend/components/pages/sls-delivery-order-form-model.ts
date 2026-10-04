@@ -198,7 +198,7 @@ export function fromSlsDeliveryOrder(r: ErpSlsDeliveryOrder): SlsDeliveryOrderFo
       divisionId: l.divisionId ?? undefined,
       subdivisionId: l.subdivisionId ?? undefined,
       projectId: l.projectId ?? undefined,
-      customFields: (l.customFields as Record<string, unknown>) ?? undefined,
+      customFields: { ...((l.customFields as Record<string, unknown>) ?? {}), lotId: l.lotId ?? undefined },
     })),
   };
 }
@@ -247,6 +247,7 @@ export function toSlsDeliveryOrderPayload(d: SlsDeliveryOrderFormData): CreateSl
         subdivisionId: l.subdivisionId || undefined,
         projectId: l.projectId || undefined,
         notes: l.notes || undefined,
+        lotId: (l.customFields?.lotId as string | undefined) || undefined,
         customFields: l.customFields ? (l.customFields as Record<string, unknown>) : undefined,
         lineNo: i + 1,
       })),

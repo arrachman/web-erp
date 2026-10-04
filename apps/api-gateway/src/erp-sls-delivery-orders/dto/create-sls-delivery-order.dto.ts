@@ -38,6 +38,9 @@ export class SlsDeliveryOrderLineDto {
   @IsString()
   @IsNotEmpty()
   itemId!: string;
+  @ApiPropertyOptional({ description: 'Lot pilihan manual (T1); kosong = FEFO otomatis saat posting' })
+  @IsOptional() @IsString() lotId?: string;
+
 
   @ApiProperty({ example: '10.0000', description: 'Quantity (transaction unit)' })
   @IsDecimalString()

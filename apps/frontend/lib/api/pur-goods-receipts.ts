@@ -11,6 +11,8 @@ export type { ErpDocumentStatus, ErpPostingStatus, ErpPriceMode, ErpRef } from '
 export type ErpQcStatus = 'PENDING' | 'PASSED' | 'FAILED' | 'PARTIAL';
 
 export interface ErpPurGoodsReceiptLine {
+  lotNumber?: string | null; supplierLotNo?: string | null;
+  manufactureDate?: string | null; expiryDate?: string | null;
   id?: string;
   itemId: string; item?: ErpRef | null;
   quantity: string; unitId: string; unit?: ErpRef | null;
@@ -49,6 +51,8 @@ export interface ErpPurGoodsReceipt {
 }
 
 export interface PurGoodsReceiptLinePayload {
+  lotNumber?: string; supplierLotNo?: string;
+  manufactureDate?: string; expiryDate?: string;
   itemId: string; quantity: string; unitId: string;
   unitPrice?: string; unitCost?: string;
   acceptedQty?: string; rejectedQty?: string; quarantineQty?: string; qcStatus?: ErpQcStatus;

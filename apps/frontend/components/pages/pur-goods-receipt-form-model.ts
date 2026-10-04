@@ -68,6 +68,11 @@ export function fromPurGoodsReceipt(r: ErpPurGoodsReceipt): PurOrderFormData {
         unitCost: l.unitCost ?? undefined,
         accruedPayableAccountId: l.accruedPayableAccountId ?? undefined,
         orderLineId: l.orderLineId ?? undefined,
+        // Fase 2 T1: metadata lot lewat customFields (kolom grid PUR.GRN).
+        lotNumber: l.lotNumber ?? undefined,
+        supplierLotNo: l.supplierLotNo ?? undefined,
+        manufactureDate: l.manufactureDate ? l.manufactureDate.slice(0, 10) : undefined,
+        expiryDate: l.expiryDate ? l.expiryDate.slice(0, 10) : undefined,
       },
     })),
   };
@@ -105,6 +110,10 @@ export function toPurGoodsReceiptPayload(d: PurOrderFormData): CreatePurGoodsRec
         qcStatus: (l.customFields?.qcStatus as string | undefined) as never || undefined,
         accruedPayableAccountId: (l.customFields?.accruedPayableAccountId as string | undefined) || undefined,
         orderLineId: (l.customFields?.orderLineId as string | undefined) || undefined,
+        lotNumber: (l.customFields?.lotNumber as string | undefined) || undefined,
+        supplierLotNo: (l.customFields?.supplierLotNo as string | undefined) || undefined,
+        manufactureDate: (l.customFields?.manufactureDate as string | undefined) || undefined,
+        expiryDate: (l.customFields?.expiryDate as string | undefined) || undefined,
         discountPercent: l.discountPercent || undefined,
         discountAmount: l.discountAmount || undefined,
         tax1Id: l.tax1Id || undefined,

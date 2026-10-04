@@ -37,6 +37,7 @@ export function buildInvMovementWhere(
   const where: Prisma.ErpInvStockMovementWhereInput = { deletedAt: null };
 
   if (query.movementType) where.movementType = query.movementType as never;
+  if (query.lotId) where.lines = { some: { lotId: BigInt(query.lotId) } };
   if (query.status) where.status = query.status as never;
   if (query.branchId) where.branchId = BigInt(query.branchId);
   if (query.locationId) where.locationId = BigInt(query.locationId);
