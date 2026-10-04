@@ -162,3 +162,11 @@ Di akhir Fase 2, putuskan fondasi **yayasan** sesuai dokumen scope §7: bila tet
   keputusan yayasan di akhir Fase 2** sebelum masuk Fase 3 (rencana Fase 3
   sudah ada: `docs/fase-3-rencana-kerja.md`). Track T1 (lot/batch & FEFO)
   tetap opsional/paralel.
+
+## Keputusan Gerbang Akhir Fase 2 (2026-10-05)
+
+Pemilik memutuskan: **yayasan tidak dibangun — permanen; per-sekolah saja.**
+Gerbang di §6 dokumen ini dengan demikian tertutup: Fase 3 berjalan tanpa
+entitas/relasi yayasan, dan W7 pada `docs/fase-3-rencana-kerja.md` berlaku
+tanpa komponen B1. Sekolah tetap entitas utama untuk semua transaksi,
+harga, dan portal.

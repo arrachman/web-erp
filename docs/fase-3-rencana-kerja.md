@@ -1,6 +1,12 @@
 # Rencana Kerja Fase 3 — Portal Sekolah & Orang Tua + Landing Page
 
 **Status:** rencana kerja (belum dimulai) — disusun 2026-10-05, setelah Fase 1/MVP live dan Fase 2 (percetakan & distribusi) berjalan.
+> **KEPUTUSAN (2026-10-05, pemilik): yayasan TIDAK dibangun — permanen.**
+> Entitas utama tetap **sekolah**; semua fitur Fase 3 dirancang per-sekolah
+> saja. Gerbang §7 dokumen scope dengan demikian terjawab "tidak": tidak ada
+> relasi yayasan → sekolah, tidak ada harga/portal level yayasan. W7 di bawah
+> berlaku tanpa komponen B1.
+
 **Dasar scope:** `docs/bahtera-madani-mvp-scope.md` §Fase 3 (portal sekolah & orang tua) + §7 (gerbang yayasan B1).
 **Aturan main:** mengikuti `CLAUDE.md` proyek (penamaan tabel/model, list page §2.7, guard, commit atomik) dan pelajaran Fase 1–2: perubahan backend dibangun di repo ini **dan** disinkronkan ke salinan live `sentient-factory` pada workstream yang sama. Data yang belum tersedia dari klien diisi provisional bertanda sesuai §6 — kecuali identitas legal (NPWP, rekening resmi, alamat resmi) yang tidak pernah dikarang.
 
@@ -29,7 +35,7 @@ Catatan prototipe: keduanya berasal dari bundle desain "Pena Cendekia" (2026-09-
 | 4 | Harga yang tampil di portal: HET, harga jual standar, atau harga kontrak per sekolah | W2, W7 | Harga jual standar + HET sebagai referensi; harga kontrak menyusul di W7 |
 | 5 | Provider payment gateway | W5 | Belum dipilih — W5 mulai setelah keputusan; sampai itu tagihan portal tampil tanpa tombol bayar online |
 | 6 | BSP WhatsApp (provider resmi) | W6 | Belum dipilih — notifikasi mulai dari kanal email/dashboard |
-| 7 | Yayasan (B1): ada pelanggan grup ≥2 sekolah? | W7 | Sesuai gerbang §7 dokumen scope: tanpa pelanggan grup, yayasan tidak dibangun pada fase ini |
+| 7 | ~~Yayasan (B1)~~ | — | **SUDAH DIPUTUSKAN 2026-10-05: tidak dibangun (permanen), per-sekolah saja** |
 
 ## 3. Workstream
 
@@ -72,8 +78,8 @@ Ukuran relatif kasar: S (kecil) · M (sedang) · L (besar) · XL (sangat besar).
 - **DoD:** notifikasi uji terkirim pada 3 peristiwa (order diterima, terkirim, tagihan terbit) dan tercatat log-nya.
 
 ### W7 — Mesin harga kontrak, bundling & paket kelas (L)
-- **Tujuan:** harga per sekolah/yayasan sesuai kontrak, dan produk paket (per kelas/per siswa) bisa dijual di portal.
-- **Bangun:** harga kontrak berlapis (melengkapi model tier D1), bundling/paket yang ditunda dari Fase 1, paket kelas untuk W4; yayasan B1 **hanya bila gerbang §7 terpenuhi** (relasi opsional yayasan → banyak sekolah; transaksi tetap di sekolah).
+- **Tujuan:** harga per sekolah sesuai kontrak, dan produk paket (per kelas/per siswa) bisa dijual di portal.
+- **Bangun:** harga kontrak berlapis (melengkapi model tier D1), bundling/paket yang ditunda dari Fase 1, paket kelas untuk W4; ~~yayasan B1~~ **dibatalkan permanen** (keputusan 2026-10-05: per-sekolah saja).
 - **Dependensi:** D1, W2.
 - **DoD:** dua sekolah dengan kontrak berbeda melihat harga berbeda untuk item yang sama; satu paket kelas terjual lewat portal.
 
