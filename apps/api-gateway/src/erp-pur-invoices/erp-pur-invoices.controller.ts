@@ -55,6 +55,18 @@ export class ErpPurInvoicesController {
     return this.service.transition(BigInt(id), dto, req.user?.id);
   }
 
+  @Get(':id/match-check')
+  @ApiOperation({ summary: 'D2 three-way match detail (PO vs receipt vs invoice)' })
+  matchCheck(@Param('id') id: string) {
+    return this.service.matchCheck(BigInt(id));
+  }
+
+  @Post(':id/recompute-match')
+  @ApiOperation({ summary: 'D2 recompute three-way match and persist matchStatus' })
+  recomputeMatch(@Param('id') id: string) {
+    return this.service.recomputeMatch(BigInt(id));
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete purchase invoice (soft)' })
   remove(@Param('id') id: string, @Request() req: any) {

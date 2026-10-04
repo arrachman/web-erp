@@ -1,7 +1,8 @@
 /**
  * Second half of the stock report resolvers, split out to keep each file under
  * 400 lines. Covers Daily Available Stock, COGS Balance, Stock Minus, and the
- * placeholder Consignment Summary. Same derived-balance conventions as
+ * Consignment Summary (real balances of KONSINYASI-class items) and the
+ * Purchase Suggestion. Same derived-balance conventions as
  * report-resolvers-stock.ts.
  */
 
@@ -197,7 +198,8 @@ export function buildStockReportsExtra(deps: ReportDeps): ReportDef[] {
     },
   };
 
-  /** Consignment Summary: no consignment document/model exists yet. */
+  /** Consignment Summary: on-hand balances of items whose D1 catalog
+   * profile classifies them KONSINYASI, grouped by the item's supplier. */
   const consignment: ReportDef = {
     key: 'consignment',
     title: 'Consignment Summary',
@@ -209,16 +211,122 @@ export function buildStockReportsExtra(deps: ReportDeps): ReportDef[] {
       { key: 'quantity', header: 'Kuantitas', type: 'qty' },
       { key: 'value', header: 'Nilai', type: 'money' },
     ],
-    async resolve(_filters: ReportFilters) {
+    async resolve(filters: ReportFilters) {
+      const whId = parseId(filters.warehouseId);
+      const profiles = await prisma.erpItemCatalogProfile.findMany({
+        where: { stockClass: 'KONSINYASI', deletedAt: null, isActive: true },
+        select: { itemId: true },
+      });
+      const ids = profiles.map((pf) => pf.itemId);
+      if (!ids.length) {
+        return {
+          rows: [],
+          total: 0,
+          summary: [{ label: 'Catatan', value: 'belum ada item berkategori konsinyasi', type: 'text' as const }],
+        };
+      }
+      const snap = await movingAvg.costAndQtyByItem(ids, whId);
+      const items = await prisma.erpItem.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, code: true, name: true, vendorId: true },
+      });
+      const vendorIds = [...new Set(items.map((i) => i.vendorId).filter((v): v is bigint => v != null))];
+      const vendors = vendorIds.length
+        ? await prisma.erpPartner.findMany({
+            where: { id: { in: vendorIds } }, select: { id: true, name: true },
+          })
+        : [];
+      const vendorName = new Map(vendors.map((v) => [v.id.toString(), v.name]));
+      const rows = items
+        .map((it) => {
+          const s = snap.get(it.id.toString());
+          const quantity = s ? num(s.qty) : 0;
+          const avgCost = s ? num(s.avgCost) : 0;
+          return {
+            partner: it.vendorId ? vendorName.get(it.vendorId.toString()) ?? '' : '',
+            itemCode: it.code,
+            itemName: it.name,
+            quantity,
+            value: quantity * avgCost,
+          };
+        })
+        .filter((r) => r.quantity !== 0)
+        .sort((a, b) => a.partner.localeCompare(b.partner) || a.itemCode.localeCompare(b.itemCode));
       return {
-        rows: [],
-        total: 0,
-        summary: [{ label: 'Catatan', value: 'belum ada data konsinyasi', type: 'text' }],
+        rows: paginate(rows, filters),
+        total: rows.length,
+        summary: [
+          { label: 'Total Nilai Konsinyasi', value: rows.reduce((s, r) => s + r.value, 0), type: 'money' as const },
+          { label: 'Jumlah Item', value: rows.length, type: 'number' as const },
+        ],
       };
     },
   };
 
-  return [dailyStock, cogsBalance, stockMinus, consignment];
+  /** Purchase Suggestion (D2): items below their minimum stock, with a
+   * suggested order quantity targeting max stock (or min + reorder qty). */
+  const purchaseSuggestion: ReportDef = {
+    key: 'purchase-suggestion',
+    title: 'Purchase Suggestion (Saran Pembelian)',
+    group: 'stock',
+    columns: [
+      ITEM_CODE,
+      ITEM_NAME,
+      { key: 'supplier', header: 'Supplier', type: 'text' },
+      { key: 'onHand', header: 'Stok Saat Ini', type: 'qty' },
+      { key: 'minStock', header: 'Stok Min', type: 'qty' },
+      { key: 'maxStock', header: 'Stok Maks', type: 'qty' },
+      { key: 'suggestedQty', header: 'Saran Beli', type: 'qty' },
+    ],
+    async resolve(filters: ReportFilters) {
+      const whId = parseId(filters.warehouseId);
+      const items = await prisma.erpItem.findMany({
+        where: { deletedAt: null, minStock: { gt: 0 } },
+        select: {
+          id: true, code: true, name: true, vendorId: true,
+          minStock: true, maxStock: true, reorderQty: true,
+        },
+      });
+      const ids = items.map((i) => i.id);
+      const snap = await movingAvg.costAndQtyByItem(ids, whId);
+      const vendorIds = [...new Set(items.map((i) => i.vendorId).filter((v): v is bigint => v != null))];
+      const vendors = vendorIds.length
+        ? await prisma.erpPartner.findMany({
+            where: { id: { in: vendorIds } }, select: { id: true, name: true },
+          })
+        : [];
+      const vendorName = new Map(vendors.map((v) => [v.id.toString(), v.name]));
+      const rows = items
+        .map((it) => {
+          const s = snap.get(it.id.toString());
+          const onHand = s ? num(s.qty) : 0;
+          const minStock = num(it.minStock as Prisma.Decimal);
+          const maxStock = num(it.maxStock as Prisma.Decimal);
+          const reorderQty = num(it.reorderQty as Prisma.Decimal);
+          const target = Math.max(maxStock, minStock + reorderQty);
+          return {
+            itemCode: it.code,
+            itemName: it.name,
+            supplier: it.vendorId ? vendorName.get(it.vendorId.toString()) ?? '' : '',
+            onHand,
+            minStock,
+            maxStock,
+            suggestedQty: Math.max(0, target - onHand),
+          };
+        })
+        .filter((r) => r.onHand < r.minStock)
+        .sort((a, b) => a.itemCode.localeCompare(b.itemCode));
+      return {
+        rows: paginate(rows, filters),
+        total: rows.length,
+        summary: [
+          { label: 'Jumlah Item Di Bawah Stok Min', value: rows.length, type: 'number' as const },
+        ],
+      };
+    },
+  };
+
+  return [dailyStock, cogsBalance, stockMinus, consignment, purchaseSuggestion];
 }
 
 /**

@@ -43,6 +43,8 @@ export function buildStockReports(deps: ReportDeps): ReportDef[] {
       COL.itemName,
       COL.warehouse,
       { key: 'quantity', header: 'Kuantitas', type: 'qty' },
+      { key: 'reservedQty', header: 'Qty Tereservasi (Order)', type: 'qty' },
+      { key: 'availableQty', header: 'Qty Tersedia', type: 'qty' },
       { key: 'avgCost', header: 'Harga Rata2', type: 'money' },
       { key: 'stockValue', header: 'Nilai Stok', type: 'money' },
     ],
@@ -56,6 +58,7 @@ export function buildStockReports(deps: ReportDeps): ReportDef[] {
       ]);
       const whLabel = whId ? whMap?.get(whId.toString())?.name ?? '' : '';
 
+      const reservedMap = await reservedByItem(prisma, ids, whId);
       const all = [...snap.entries()]
         .map(([id, v]) => {
           const it = items.get(id);
@@ -66,6 +69,8 @@ export function buildStockReports(deps: ReportDeps): ReportDef[] {
             itemName: it?.name ?? '',
             warehouse: whLabel,
             quantity,
+            reservedQty: reservedMap.get(id) ?? 0,
+            availableQty: quantity - (reservedMap.get(id) ?? 0),
             avgCost,
             stockValue: quantity * avgCost,
           };
@@ -249,4 +254,59 @@ export function buildStockReports(deps: ReportDeps): ReportDef[] {
     belowMinimum,
     ...buildStockReportsExtra(deps),
   ];
+}
+
+/**
+ * D3 — qty reserved by committed sales orders (APPROVED/POSTED) that has
+ * not yet been delivered through posted delivery orders, per item.
+ * Warehouse-scoped when whId is given (order lines carry a warehouse).
+ */
+async function reservedByItem(
+  prisma: ReportDeps['prisma'],
+  itemIds: bigint[],
+  whId: bigint | null,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!itemIds.length) return out;
+  const lineWhere = {
+    itemId: { in: itemIds },
+    ...(whId ? { warehouseId: whId } : {}),
+  };
+  const orders = await prisma.erpSlsOrder.findMany({
+    where: {
+      deletedAt: null,
+      status: { in: ['APPROVED', 'POSTED'] },
+      lines: { some: lineWhere },
+    },
+    select: {
+      lines: {
+        where: lineWhere,
+        select: { id: true, itemId: true, baseQuantity: true },
+      },
+    },
+  });
+  const lineRows = orders.flatMap((o) => o.lines);
+  if (!lineRows.length) return out;
+  const delivered = await prisma.erpSlsDeliveryOrderLine.groupBy({
+    by: ['sourceLineId'],
+    where: {
+      sourceLineId: { in: lineRows.map((l) => l.id) },
+      deliveryOrder: { deletedAt: null, postingStatus: 'POSTED' },
+    },
+    _sum: { baseQuantity: true },
+  });
+  const deliveredByLine = new Map(
+    delivered.map((d) => [String(d.sourceLineId), Number(d._sum.baseQuantity ?? 0)]),
+  );
+  for (const l of lineRows) {
+    const reserved = Math.max(
+      0,
+      Number(l.baseQuantity) - (deliveredByLine.get(l.id.toString()) ?? 0),
+    );
+    if (reserved > 0) {
+      const key = l.itemId.toString();
+      out.set(key, (out.get(key) ?? 0) + reserved);
+    }
+  }
+  return out;
 }

@@ -132,6 +132,7 @@ model ErpItemCategory {
 
   parent                  ErpItemCategory?  @relation("ItemCategoryParent", fields: [parentId], references: [id])
   children                ErpItemCategory[] @relation("ItemCategoryParent")
+  purSupplierRebates        ErpPurSupplierRebate[]  @relation("PurRebateCategory")
   inventoryAccount        ErpAccount?       @relation("ItemCatInventoryAcct", fields: [inventoryAccountId], references: [id])
   cogsAccount             ErpAccount?       @relation("ItemCatCogsAcct", fields: [cogsAccountId], references: [id])
   salesAccount            ErpAccount?       @relation("ItemCatSalesAcct", fields: [salesAccountId], references: [id])
@@ -227,6 +228,7 @@ model ErpItem {
   deletedAt                 DateTime?        @map("deleted_at") @db.Timestamptz(6)
 
   category                ErpItemCategory         @relation(fields: [categoryId], references: [id])
+  catalogProfile            ErpItemCatalogProfile?
   baseUnit                ErpUnit                 @relation("ItemBaseUnit", fields: [baseUnitId], references: [id])
   fieldUnit               ErpUnit?                @relation("ItemFieldUnit", fields: [fieldUnitId], references: [id])
   kind                    ErpItemKind?            @relation("ItemKind", fields: [kindId], references: [id])
@@ -602,6 +604,7 @@ model ErpPartner {
   itemDistributors    ErpItemDistributor[]     @relation("ItemDistributorPartner")
   itemVendor          ErpItem[]                @relation("ItemVendor")
   schoolProfile       ErpSchoolProfile?
+  purSupplierRebates        ErpPurSupplierRebate[]  @relation("PurRebateSupplier")
   schoolActivities    ErpSchoolActivity[]
 
   @@index([categoryId])
@@ -1848,6 +1851,37 @@ model ErpSchoolProfile {
   @@index([contractExpiryAt])
   @@index([pipelineStage])
   @@map("md_school_profiles")
+}
+
+/// D1 — School-catalog attributes layered on the item master: publisher,
+/// jenjang/grade/curriculum/subject targeting, HET ceiling price,
+/// custom-print flag, stock classification (D3) and per-channel display
+/// status. Transactions keep referencing ErpItem, never this table.
+model ErpItemCatalogProfile {
+  id            BigInt             @id @default(autoincrement())
+  itemId        BigInt             @unique @map("item_id")
+  publisherName String?            @map("publisher_name")
+  jenjang       ErpSchoolJenjang?
+  gradeLevel    String?            @map("grade_level")
+  curriculum    ErpItemCurriculum?
+  subject       String?            @map("subject")
+  hetPrice      Decimal?           @map("het_price") @db.Decimal(19, 4)
+  isCustomPrint Boolean            @default(false) @map("is_custom_print")
+  stockClass    ErpStockClass      @default(DAGANGAN) @map("stock_class")
+  channels      Json?
+  isActive      Boolean            @default(true) @map("is_active")
+  metadata      Json?
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById   BigInt?            @map("created_by_id")
+  updatedById   BigInt?            @map("updated_by_id")
+  deletedAt     DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  item ErpItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([jenjang])
+  @@index([stockClass])
+  @@map("md_item_catalog_profiles")
 }
 
 /// A1 — One entry in a school's CRM activity log (kunjungan / negosiasi /

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PurInvoicePostingService } from './pur-invoice-posting.service';
+import { computePurInvoiceMatch } from './pur-invoice.match';
 import { enrichInvoices } from './pur-invoice-enrich';
 import { CreatePurInvoiceDto } from './dto/create-pur-invoice.dto';
 import { QueryPurInvoicesDto } from './dto/query-pur-invoices.dto';
@@ -283,6 +284,21 @@ export class ErpPurInvoicesService {
       await tx.erpPurInvoice.update({ where: { id }, data });
     });
     return this.one(id);
+  }
+
+  /** D2 — three-way match detail (PO vs goods receipt vs this invoice). */
+  async matchCheck(id: bigint) {
+    return computePurInvoiceMatch(this.prisma, id);
+  }
+
+  /** D2 — recompute the three-way match and persist matchStatus. */
+  async recomputeMatch(id: bigint) {
+    const result = await computePurInvoiceMatch(this.prisma, id);
+    await this.prisma.erpPurInvoice.update({
+      where: { id },
+      data: { matchStatus: result.computedStatus },
+    });
+    return { ...result, persistedStatus: result.computedStatus };
   }
 
   async remove(id: bigint, actorId?: string) {
