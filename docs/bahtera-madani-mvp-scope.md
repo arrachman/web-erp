@@ -316,6 +316,21 @@ WhatsApp, OCR, drafting penawaran, dan anomaly detection dengan human approval.
 - manufaktur di luar percetakan;
 - integrasi langsung ke ARKAS.
 
+### Navigasi deployment MVP
+
+**Keputusan 2026-10-04:** menu Production (`M6`), Fixed Assets (`M7`), dan
+Point of Sale (`M12`) dinonaktifkan di `sys_menus` pada deployment MVP. Ketiga
+modul tidak dihapus; menu dapat diaktifkan kembali saat fase terkait dimulai.
+Ini menjaga sidebar dan command palette tetap berfokus pada kapabilitas MVP.
+
+Master Data (`M1`) juga dirampingkan ke menu MVP saja lewat migration
+`20261004_003_erp_mvp_hide_non_mvp_master_menus`: grup Production, atribut item
+legacy (Class, Color, Commission, Item Information, Material, Model, Nozzle,
+OEM, Price Index, Product Class, Section), referensi non-MVP (Miscellaneous,
+Point Categories, Production Categories, Transaction Notes + Detail, Work
+Estimate), dan Project dinonaktifkan dengan cara yang sama (daftar kode lengkap
+ada di file migration). Menu di luar daftar itu tetap tampil.
+
 ## 9. Open decisions sebelum estimasi final
 
 Jawaban wajib dicatat sebelum workstream terkait dikunci:

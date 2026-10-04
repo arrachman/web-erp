@@ -60,11 +60,6 @@ export const NAV: NavItem[] = [
       { id: 'm-coa', label: 'Chart of Account', code: 'CoA' },
       { id: 'm-lokasi', label: 'Cabang & Lokasi', code: 'LOC' },
       { id: 'm-costcenter', label: 'Cost Center', code: 'CC' },
-      { id: '/master/colors', label: 'Warna', code: 'CLR' },
-      { id: '/master/nozzles', label: 'Nozzle', code: 'NZL' },
-      { id: '/master/oems', label: 'OEM', code: 'OEM' },
-      { id: '/master/price-indices', label: 'Price Index', code: 'PRX' },
-      { id: '/master/item-info', label: 'Info Item', code: 'INF' },
     ],
   },
   {
@@ -130,26 +125,6 @@ export const NAV: NavItem[] = [
       { id: 'sal-do', label: 'Pengiriman', code: 'DO' },
       { id: 'sal-invoice', label: 'Faktur Penjualan', code: 'SI' },
       { id: 'sal-return', label: 'Retur Penjualan', code: 'SRT' },
-    ],
-  },
-  {
-    id: 'produksi',
-    icon: 'factory',
-    label: 'Produksi',
-    children: [
-      { id: 'prd-wo', label: 'Work Order', code: 'WO' },
-      { id: 'prd-bom', label: 'BOM', code: 'BOM' },
-      { id: 'prd-output', label: 'Output Produksi', code: 'OP' },
-    ],
-  },
-  {
-    id: 'fixed-asset',
-    icon: 'layers',
-    label: 'Fixed Asset',
-    children: [
-      { id: 'fa-list', label: 'Daftar Aset', code: 'FA' },
-      { id: 'fa-deprec', label: 'Penyusutan', code: 'DEP' },
-      { id: 'fa-disposal', label: 'Disposal', code: 'DSP' },
     ],
   },
   { divider: true },
