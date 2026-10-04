@@ -4,7 +4,7 @@
 > Cakupan: Modul M1 (Master Data) — semua grup & halaman  
 > Metode audit: kode frontend (`components/pages/`, `lib/api/`, `lib/erp-route-meta.ts`,
 > `components/templates/shell-route-renderer.tsx`) + backend (`apps/api-gateway/src/erp-*/`)
-> + seed (`prisma/seed-erp.ts`)
+> + data `sys_menus` di DB
 
 ---
 
@@ -161,8 +161,8 @@
 
 **Catatan:**
 - Country → Province → City → Area: hierarki 4 level, setiap level punya FK ke level atas.
-  Area (Kecamatan) punya field `postalCode`. Seed geodata tersedia:
-  `npm run db:seed:geo` (38 provinsi · 514 kab/kota · 7.286 kecamatan · 84.270 kelurahan).
+  Area (Kecamatan) punya field `postalCode`. Data geo tersedia di DB
+  (file seed dihapus 2026-10-04; 38 provinsi · 514 kab/kota · 7.286 kecamatan · 84.270 kelurahan).
 - SubArea (Kelurahan): **tidak diimplementasi** (ditunda/deferred) —
   bukan bagian MVP; bisa ditambahkan sebagai `areas-page.tsx`-like dengan FK ke Area.
 - Transaction Notes & Txn Note Detail: referensi teks keterangan transaksi.
@@ -214,7 +214,7 @@
 | Decision Log | `opt/web-erp/DECISIONS.md` | Log per-fitur (appearance, item form, geo, CoA, dll) |
 | ERP Pages Registry | `components/templates/shell-route-renderer.tsx` (L149–247) | Mapping route → komponen |
 | Route Meta | `lib/erp-route-meta.ts` (L32–98) | Judul & breadcrumb tiap route M1 |
-| Seed Menu | `apps/api-gateway/prisma/seed-erp.ts` (L408–494) | Entry `sys_menus` untuk M1 |
+| Data Menu | Tabel `sys_menus` (DB) | Entry menu untuk M1 |
 | API Client | `opt/web-erp/lib/api/*.ts` | Satu file per entitas (`listX`, `createX`, `updateX`, `deleteX`) |
 
 ---

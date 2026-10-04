@@ -7,7 +7,7 @@
  *      (md_partners.payable/receivable, md_items.inventory/cogs/sales,
  *      fin_journal_lines.accountId). Jika ada → abort, perlu in-place UPDATE.
  *   2. DELETE semua row yang TIDAK match `^\d{4}\.\d{2}\.\d{3}$`.
- *   3. User panggil `seed-erp-accounts.ts` setelahnya (atau lewat `npm run db:seed`).
+ *   3. Tambahkan ulang akun yang diperlukan melalui konfigurasi database.
  *
  * Run: npx ts-node prisma/migrate-erp-accounts-coa-format.ts
  * Idempotent: re-run aman; abort cepat kalau sudah dalam format baru.
@@ -56,7 +56,7 @@ async function main() {
 
   const result = await prisma.erpAccount.deleteMany({ where: { id: { in: oldIds } } });
   console.log(`  deleted ${result.count} row format lama.`);
-  console.log('Selesai. Jalankan: npx ts-node prisma/seed-erp-accounts.ts');
+  console.log('Selesai. Tambahkan ulang akun yang diperlukan melalui konfigurasi database.');
 }
 
 main()

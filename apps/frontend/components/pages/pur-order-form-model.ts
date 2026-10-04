@@ -74,7 +74,7 @@ export function defaultPurOrderForm(): PurOrderFormData {
 /**
  * Built-in fallback header layout used until Form Builder config loads (or when
  * the transaction type has no saved config) — prevents an empty-header flash.
- * The authoritative layout always comes from the API (seed-erp-purchasing-forms.ts).
+ * The authoritative layout always comes from the API (Form Builder config in the database).
  */
 export const DEFAULT_PUR_FORM_FIELDS: ErpFormField[] = [
   { fieldKey: 'supplierId', kind: 'STRUCTURAL', label: 'Supplier', fieldType: 'PARTNER', isRequired: true, isVisible: true, sortOrder: 0, columnSlot: 'LEFT' },

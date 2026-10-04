@@ -5,7 +5,7 @@
 > Root aplikasi: `apps/api-gateway` (NestJS/Prisma) dan `apps/frontend` (Next.js/React).
 > Purchasing, Sales, Inventory, dan Finance sudah memiliki modul API serta halaman frontend. Roadmap ini membedakan **verifikasi/fix** MVP dari file **baru/diubah** untuk fitur yang belum tersedia.
 >
-> Konvensi wajib: `ErpJwtAuthGuard`, DTO paginasi (`page`, `limit`, `search`, `sortBy`, `sortDir`), menu dari `prisma/seed-erp.ts`, list melalui `ErpListLayout`, file aplikasi maksimal 400 baris, migrasi additive hand-written SQL + `prisma migrate deploy` + Prisma generate di container.
+> Konvensi wajib: `ErpJwtAuthGuard`, DTO paginasi (`page`, `limit`, `search`, `sortBy`, `sortDir`), menu dikelola langsung di tabel `sys_menus`, list melalui `ErpListLayout`, file aplikasi maksimal 400 baris, migrasi additive hand-written SQL + `prisma migrate deploy` + Prisma generate di container.
 
 ---
 
@@ -62,25 +62,25 @@
 | `apps/api-gateway/src/erp-fin-giro-entries/giro-posting.service.ts` | Verifikasi/fix | Uji jurnal penerbitan, pencairan, dan penolakan giro. |
 | `apps/api-gateway/src/erp-pur-returns/*` | Verifikasi/fix | Return purchase mengurangi stok dan membentuk credit/outstanding yang benar. |
 | `apps/api-gateway/src/erp-sls-returns/*` | Verifikasi/fix | Return sales menambah stok serta membentuk credit memo yang benar. |
-| `apps/api-gateway/prisma/seed-erp-initial-setup.ts` | Verifikasi | Seed wajib menghasilkan fiscal period aktif, currency, tax, accounting defaults, dan document numbering. |
-| `apps/api-gateway/prisma/seed-erp-opening-balances.ts` | Verifikasi | Stock opening dan saldo AR/AP konsisten dengan ledger awal. |
-| `apps/api-gateway/prisma/seed-erp.ts` | Verifikasi | Menu P2P/O2C/Giro tersedia dan path-nya cocok dengan frontend registry. |
+| Tabel `sys_settings`, `sys_fiscal_periods`, `md_currencies`, `md_taxes`, `sys_document_numberings` (DB) | Verifikasi | Periksa langsung di DB: fiscal period aktif, currency, tax, accounting defaults, dan document numbering sudah terisi. |
+| Data opening stock & saldo AR/AP (DB) | Verifikasi | Stock opening dan saldo AR/AP konsisten dengan ledger awal; cek via query DB. |
+| Tabel `sys_menus` (DB) | Verifikasi | Menu P2P/O2C/Giro tersedia dan path-nya cocok dengan frontend registry. |
 | `apps/api-gateway/src/erp-pur-goods-receipts/pur-goods-receipt-posting.service.spec.ts` | Baru | Unit/integration test posting GRN: accepted/rejected qty, stock movement, GL, double-post protection. |
 | `apps/api-gateway/src/erp-sls-delivery-orders/sls-delivery-order-posting.service.spec.ts` | Baru | Test DO: satu movement, COGS/stock ledger, reversal. |
 | `apps/api-gateway/src/erp-fin-ap-payments/ap-payment-posting.service.spec.ts` | Baru | Test allocation AP, over-allocation, repost/reopen. |
 | `apps/api-gateway/src/erp-fin-ar-receipts/ar-receipt-posting.service.spec.ts` | Baru | Test allocation AR, over-allocation, repost/reopen. |
 
-### MVP-0 — Gap prasyarat master data & konfigurasi (hasil audit 2026-10-04)
+### MVP-0 — Gap prasyarat master data & konfigurasi (hasil audit 2026-10-04; seed dihapus, semua pengecekan via DB)
 
 Posting GRN/DO/SI akan gagal (BadRequest) bila data berikut kosong. Kerjakan SEBELUM MVP-1/2.
 
 | File | Jenis | Gap konkret |
 |---|---|---|
-| `apps/api-gateway/prisma/seed-erp.ts` (`seedDocumentNumberings`) | Ubah | Kode dipakai service tapi belum di-seed: DO, DOI, SI, SII, GRI, PI, PII, SR, RNR, RNRI, RP, VP, IP, PR, SQ, SA, DC, DR, AS, BS, IB, SIE, PL, SP, DNRI, RFQ. Tanpa seed, nomor jatuh ke fallback `count+1` (tidak reset tahunan, tidak bisa diatur dari menu Document Numbering). Tambahkan semua dengan prefix/digit yang konsisten. |
-| `apps/api-gateway/prisma/seed-erp-initial-setup.ts` | Ubah | Seed setting `inventory/accounts`: `glPostingEnabled`, `defaultCogsAccountId`, `defaultInventoryAccountId`, `defaultOpeningEquityAccountId` (tidak ada di seed mana pun; DO/stock movement melempar error HPP/persediaan bila kosong). |
-| `apps/api-gateway/prisma/seed-erp-items-real.ts`, `seed-erp-md-dummy.ts` | Ubah | Item/kategori wajib punya `inventoryAccountId`, `cogsAccountId`, `salesAccountId` (SI melempar error bila tidak ada). Seed belum mengisi. |
-| `apps/api-gateway/prisma/seed-erp-md-vendors.ts`, `seed-md-partners-real.ts` | Ubah | Partner customer/supplier wajib `receivableAccountId`/`payableAccountId` (atau default di dokumen). Seed belum mengisi. |
-| `apps/api-gateway/prisma/seed-erp-md-taxes-indonesia.ts` | Verifikasi | Pajak harus punya `saleAccountId` (PPN Keluaran) dan akun PPN Masukan untuk pembelian. |
+| Tabel `sys_document_numberings` (DB) | Audit via DB | Bandingkan kode dokumen yang dipakai service (DO, DOI, SI, SII, GRI, PI, PII, SR, RNR, RNRI, RP, VP, IP, PR, SQ, SA, DC, DR, AS, BS, IB, SIE, PL, SP, DNRI, RFQ) dengan isi tabel. Yang belum ada ditambahkan langsung di DB / menu Document Numbering; tanpa itu nomor jatuh ke fallback `count+1`. |
+| Tabel `sys_settings` grup `inventory/accounts` (DB) | Audit via DB | Cek `glPostingEnabled`, `defaultCogsAccountId`, `defaultInventoryAccountId`, `defaultOpeningEquityAccountId`; isi lewat halaman Setting bila kosong (DO/stock movement melempar error HPP/persediaan bila kosong). |
+| `md_items` / `md_item_categories` (DB) | Audit via DB | Cari item/kategori tanpa `inventoryAccountId`, `cogsAccountId`, `salesAccountId` (SI melempar error bila tidak ada); lengkapi data aktual. |
+| `md_partners` (DB) | Audit via DB | Cari customer tanpa `receivableAccountId` dan supplier tanpa `payableAccountId` (atau default di dokumen); lengkapi data aktual. |
+| `md_taxes` (DB) | Audit via DB | Pajak harus punya `saleAccountId` (PPN Keluaran) dan akun PPN Masukan untuk pembelian. |
 | `apps/api-gateway/src/erp-settings/*` + FE halaman Setting | Verifikasi | Validasi di UI/endpoint: peringatan bila default account GL belum diisi sebelum go-live. |
 | `apps/api-gateway/src/**/*.spec.ts` | Baru | Baru 6 spec, semua helper. Belum ada test posting GRN/DO/SI/AP/AR (sudah di MVP-3, naikkan prioritas). |
 
@@ -152,13 +152,13 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 
 **Acceptance scenario:** Customer kategori tier 2 membeli Item A qty 15; resolver memakai tier 2 dengan `minQty ≤ 15`; customer tanpa tier memakai harga dasar; harga SO yang sudah approved tidak berubah ketika master price diedit.
 
-### P1-C — Seed, deployment, dan regression
+### P1-C — Data contoh, deployment, dan regression
 
 | File | Status | Pekerjaan |
 |---|---|---|
-| `apps/api-gateway/prisma/seed-erp-items-real.ts` | Ubah | Seed contoh item distributor dengan base `PCS`, `DUS`/`KARTON` conversion, base price, dan tier prices. |
-| `apps/api-gateway/prisma/seed-erp-partner-categories.ts` | Verifikasi/ubah | Seed kategori pelanggan dengan `salesTier` yang konsisten dan terdokumentasi. |
-| `apps/api-gateway/prisma/seed-erp.ts` | Verifikasi | Tidak perlu menu baru jika fitur berada pada Item/SO/PO existing; pastikan izin edit item dan price sudah benar. |
+| Data item distributor (DB) | Input via UI/DB | Item contoh dengan base `PCS`, conversion `DUS`/`KARTON`, base price, dan tier prices diinput langsung. |
+| `md_partner_categories` (DB) | Verifikasi | Kategori pelanggan dengan `salesTier` yang konsisten dan terdokumentasi. |
+| Tabel `sys_menus` (DB) | Verifikasi | Tidak perlu menu baru jika fitur berada pada Item/SO/PO existing; pastikan izin edit item dan price sudah benar. |
 | `apps/api-gateway/package.json` | Verifikasi | Gunakan command existing untuk generate, test, typecheck, dan migration deploy; jangan menambah command duplikat. |
 | `apps/frontend/__tests__/items-unit-conversions.test.tsx` | Baru | Form item memuat/menyimpan grid conversion dan mencegah default ganda. |
 | `apps/frontend/__tests__/items-price-tiers.test.tsx` | Baru | Tier price tampil sesuai response dan format angka benar. |
@@ -187,7 +187,7 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 | `apps/api-gateway/src/erp-sls-delivery-orders/sls-delivery-order-posting.service.ts` | Ubah | Post lot allocation ke issue movement; reverse/void mengembalikan saldo lot. |
 | `apps/api-gateway/src/erp-inv-stock-movements/erp-inv-stock-movements.service.ts` | Ubah | Expose/filter lot dalam history movement. |
 | `apps/api-gateway/src/app.module.ts` | Ubah | Registrasi `ErpInvLotsModule`. |
-| `apps/api-gateway/prisma/seed-erp.ts` | Ubah | Tambah menu canonical `/warehouse/lots` di Inventory dan role mapping. |
+| Tabel `sys_menus` + `adm_role_menus` (DB) | Ubah via DB | Tambah menu canonical `/warehouse/lots` di Inventory dan role mapping (migrasi data SQL). |
 | `apps/frontend/components/pages/inv-lots-page.tsx` | Baru | List server-driven memakai `ErpListLayout`, filter status/expiry/item, kebab + context menu. |
 | `apps/frontend/components/pages/inv-lots-form.tsx` | Baru | Form lot untuk koreksi metadata yang tidak mengubah stock balance. |
 | `apps/frontend/components/pages/pur-goods-receipt-form.tsx` | Ubah | Kolom/section lot number, supplier lot, manufacture/expiry date. |
@@ -210,7 +210,7 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 | `apps/api-gateway/src/erp-pln-mrp-runs/mrp-calculation.service.ts` | Baru | Pure calculation service yang dapat diuji: projected stock, shortage, suggested quantity, preferred supplier. |
 | `apps/api-gateway/src/erp-pur-orders/erp-pur-orders.service.ts` | Ubah | Entry point internal membuat draft PO dari MRP suggestion, menyimpan reference balik. |
 | `apps/api-gateway/src/app.module.ts` | Ubah | Registrasi empat module planning. |
-| `apps/api-gateway/prisma/seed-erp.ts` | Ubah | Menu canonical Planning dan role mapping. |
+| Tabel `sys_menus` + `adm_role_menus` (DB) | Ubah via DB | Menu canonical Planning dan role mapping (migrasi data SQL). |
 | `apps/frontend/components/pages/pln-reorder-policies-page.tsx` | Baru | List/form policy. |
 | `apps/frontend/components/pages/pln-demand-forecasts-page.tsx` | Baru | List/form/generate forecast. |
 | `apps/frontend/components/pages/pln-mrp-runs-page.tsx` | Baru | Jalankan MRP dan lihat line result read-only. |
@@ -232,7 +232,7 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 | `apps/api-gateway/src/erp-fa-transfers/{controller,module,service}.ts` + `dto/*` | Baru | Transfer lokasi/department tanpa mengubah acquisition cost. |
 | `apps/api-gateway/src/erp-fa-disposals/{controller,module,service}.ts` + `dto/*` | Baru | Disposal dan gain/loss ledger. |
 | `apps/api-gateway/src/app.module.ts` | Ubah | Registrasi module FA. |
-| `apps/api-gateway/prisma/seed-erp.ts` | Ubah | Menu Fixed Assets + role mapping. |
+| Tabel `sys_menus` + `adm_role_menus` (DB) | Ubah via DB | Menu Fixed Assets + role mapping (migrasi data SQL). |
 | `apps/frontend/components/pages/fa-asset-categories-page.tsx` | Baru | List/form kategori. |
 | `apps/frontend/components/pages/fa-assets-page.tsx` | Baru | Asset register list/form. |
 | `apps/frontend/components/pages/fa-depreciation-runs-page.tsx` | Baru | Create/review/post run. |

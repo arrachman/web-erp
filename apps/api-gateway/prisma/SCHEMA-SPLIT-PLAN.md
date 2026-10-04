@@ -74,7 +74,7 @@ file jadi satu namespace, jadi penempatan enum bebas asal tidak dobel.
   ```
 - `package.json` `prisma: {}` kosong & tidak ada flag `--schema` → Prisma auto-detect
   `prisma/schema/` begitu folder ada. **Tidak perlu ubah script** `db:generate`/`db:migrate`.
-- Seed (`prisma/seed*.ts`), `reset-db.ts`, migrations → **tidak terpengaruh** (mereka pakai
+- `reset-db.ts`, migrations → **tidak terpengaruh** (mereka pakai
   `@prisma/client`, bukan baca file schema langsung).
 - Update referensi dokumen yang menyebut "`prisma/schema.prisma`" sebagai single file
   ([api-gateway/CLAUDE.md](../CLAUDE.md), skill `erp`) → jadi "`prisma/schema/`".

@@ -8,7 +8,7 @@
 - **m2 Finance MVP (skeleton CRUD, 5 entitas)**: NestJS modules
   `erp-fin-{journal-entries,ar-receipts,ap-payments,giros,ledger}` di
   api-gateway + 5 halaman frontend dengan route `/keuangan/*`. Journal
-  Entries: master/detail (header + nested lines). Ledger: read-only. Seed
+  Entries: master/detail (header + nested lines). Ledger: read-only. Data
   `sys_menus` ditambah dua group baru `M2.TX` + `M2.RPT`. Semua controller
   pakai `ErpJwtAuthGuard` (CLAUDE.md §2.5). **Skeleton, bukan posting
   engine** — belum: validasi debit==credit, auto-posting, hitung saldo CoA,
@@ -84,7 +84,7 @@ dengan platform Althea). Semua model ber-prefix `Erp` di Prisma + `@@map("domain
 **Enum:** 13 enum Prisma (`ErpUserLevel`, `ErpMenuType`, `ErpItemType`, `ErpAccountType`, dll)  
 **PK:** BigInt `@default(autoincrement())` di semua tabel ERP  
 
-**Seed dijalankan** (`prisma/seed-erp.ts`):
+**Data awal** (dikelola langsung di DB; file seed dihapus 2026-10-04):
 
 | Data | Isi |
 |---|---|
@@ -309,7 +309,7 @@ Setiap modul transaksional: **schema design review → Prisma write + migration 
 | DB Design (otoritatif) | `opt/web-erp/db-design/README.md` | Hub semua keputusan DB, ERD, enum catalog |
 | Prisma Schema | `apps/api-gateway/prisma/schema.prisma` | Source of truth model DB |
 | Migration ERP | `apps/api-gateway/prisma/migrations/20260518_001_erp_mvp_m0_m1_init/` | SQL migration yang sudah applied |
-| Seed ERP | `apps/api-gateway/prisma/seed-erp.ts` | Data awal idempotent |
+| Data awal ERP | Tabel DB (file seed dihapus 2026-10-04; arsip di /home/rania/backups/cleanup-2026-10-04) | Dikelola langsung di DB |
 | API Swagger | `http://localhost:3203/api/docs` | Auto-generated dari kode (perlu server jalan) |
 | Module Roadmap | `opt/web-erp/db-design/module-roadmap.md` | Peta domain m2–m12 |
 | CLAUDE.md web-erp | `opt/web-erp/CLAUDE.md` | Aturan baku: naming, atomic design, 400 baris |

@@ -153,8 +153,8 @@ filtered). Route id kanonik **= `sys_menus.path`** (mis. `/master/locations`,
 `/admin/fiscal-periods`). `renderRoute` memetakan path→komponen via registry
 `ERP_PAGES` (`shell-route-renderer.tsx`); short-id legacy (`adm-users`,
 `md-items`) hanya **alias** untuk fallback `NAV` statis saat API down. Halaman
-ERP baru: tambahkan entry di `ERP_PAGES` (key = path seeded di
-`prisma/seed-erp.ts`) + `ERP_ROUTE_META` (`lib/nav.ts`) untuk breadcrumb.
+ERP baru: tambahkan entry di `ERP_PAGES` (key = path di tabel
+`sys_menus` pada DB) + `ERP_ROUTE_META` (`lib/nav.ts`) untuk breadcrumb.
 Jangan bikin skema id baru — `sys_menus` adalah SSOT navigasi.
 
 ---
@@ -580,7 +580,7 @@ section ber-`§` [`DECISIONS.md`](DECISIONS.md).
 - **Enum business-logic** (≥3 nilai) → info-icon label + Radix Popover comparison. → §2.26
 - **Migrasi ERP** = hand-written SQL + `prisma migrate deploy` (bukan `migrate dev`) + `prisma generate` **di container** lalu restart. → §2.32/§2.34
 - **Preferensi user** (theme/lang/density/font/sidebar/primary) → `adm_user_preferences`; 3 bahasa UI `id/en/ja`. → §2.13
-- **Command palette & sidebar** = derived `sys_menus` role-filtered (`my-menus`); dilarang hardcode. Seed menu SSOT = `prisma/seed-erp.ts` (jangan seed ERP menu di `seed.ts`). → §2.4/§2.17
+- **Command palette & sidebar** = derived `sys_menus` role-filtered (`my-menus`); dilarang hardcode. Menu dikelola langsung di tabel `sys_menus` (seed dihapus 2026-10-04). → §2.4/§2.17
 - **Mode URL routing** (`urlRoutingEnabled`) → ganti mode wajib `confirmAction`. → §2.19
 - **URL form transaksi** → `<base>/new` (create) & `<base>/:id` (edit); route = SSOT list-vs-form (tanpa state `mode`). Reuse `lib/trx-route.ts` + registry `TRX_FORM_PAGES`. → §2.3.1
 - **Layout form transaksi** → kanan-atas urutan: **Tanggal → No Transaksi → Uang/Kurs**; identitas (partner/akun/uraian) kiri, dimensi (cabang/lokasi) tengah. Label rata kiri, asterisk di belakang. Berlaku CR/CD/BD/giro/jurnal. → §2.36
@@ -588,12 +588,12 @@ section ber-`§` [`DECISIONS.md`](DECISIONS.md).
 - **Status dokumen transaksi** = enum `ErpDocumentStatus` 7-nilai (`DRAFT/NEED_APPROVE/APPROVED/REJECTED/POSTED/VOID/CANCELLED`), sejalan `lib/status.ts`; jangan reintroduce varian 4-nilai lama. → § Kas Masuk
 - **Filter list transaksi** = 1 baris via slot `toolbar` `ErpListLayout` (gabung summary `Σ`); inline = Status + Tanggal; tombol **Filter** (badge jumlah aktif) → drawer kanan staged (`organisms/drawer.tsx`). Tanpa chip terpisah. → §2.40
 - **Tipe Partner** = master `md_partner_types` (`code+name+isActive`; `kind` derived dari code: `CUST`/`SUP`/`SLS`/lain → `CUSTOMER`/`SUPPLIER`/`SALESMAN`/`GENERAL`) + FK `md_partners.partner_type_id`; **jangan** reintroduce boolean `isCustomer`/dll. Kategori/sub-segmen = `md_partner_categories` (`salesTier`). → DECISIONS.md "Tipe Partner"
-- **Atribut item** (Nozzle/OEM/dll) → mirror `md_colors` (code+name+isActive) + FK `md_items` + modul ber-guard `ErpJwtAuthGuard` + seed `seed-erp.ts` + daftar `ERP_PAGES`/`NAV`/`ERP_ROUTE_META`. Reuse master existing; Vendor→`md_partners`, Satuan Lapangan→`md_units`. **Jangan** tabel atribut generik. → §2.35
+- **Atribut item** (Nozzle/OEM/dll) → mirror `md_colors` (code+name+isActive) + FK `md_items` + modul ber-guard `ErpJwtAuthGuard` + data awal langsung di DB + daftar `ERP_PAGES`/`NAV`/`ERP_ROUTE_META`. Reuse master existing; Vendor→`md_partners`, Satuan Lapangan→`md_units`. **Jangan** tabel atribut generik. → §2.35
 - **Sumber lookup** = slug kanonik `lib/lookup-source-registry.ts` (14 sumber); resolve via `lib/grid-lookup-loaders.ts` (slug lama di-alias). **Jangan** bikin slug baru. → § Kustomisasi Grid
 - **Field settings kolom grid** = `GridColumnSettings` gear → Placeholder + Nilai default (type-aware) + Lookup config. DB: `sys_transaction_grid_columns.placeholder/default_value/default_value_label`. Live: `applyColumnDefaults` + `useSeedLineDefaults`. → § Kustomisasi Grid
 - **Form Builder field** → config per-field di `sys_form_fields` (label/tipe/visible/wajib/slot/urutan + lookup + placeholder/`defaultValue`/`isReadonly`). UI = satu `FieldSettingsPopover`; form konsumsi `ph()`/`ro()` + `formDefaultsPatch()`. → § Form Builder
 - **Header form transaksi = render 100% config** (no hardcoded `<Field>`): loop config-ordered per slot, dispatch struktural→`CashBankStructuralField` vs custom→`CashBankCustomField`. Tipe sistem di-GUARD (Select disabled di builder); custom bebas. → § Header form transaksi
-- **Config transaksi baru = baseline version-controlled** (bukan live-DB-only): grid kolom + `lineTable` per famili di `seed-erp-transaction-grids.ts` (`GridFamily`: cashbank/journal/giro/giroClearing/inv*), header default per kode di `DEFAULTS_BY_CODE`. Finance non-kas/bank sudah config-only; **giro = grid instrumen (`fin_giros`), bukan baris jurnal**. → § Setup config
+- **Config transaksi** (grid kolom + `lineTable` per famili, header default per kode) dikelola langsung di DB; file seed baseline dihapus 2026-10-04 (arsip: /home/rania/backups/cleanup-2026-10-04). Finance non-kas/bank sudah config-only; **giro = grid instrumen (`fin_giros`), bukan baris jurnal**. → § Setup config
 - **Grid baris transaksi** = mesin generik (`grid-line-core.ts` `GridModel<Row>` + `use-grid-nav.ts` `useGridNav<Row>` + `LineCell`). Transaksi baru → bikin `GridModel<Row>` + organism; **jangan fork** mesin. Cash/bank=`cashBankGridModel`; sales=`slsItemGridModel`. → § Sales Order
 - **Sales item-based (SO/SI/DO)** → pola cash/bank, baris=item (Item·Qty·Satuan·Harga·Disc·Pajak·Total): shared `sales-transaction-form.tsx` + `sls-item-lines.tsx` + wrapper tipis. **SO tidak posting GL** (SI yang posting AR/revenue). → § Sales Order
 - **Biaya item (tab Harga)** = system-managed dari pembelian: visible hanya `purchasePrice`+`lastHpp` (read-only, di-stamp GRN POST); `standardCost` dihapus dari UI. Pajak = 4 slot (Beli 1/2 + Jual 1/2). Tingkat Harga/Diskon = dinamis/unlimited via `md_partner_categories.sales_tier`. → § Item Harga tab

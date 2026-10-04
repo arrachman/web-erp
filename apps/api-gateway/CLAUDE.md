@@ -20,7 +20,7 @@ npm run build && npm start
 npm run lint && npm run typecheck && npm test
 npm run db:migrate        # prisma migrate dev
 npm run db:generate       # regen Prisma client (WAJIB setelah edit schema.prisma)
-npm run db:seed
+# seed dihapus 2026-10-04 (data dikelola langsung di DB)
 npm run db:studio
 ```
 
@@ -34,7 +34,7 @@ npm run db:studio
 ## Database (Prisma)
 - Schema: **multi-file** di `prisma/schema/` (fitur `prismaSchemaFolder`, preview di Prisma 5.22) — **SSOT**. Dipecah per-domain: `platform`/`wms` + `erp-*` (core/md/fin/sls/pur/inv/mfg/fa/pos/pln) + `mdp-mes` + `enums` + `datasource`. Tambah/ubah model di file domain yang sesuai (`@@map` prefix menentukan domain), lalu `npm run db:generate`. Prisma auto-detect folder; jangan buat `prisma/schema.prisma` lagi. Detail & alasan: `prisma/SCHEMA-SPLIT-PLAN.md`.
 - Migrasi dev: `npm run db:migrate -- --name <slug>`. **Jangan** edit migrasi yang sudah dipush.
-- Seed dev: `prisma/seed.ts`. Idempoten.
+- Seed: tidak ada (dihapus 2026-10-04); data awal dikelola langsung di DB. Backup: /home/rania/backups/cleanup-2026-10-04.
 - Backfill scripts (`backfill-*.ts`) hanya jalan manual; jangan masukkan ke startup.
 
 ## Hal yang sering bikin masalah

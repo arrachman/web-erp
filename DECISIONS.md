@@ -11,6 +11,9 @@ di `CLAUDE.md` (section "Aturan turunan lintas-fitur"); di sini detail lengkapny
 
 ---
 
+> **Catatan status (2026-10-04):** Semua file dan script seed telah dihapus. Referensi seed di bawah adalah riwayat keputusan, bukan instruksi operasional; data dikelola langsung di database. Arsip sebelum penghapusan: `/home/rania/backups/cleanup-2026-10-04`.
+
+
 ### Master Data Partner — Tipe Partner sebagai master data (2026-07-11)
 
 Keputusan user: dropdown statis `Tipe` di `/master/partners` **diganti menjadi

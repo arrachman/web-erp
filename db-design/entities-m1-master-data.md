@@ -563,8 +563,7 @@ Relations: `city City`, `subAreas SubArea[]`.
 
 Relations: `area Area`.
 
-> **Seed data Indonesia lengkap** tersedia via `npm run db:seed:geo`
-> (`prisma/seed-md-geo.ts`, sumber `kode-wilayah-id` MIT):
+> **Data Indonesia lengkap** sudah ada di DB (file seed dihapus 2026-10-04; sumber awal `kode-wilayah-id` MIT):
 > 38 provinsi · 514 kab/kota · 7.286 kecamatan · **84.270 kelurahan/desa**.
 > Semua kode = BPS code. Migration: `20260522_004_erp_md_geo_kelurahan`.
 

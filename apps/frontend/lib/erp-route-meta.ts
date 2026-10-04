@@ -2,7 +2,7 @@
  * ERP route metadata — title, group, and icon for every canonical path.
  * Extracted from nav.ts to keep that file under the 400-line limit.
  *
- * Keyed by `sys_menus.path` (the canonical route id seeded via seed-erp.ts).
+ * Keyed by `sys_menus.path` (the canonical route id stored in the sys_menus table).
  * Used by `pageMeta()` in nav.ts for breadcrumbs and tab labels.
  */
 
