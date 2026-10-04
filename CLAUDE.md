@@ -659,6 +659,24 @@ working tree atau feature branch.
 Tanya user. Aturan-aturan di atas tidak punya pengecualian diam-diam —
 kalau ada kebutuhan menyimpang, eskalasi dulu.
 
+## 6. Data yang kurang: minta ke klien (WAJIB)
+
+Bila data yang dibutuhkan untuk membangun/mengisi fitur **tidak ada** di
+repo, database, maupun `data-client/` — **jangan dikarang**. Biarkan field
+kosong (NULL) apa adanya, lalu **minta data tersebut ke klien lewat user**
+dan laporkan persis field apa saja yang kurang.
+
+- Berlaku untuk data bisnis klien: master (NPSN, jumlah siswa, pagu BOS,
+  nama penerbit/supplier, HET), angka perjanjian (persentase rabat,
+  diskon), dan kebijakan operasional (stok minimum/maksimum, dsb).
+- Nilai turunan dari sumber eksplisit yang sudah ada (mis. jenjang dari
+  awalan nama sekolah) boleh dipakai **hanya bila** dicatat jelas sebagai
+  hasil turunan, bukan sebagai data asli klien.
+- Fitur tetap dibangun sampai selesai; yang tertahan hanya pengisian
+  datanya, dan statusnya dilaporkan sebagai "menunggu data klien".
+
+---
+
 ## Worktree Policy (VPS-wide)
 
 - **Do not use Git worktrees on this VPS.** Work directly in the active workspace/checkout.
