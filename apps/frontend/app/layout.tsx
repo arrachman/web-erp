@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   applicationName: 'Sentient ERP',
   authors: [{ name: 'Sentient Factory' }],
   formatDetection: { telephone: false },
+  other: {
+    // Stop Chrome/Google Translate from auto-translating the ERP UI
+    // (users with a non-Indonesian browser UI saw labels flip languages).
+    google: 'notranslate',
+  },
   icons: {
     icon: [
       { url: '/icon.png', sizes: '512x512', type: 'image/png' },
@@ -41,7 +46,7 @@ const APPEARANCE_INIT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.ge
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="id" className="h-full" suppressHydrationWarning>
+    <html lang="id" translate="no" className="h-full notranslate" suppressHydrationWarning>
       {/* eslint-disable-next-line @next/next/no-head-element */}
       <head>
         {/* Blocking script — MUST run before body to avoid FOUC */}
