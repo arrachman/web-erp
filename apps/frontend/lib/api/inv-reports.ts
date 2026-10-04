@@ -50,7 +50,7 @@ export interface ReportDataset {
   rows: Record<string, unknown>[];
   summary: ReportSummaryItem[];
   charts?: ReportChart[];
-  filters: Record<string, unknown>;
+  filters?: Record<string, unknown>;
   generatedAt: string;
   total: number;
 }
