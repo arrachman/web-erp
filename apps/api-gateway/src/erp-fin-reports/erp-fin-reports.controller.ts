@@ -14,6 +14,7 @@ import { ControlReconciliationService } from './control-reconciliation.service';
 import { ProfitAnalysisService, ProfitDimension } from './profit-analysis.service';
 import { ErpFinReportsExtService } from './erp-fin-reports-ext.service';
 import { ErpFinReportsService } from './erp-fin-reports.service';
+import { FIN_REPORT_CATALOG, FinReportCatalogItem } from './report-catalog';
 import { ReportExportService } from './report-export.service';
 import { ReportDocument, ReportFormat } from './report-types';
 
@@ -29,6 +30,12 @@ export class ErpFinReportsController {
     private readonly reconciliation: ControlReconciliationService,
     private readonly profit: ProfitAnalysisService,
   ) {}
+
+  @Get('catalog')
+  @ApiOperation({ summary: 'Katalog laporan keuangan (menggerakkan halaman hub /finance/reports)' })
+  catalog(): FinReportCatalogItem[] {
+    return FIN_REPORT_CATALOG;
+  }
 
   @Get('control-reconciliation')
   @ApiOperation({ summary: 'Rekonsiliasi subledger AR/AP vs akun kontrol GL (laporan kontrol PRD)' })

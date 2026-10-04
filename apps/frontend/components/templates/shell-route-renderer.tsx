@@ -23,6 +23,7 @@ import { REGISTER_CONFIGS } from '@/lib/registers';
 import type { Lang } from '@/lib/shell-constants';
 import { ERP_PAGES } from './shell-routes/erp-page-routes';
 import {
+  renderReportHubRoute,
   renderWarehouseReportRoute,
   renderPurchasingReportRoute,
   renderSerialCardsRoute,
@@ -46,6 +47,10 @@ export function renderRoute(
 
   const erpPage = ERP_PAGES[route];
   if (erpPage) return erpPage({ t });
+
+  // ── Report hubs: /{finance,warehouse,purchasing,sales}/reports catalog ──────
+  const reportHub = renderReportHubRoute(route, onNavigate);
+  if (reportHub !== null) return reportHub;
 
   // ── Warehouse (M3) reports: one generic page driven by the report key ──────
   const invReport = renderWarehouseReportRoute(route);
