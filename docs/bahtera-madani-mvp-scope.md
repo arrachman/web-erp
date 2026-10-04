@@ -345,6 +345,8 @@ Akuntansi, Pengaturan Pajak, Bank Accounts, Document Numbering, Import
 Data, Nilai Default, Users, Roles, Permissions, Menu Management, Close
 Fiscal Period, Data Validity Check, Fiscal Periods, Audit Log, dan
 Settings Manager.
+Menu Appearance (`/settings/appearance`) kemudian ditampilkan lagi atas
+permintaan pemilik lewat migration `20261004_005_erp_mvp_show_appearance_menu`.
 
 ## 9. Open decisions sebelum estimasi final
 
