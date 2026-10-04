@@ -70,6 +70,20 @@
 | `apps/api-gateway/src/erp-fin-ap-payments/ap-payment-posting.service.spec.ts` | Baru | Test allocation AP, over-allocation, repost/reopen. |
 | `apps/api-gateway/src/erp-fin-ar-receipts/ar-receipt-posting.service.spec.ts` | Baru | Test allocation AR, over-allocation, repost/reopen. |
 
+### MVP-0 — Gap prasyarat master data & konfigurasi (hasil audit 2026-10-04)
+
+Posting GRN/DO/SI akan gagal (BadRequest) bila data berikut kosong. Kerjakan SEBELUM MVP-1/2.
+
+| File | Jenis | Gap konkret |
+|---|---|---|
+| `apps/api-gateway/prisma/seed-erp.ts` (`seedDocumentNumberings`) | Ubah | Kode dipakai service tapi belum di-seed: DO, DOI, SI, SII, GRI, PI, PII, SR, RNR, RNRI, RP, VP, IP, PR, SQ, SA, DC, DR, AS, BS, IB, SIE, PL, SP, DNRI, RFQ. Tanpa seed, nomor jatuh ke fallback `count+1` (tidak reset tahunan, tidak bisa diatur dari menu Document Numbering). Tambahkan semua dengan prefix/digit yang konsisten. |
+| `apps/api-gateway/prisma/seed-erp-initial-setup.ts` | Ubah | Seed setting `inventory/accounts`: `glPostingEnabled`, `defaultCogsAccountId`, `defaultInventoryAccountId`, `defaultOpeningEquityAccountId` (tidak ada di seed mana pun; DO/stock movement melempar error HPP/persediaan bila kosong). |
+| `apps/api-gateway/prisma/seed-erp-items-real.ts`, `seed-erp-md-dummy.ts` | Ubah | Item/kategori wajib punya `inventoryAccountId`, `cogsAccountId`, `salesAccountId` (SI melempar error bila tidak ada). Seed belum mengisi. |
+| `apps/api-gateway/prisma/seed-erp-md-vendors.ts`, `seed-md-partners-real.ts` | Ubah | Partner customer/supplier wajib `receivableAccountId`/`payableAccountId` (atau default di dokumen). Seed belum mengisi. |
+| `apps/api-gateway/prisma/seed-erp-md-taxes-indonesia.ts` | Verifikasi | Pajak harus punya `saleAccountId` (PPN Keluaran) dan akun PPN Masukan untuk pembelian. |
+| `apps/api-gateway/src/erp-settings/*` + FE halaman Setting | Verifikasi | Validasi di UI/endpoint: peringatan bila default account GL belum diisi sebelum go-live. |
+| `apps/api-gateway/src/**/*.spec.ts` | Baru | Baru 6 spec, semua helper. Belum ada test posting GRN/DO/SI/AP/AR (sudah di MVP-3, naikkan prioritas). |
+
 **Definition of done MVP:** kedua flow inti, retur, dan giro melewati test manual; test otomatis mencakup posting stok dan ledger untuk jalur kritis; semua ketidaksesuaian diperbaiki sebelum fitur baru dimulai.
 
 ---
