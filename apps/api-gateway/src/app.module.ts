@@ -123,6 +123,7 @@ import { ErpSlsInvoiceSwapsModule } from './erp-sls-invoice-swaps/erp-sls-invoic
 import { ErpSlsOrdersModule } from './erp-sls-orders/erp-sls-orders.module';
 import { ErpSlsPackingListsModule } from './erp-sls-packing-lists/erp-sls-packing-lists.module';
 import { ErpSlsPackingUnitsModule } from './erp-sls-packing-units/erp-sls-packing-units.module';
+import { ErpSlsDeliveryTripsModule } from './erp-sls-delivery-trips/erp-sls-delivery-trips.module';
 import { ErpSlsProformaInvoicesModule } from './erp-sls-proforma-invoices/erp-sls-proforma-invoices.module';
 import { ErpSlsQuotationsModule } from './erp-sls-quotations/erp-sls-quotations.module';
 import { ErpSlsReportsModule } from './erp-sls-reports/erp-sls-reports.module';
@@ -287,6 +288,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpSlsOrdersModule,
     ErpSlsPackingListsModule,
     ErpSlsPackingUnitsModule,
+    ErpSlsDeliveryTripsModule,
     ErpSlsProformaInvoicesModule,
     ErpSlsQuotationsModule,
     ErpSlsReportsModule,

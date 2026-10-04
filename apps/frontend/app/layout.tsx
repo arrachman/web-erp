@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description:
     'Sentient ERP — ERP modern: administrasi sistem, akses, dan master data.',
   applicationName: 'Sentient ERP',
+  manifest: '/manifest.webmanifest',
   authors: [{ name: 'Sentient Factory' }],
   formatDetection: { telephone: false },
   other: {

@@ -23,6 +23,8 @@ import { ErpSlsQuotationsPage } from '@/components/pages/sls-quotations-page';
 import { ErpSlsProformaInvoicesPage } from '@/components/pages/sls-proforma-invoices-page';
 import { ErpSlsPackingListsPage } from '@/components/pages/sls-packing-lists-page';
 import { SlsPackingUnitsPage } from '@/components/pages/sls-packing-units-page';
+import { SlsDeliveryTripsPage } from '@/components/pages/sls-delivery-trips-page';
+import { SlsFieldPage } from '@/components/pages/sls-field-page';
 import { ErpSlsDeliveryOrdersPage } from '@/components/pages/sls-delivery-orders-page';
 import { ErpSlsDeliveryReportsPage } from '@/components/pages/sls-delivery-reports-page';
 import { ErpSlsInvoicesPage } from '@/components/pages/sls-invoices-page';
@@ -88,6 +90,8 @@ export const TRX_FORM_PAGES: Record<string, TrxFormPage> = {
   '/sales/proforma-invoices': ErpSlsProformaInvoicesPage,
   '/sales/packing-lists': ErpSlsPackingListsPage,
   '/sales/packing-units': SlsPackingUnitsPage,
+  '/sales/delivery-trips': SlsDeliveryTripsPage,
+  '/sales/field': SlsFieldPage,
   '/sales/delivery-orders': ErpSlsDeliveryOrdersPage,
   '/sales/delivery-reports': ErpSlsDeliveryReportsPage,
   '/sales/invoices': ErpSlsInvoicesPage,

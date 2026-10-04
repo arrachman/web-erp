@@ -147,6 +147,8 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/sales/quotations': { group: 'Sales', title: 'Sales Quotation', icon: 'trending-up' },
   '/sales/proforma-invoices': { group: 'Sales', title: 'Proforma Invoice', icon: 'trending-up' },
   '/sales/packing-lists': { group: 'Sales', title: 'Packing List', icon: 'trending-up' },
+  '/sales/delivery-trips': { group: 'Sales', title: 'Trip Pengiriman', icon: 'cart' },
+  '/sales/field': { group: 'Sales', title: 'Sales Lapangan', icon: 'user' },
   '/sales/packing-units': { group: 'Sales', title: 'Packing per Siswa', icon: 'box' },
   '/sales/delivery-orders': { group: 'Sales', title: 'Delivery Order', icon: 'trending-up' },
   '/sales/delivery-reports': { group: 'Sales', title: 'Delivery Report', icon: 'trending-up' },

@@ -133,3 +133,32 @@ Di akhir Fase 2, putuskan fondasi **yayasan** sesuai dokumen scope §7: bila tet
 - **P4 Variable Data Printing — SELESAI & LIVE.** Migration `20261005_020_erp_vdp_datasets`: tabel `mfg_vdp_datasets` (per job: nama, file sumber, versi, kolom + kolom wajib, hitungan baris/valid, status DRAFT/TERKUNCI) + `mfg_vdp_rows` (data JSONB per baris, is_valid + error_note). Modul `erp-mfg-vdp`: buat dataset, impor baris via CSV (pemisah ,/;) atau `rows[]` — menggantikan baris lama & menaikkan versi; validasi kolom wajib per baris; daftar baris terpaginasi + filter invalid; kunci manual. **Kait pembekuan:** layanan Job Cetak kini mengunci semua dataset DRAFT job begitu tahapnya masuk CETAK; dataset terkunci menolak impor/ubah/hapus (400). Halaman `/manufacturing/vdp` (menu `M6.TX.VDP`). E2E live terverifikasi: impor 4 baris → 3 valid/1 invalid ("Kolom kosong: Nama"), impor ulang → versi 2 semua valid, job ke CETAK → dataset TERKUNCI, impor saat terkunci ditolak 400. Sesuai rencana: ERP hanya mengelola data & hitungannya, file hasil cetak tidak dibuat. Data siswa uji = dummy smoke, sudah dihapus; data produksi hanya dari sekolah.
 - **GELOMBANG 3 SELESAI (P3 + P4).** Berikutnya Gelombang 4: P7 Pengiriman & armada + P8 Aplikasi sales lapangan (PWA).
 
+
+## Progres Gelombang 4 (2026-10-05) — Fase 2 TUNTAS
+
+- **P7 Pengiriman & armada SELESAI & live.** Migration `20261005_021`: tabel
+  `sls_vehicles`, `sls_delivery_trips`, `sls_delivery_trip_stops`; penomoran
+  TRP; menu M5.TX.TRIP. **2 kendaraan contoh provisional** menunggu daftar
+  armada asli. Trip: satu kendaraan, banyak DO sebagai stop berurutan,
+  status DRAFT → MUAT → BERANGKAT → SELESAI; biaya BBM/tol/lain tercatat
+  (dasar Freight Payable). **Acceptance terverifikasi E2E**: stop ditandai
+  TIBA dengan nama penerima → acceptance tertulis di Delivery Report (BAST)
+  → tahap Order Hub kedua order contoh bergerak ke **DITERIMA**. DO yang
+  sudah masuk trip aktif tidak bisa dipakai trip lain.
+- **P8 Aplikasi sales lapangan SELESAI & live.** Bukan aplikasi terpisah:
+  halaman mobile-first `/sales/field` di frontend yang sama (menu M5.TX.FIELD,
+  migration `20261005_022`) + manifest PWA + service worker berlingkup
+  `/app/sales/` (API tidak pernah di-cache). Sales mencatat kunjungan
+  (endpoint aktivitas A1 — terverifikasi `lastVisitAt` sekolah bergerak),
+  membuat order cepat ber-channel **SALES** (terverifikasi muncul di Order
+  Hub sebagai **BARU**), dan melihat piutang sekolahnya. Kunjungan yang
+  gagal terkirim masuk antrean lokal (localStorage) dan disinkronkan saat
+  online. Mode offline penuh di luar scope sesuai rencana.
+- **Fase 2 selesai: 8/8 workstream (P1–P8) live.** Sisa tindak lanjut yang
+  tercatat: cek kesiapan material via MRP `erp-pln` (P3), tarik biaya aktual
+  otomatis dari material issue + makloon via service PO (P5), gerbang
+  DO-post untuk packing wajib (P6), ganti data provisional (mesin,
+  kendaraan, supplier, harga) dengan data asli klien, dan **gerbang
+  keputusan yayasan di akhir Fase 2** sebelum masuk Fase 3 (rencana Fase 3
+  sudah ada: `docs/fase-3-rencana-kerja.md`). Track T1 (lot/batch & FEFO)
+  tetap opsional/paralel.
