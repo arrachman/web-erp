@@ -5097,11 +5097,21 @@ Return aktif, balik stok) & dokumen lain; belum diuji ke DB nyata.
 ## § Scope produk MVP CV Bahtera Madani (2026-10-04)
 
 Sumber: `temp/PRD-ERP-CV-Bahtera-Madani-A4.pdf`. Untuk deployment CV Bahtera
-Madani, **MVP produk = Fase 1 “Fondasi & pengadaan sekolah”**: A1 CRM Sekolah &
-Yayasan, A2 Order Hub, A3 Dokumen pengadaan, A4 Pajak pengadaan, D1 Katalog,
+Madani, **MVP produk = Fase 1 “Fondasi & pengadaan sekolah”**: A1 CRM Sekolah,
+A2 Order Hub, A3 Dokumen pengadaan, A4 Pajak pengadaan, D1 Katalog,
 D2 Pembelian, D3 Persediaan multi-gudang, dan E1 Keuangan & akuntansi. Scope
 otoritatif, gap terhadap kode saat ini, dan urutan MVP-0–5 ada di
 `docs/bahtera-madani-mvp-scope.md`.
+
+**Keputusan 2026-10-04 — Yayasan ditunda, sekolah jadi entitas utama.** PRD
+menggambarkan hierarki yayasan → unit sekolah, tapi **Yayasan bukan syarat
+gerbang MVP**. Transaksi (order, invoice, BAST, pengiriman, sumber dana BOS,
+piutang) selalu melekat pada **sekolah**, bukan yayasan. Yayasan hanya
+relasi opsional satu-ke-banyak untuk negosiasi grup, kontrak pusat, dan
+laporan konsolidasi. Biaya integrasi foundation (tabel yayasan, hierarki,
+perubahan CRM/pipeline/filter/piutang) tinggi dan manfaatnya baru terasa
+saat ada pelanggan grup → yayasan **dipindahkan ke Fase 3/B1**. MVP-1 =
+sekolah saja, tanpa yayasan. Lihat §7 di `bahtera-madani-mvp-scope.md`.
 
 Keputusan batas:
 

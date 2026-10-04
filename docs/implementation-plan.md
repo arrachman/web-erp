@@ -3,7 +3,7 @@
 > Berdasarkan audit codebase aktual pada 2026-10-03 dan diselaraskan dengan
 > `temp/PRD-ERP-CV-Bahtera-Madani-A4.pdf` pada 2026-10-04.
 >
-> **Scope produk MVP CV Bahtera Madani** adalah Fase 1 PRD: CRM Sekolah & Yayasan,
+> **Scope produk MVP CV Bahtera Madani** adalah Fase 1 PRD: CRM Sekolah,
 > Order Hub, Dokumen, Pajak, Katalog, Pembelian, Persediaan, serta Keuangan. Batas,
 > gap analysis, urutan vertikal, gerbang satu periode BOS, dan scope fase berikutnya
 > ada di [`bahtera-madani-mvp-scope.md`](bahtera-madani-mvp-scope.md). Bagian
@@ -100,7 +100,7 @@ Posting GRN/DO/SI akan gagal (BadRequest) bila data berikut kosong. Kerjakan SEB
 
 Urutan otoritatif ada di [`bahtera-madani-mvp-scope.md`](bahtera-madani-mvp-scope.md):
 
-1. **MVP-1:** model sekolah/yayasan dan CRM berbasis NPSN/BOS;
+1. **MVP-1:** model sekolah dan CRM berbasis NPSN/BOS (tanpa yayasan);
 2. **MVP-2:** Order Hub channel-ready + input admin/sales + adapter SIPLah;
 3. **MVP-3:** paket dokumen BOS/non-BOS + BAST + arsip;
 4. **MVP-3:** aplikasi tax subledger PPN/PPh + bukti potong + Coretax/export;
@@ -108,6 +108,12 @@ Urutan otoritatif ada di [`bahtera-madani-mvp-scope.md`](bahtera-madani-mvp-scop
 6. **MVP-5:** pilot satu periode BOS tanpa rekap Excel paralel.
 
 Pekerjaan per-file untuk workstream ini dibuat setelah open decisions PRD yang relevan dikonfirmasi. Kapabilitas vertikal harus mereuse transaksi `sls`/`pur`/`inv`/`fin`, Report Studio, attachment, dan workflow existing—jangan membuat engine transaksi kedua.
+
+> **Yayasan dipindahkan ke Fase 3/B1 (2026-10-04).** Transaksi selalu melekat
+> pada sekolah; yayasan hanya relasi opsional untuk negosiasi grup, kontrak
+> pusat, dan laporan konsolidasi. MVP-1 = profil sekolah saja, tanpa tabel
+> yayasan atau hierarki yayasan→sekolah. Rationale dan kriteria aktivasi ada di
+> [`bahtera-madani-mvp-scope.md §7`](bahtera-madani-mvp-scope.md#7-yayasan--kapan--dan-mengapa-dipindahkan-dari-mvp-1).
 
 ---
 
@@ -286,7 +292,7 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 ```text
 Fondasi teknis: verify/fix P2P + O2C + giro + baseline config
   └─ MVP produk Bahtera Madani:
-       sekolah/yayasan CRM
+       CRM sekolah
        → Order Hub + SIPLah
        → dokumen BOS + pajak
        → hardening katalog/purchasing/inventory/finance

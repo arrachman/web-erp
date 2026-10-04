@@ -14,7 +14,7 @@ memiliki hasil bisnis dan gerbang penerimaan mandiri.
 
 MVP mencakup delapan kapabilitas:
 
-1. **A1 — CRM Sekolah & Yayasan**
+1. **A1 — CRM Sekolah**
 2. **A2 — Order Hub multi-kanal**
 3. **A3 — Dokumen pengadaan**
 4. **A4 — Pajak pengadaan**
@@ -29,6 +29,16 @@ dibuat otomatis, dan piutang dapat dipantau.
 **Gerbang penerimaan MVP:** satu periode BOS berjalan penuh di sistem tanpa
 rekap operasional di Excel. Ini harus dibuktikan dengan skenario end-to-end dan
 rekonsiliasi, bukan hanya keberadaan menu atau tabel.
+
+> **Keputusan 2026-10-04 — Yayasan ditunda, sekolah jadi entitas utama.**
+> PRD menggambarkan hierarki yayasan → unit sekolah, tapi Yayasan **bukan**
+> syarat gerbang MVP. Transaksi (order, invoice, BAST, pengiriman, sumber dana
+> BOS, piutang) selalu melekat pada **sekolah**, bukan yayasan. Yayasan
+> hanyalah relasi opsional satu-ke-banyak untuk negosiasi grup, kontrak pusat,
+> dan laporan konsolidasi. Karena biaya integrasi foundation (tabel yayasan,
+> hierarki, perubahan CRM/pipeline/filter/piutang) tinggi dan manfaatnya
+> baru terasa saat ada pelanggan grup, yayasan **dipindahkan ke Fase 3/B1**
+> (lihat §7). MVP-1 = sekolah saja, tanpa yayasan.
 
 ## 2. Batas kanal pada MVP
 
@@ -49,19 +59,21 @@ Agar roadmap tidak kontradiktif, batas MVP ditetapkan sebagai berikut:
 
 ## 3. Scope fungsional MVP
 
-### A1 — CRM Sekolah & Yayasan
+### A1 — CRM Sekolah
 
 Minimum yang harus tersedia:
 
 - profil sekolah berbasis NPSN;
-- hierarki yayasan → unit sekolah;
 - jenjang, negeri/swasta, wilayah, jumlah siswa per kelas, estimasi pagu BOS;
-- banyak kontak dengan peran kepala sekolah, bendahara, operator, TU, dan
-  pengurus yayasan;
+- banyak kontak dengan peran kepala sekolah, bendahara, operator, dan TU;
 - riwayat pesanan lintas kanal dan catatan kunjungan/negosiasi;
 - pipeline prospek → penawaran → pesanan → terkirim → lunas;
 - penanda periode BOS tahap 1/tahap 2;
 - peringatan sekolah belum belanja dan kontrak harga akan berakhir.
+
+> Yayasan (parent organizational, satu-ke-banyak sekolah) **tidak ada di
+> MVP-1**. Lihat §7 — ditunda ke Fase 3/B1. MVP-1 hanya membutuhkan profil
+> sekolah, bukan profil yayasan.
 
 ### A2 — Order Hub multi-kanal
 
@@ -149,7 +161,7 @@ Minimum yang harus tersedia:
 
 - chart of accounts, fiscal period, document numbering, account determination,
   serta jurnal otomatis dari sales, purchasing, dan inventory;
-- AR per sekolah/yayasan dengan aging dan reminder jatuh tempo;
+- AR per sekolah dengan aging dan reminder jatuh tempo;
 - AP supplier dan jadwal pembayaran;
 - rekonsiliasi SIPLah, kas/bank, dan payment receipt;
 - laporan laba rugi, neraca, arus kas, serta rekonsiliasi subledger;
@@ -182,7 +194,7 @@ prasyarat operasional dan non-fungsional MVP:
 | Kapabilitas | Yang sudah tersedia | Gap menuju MVP | Status |
 |---|---|---|---|
 | Fondasi admin/master | Auth ERP, user/role/permission, scope cabang/gudang/lokasi, audit, fiscal period, numbering, setting, item/partner/account/tax/currency | 2FA, verifikasi retensi audit/backup, kelengkapan data go-live | **Sebagian besar ada** |
-| A1 CRM sekolah | Partner, alamat, kontak, kategori, salesman, dimensi wilayah | NPSN, model yayasan-unit, profil BOS/sekolah, role kontak baku, kunjungan/negosiasi, pipeline, alert | **Gap besar** |
+| A1 CRM sekolah | Partner, alamat, kontak, kategori, salesman, dimensi wilayah | NPSN, profil BOS/sekolah, role kontak baku, kunjungan/negosiasi, pipeline, alert | **Gap besar** |
 | A2 Order Hub | Sales quotation/order/delivery/invoice/receipt dan workflow generik | model kanal, external ID/idempotency, import/API SIPLah, status hub/BAST, pencairan dan fee SIPLah | **Fondasi ada, hub belum ada** |
 | A3 Dokumen | Report Studio/report engine, attachment transaksi, numbering | paket dokumen pengadaan, template BOS, e-sign/stempel, BAST + foto, arsip sekolah/tahun | **Fondasi renderer ada** |
 | A4 Pajak | Master pajak, posting PPN, model `fin_tax_entries` dan withholding certificate | service/API/UI tax subledger, PPh 22/23, bukti potong, Coretax/export, rekonsiliasi dan laporan bulanan | **Model DB ada, aplikasi belum** |
@@ -207,9 +219,9 @@ status workflow, fiscal period, retry idempotent, reversal, dan jurnal seimbang.
 
 ### MVP-1 — Model sekolah dan CRM
 
-1. Tambahkan profil organisasi sekolah/yayasan di atas master partner.
-2. Tambahkan hierarki yayasan-unit, NPSN, atribut sekolah/BOS, role kontak,
-   activity/visit, serta pipeline.
+1. Tambahkan profil sekolah di atas master partner.
+2. Tambahkan NPSN, atribut sekolah/BOS, role kontak, activity/visit, serta
+   pipeline.
 3. Sediakan pencarian, filter BOS, alert, dan histori lintas order.
 
 ### MVP-2 — Order Hub dan intake SIPLah
@@ -246,7 +258,38 @@ status workflow, fiscal period, retry idempotent, reversal, dan jurnal seimbang.
 4. Gerbang lulus hanya bila operasional periode pilot tidak membutuhkan rekap
    Excel paralel selain file sumber impor SIPLah yang memang menjadi adapter.
 
-## 7. Di luar MVP
+## 7. Yayasan — kapan & mengapa (dipindahkan dari MVP-1)
+
+**Keputusan 2026-10-04:** Yayasan **tidak** masuk MVP-1. Alasan:
+
+1. **Transaksi selalu melekat pada sekolah.** Order, invoice, BAST, pengiriman,
+   sumber dana BOS, dan piutang semua berbasis sekolah. Yayasan bukan pelaku
+   transaksi — hanya parent organisasi.
+2. **Manfaat yayasan baru terasa saat ada pelanggan grup.** Yayasan diperlukan
+   untuk negosiasi kontrak pusat, CRM grup (satu kontak pengurus → banyak
+   sekolah), dan laporan konsolidasi (omzet/piutang/potensi seluruh sekolah).
+   Bila semua pelanggan adalah sekolah mandiri, yayasan hanya biaya tanpa
+   nilai.
+3. **Biaya integrasi foundation tinggi.** Tabel yayasan, hierarki
+   yayasan→sekolah, perubahan CRM/pipeline/filter/piutang, dan perubahan
+   arsitektur transaksi (sekolah ↔ yayasan) harus dilakukan sebelum go-live.
+   Kesalahan di sini mengganggu gerbang MVP.
+
+**Kapan yayasan diaktifkan (Fase 3/B1):**
+- Sudah ada pelanggan grup (satu yayasan mengelola ≥2 sekolah);
+- Ada kebutuhan laporan konsolidasi atau negosiasi kontrak tingkat yayasan;
+- Ada keputusan bisnis yang diambil di level yayasan, bukan per sekolah.
+
+**Model yang direkomendasikan bila diaktifkan (biaya kecil):**
+- Relasi opsional `yayasan → banyak sekolah` (bukan hierarki wajib).
+- Transaksi tetap melekat pada sekolah; yayasan hanya untuk agregasi dan
+  konteks relasi (negosiasi, kontrak, laporan konsolidasi).
+- Jangan buat yayasan menggantikan sekolah sebagai pelaku transaksi.
+
+**Jika di akhir Fase 2 masih tidak ada pelanggan grup:** yayasan dapat
+dihapus selamanya dan tidak perlu dibangun.
+
+## 8. Di luar MVP
 
 ### Fase 2 — Percetakan & distribusi
 
@@ -273,7 +316,7 @@ WhatsApp, OCR, drafting penawaran, dan anomaly detection dengan human approval.
 - manufaktur di luar percetakan;
 - integrasi langsung ke ARKAS.
 
-## 8. Open decisions sebelum estimasi final
+## 9. Open decisions sebelum estimasi final
 
 Jawaban wajib dicatat sebelum workstream terkait dikunci:
 
