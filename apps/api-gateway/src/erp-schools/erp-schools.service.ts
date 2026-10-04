@@ -22,7 +22,7 @@ import {
 import { ErpSchoolRelationsService } from './erp-school.relations.service';
 
 /**
- * A school = a customer-capable `md_partners` row (partner_type_id = SCHOOL)
+ * A school = a customer-capable `md_partners` row (partner_type_id = CUST-SCHOOL)
  * plus its 1:1 `md_school_profiles` row. Every order / invoice / AR / BAST
  * behaviour stays on the partner row untouched; the profile carries the
  * vertical CRM attributes (NPSN, jenjang, BOS pagu, student headcount,
@@ -333,12 +333,12 @@ export class ErpSchoolsService {
 
   private async getSchoolTypeId(): Promise<bigint> {
     const type = await this.prisma.erpPartnerType.findFirst({
-      where: { code: 'SCHOOL', deletedAt: null, isActive: true },
+      where: { code: 'CUST-SCHOOL', deletedAt: null, isActive: true },
       select: { id: true },
     });
     if (!type) {
       throw new NotFoundException(
-        'Partner type "SCHOOL" tidak ditemukan. Jalankan migration 20261004_002_erp_school_crm.',
+        'Partner type "CUST-SCHOOL" tidak ditemukan di master tipe partner.',
       );
     }
     return type.id;

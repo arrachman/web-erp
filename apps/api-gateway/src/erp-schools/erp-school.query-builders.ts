@@ -128,7 +128,7 @@ export function buildErpSchoolWhere(
 ): Prisma.ErpPartnerWhereInput {
   const base: Prisma.ErpPartnerWhereInput = {
     deletedAt: null,
-    partnerType: { is: { code: 'SCHOOL', deletedAt: null, isActive: true } },
+    partnerType: { is: { code: 'CUST-SCHOOL', deletedAt: null, isActive: true } },
   };
 
   const profileFilter: Prisma.ErpSchoolProfileWhereInput = {};

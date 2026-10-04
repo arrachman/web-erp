@@ -18,7 +18,7 @@ export class ErpSchoolRelationsService {
       where: {
         id,
         deletedAt: null,
-        partnerType: { is: { code: 'SCHOOL', deletedAt: null } },
+        partnerType: { is: { code: 'CUST-SCHOOL', deletedAt: null } },
       },
       select: { id: true },
     });
