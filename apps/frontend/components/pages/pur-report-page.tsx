@@ -100,7 +100,7 @@ export function PurReportPage({
     filters.dateFrom,
     filters.dateTo,
     filters.asOfDate,
-    filters.vendorId,
+    filters.partnerId,
     filters.itemId,
     filters.status,
     filters.page,

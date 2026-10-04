@@ -54,11 +54,6 @@ export class ErpSlsReportsController {
     return this.reports.list();
   }
 
-  @Get(':key')
-  data(@Param('key') key: string, @Query() q: Record<string, string>) {
-    return this.reports.getDataset(key, pickFilters(q));
-  }
-
   @Get(':key/export')
   async export(
     @Param('key') key: string,
@@ -76,5 +71,10 @@ export class ErpSlsReportsController {
       `attachment; filename="${out.filename}"`,
     );
     res.end(out.buffer);
+  }
+
+  @Get(':key')
+  data(@Param('key') key: string, @Query() q: Record<string, string>) {
+    return this.reports.getDataset(key, pickFilters(q));
   }
 }

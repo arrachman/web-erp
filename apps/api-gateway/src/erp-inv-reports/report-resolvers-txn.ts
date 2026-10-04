@@ -37,6 +37,7 @@ import {
   buildWeighbridgeReport,
 } from './report-resolvers-txn-docs';
 import { buildBatchReport, buildSerialReport } from './report-resolvers-txn-items';
+import { buildDailyCheckRecap, buildFuelRefillRecap } from './report-resolvers-txn-recaps';
 
 /* ============================================================ MOVEMENTS */
 
@@ -115,12 +116,14 @@ export function buildTxnReports(deps: ReportDeps): ReportDef[] {
     buildMovementReport(deps, 'transfers', 'Stock Transfer (TS)', ErpStockMovementType.TRANSFER),
     buildMovementReport(deps, 'transfer-receipts', 'Transfer Receipt (RS)', ErpStockMovementType.TRANSFER_RECEIPT),
     buildMovementReport(deps, 'fuel-refills', 'Fuel Refill (RF)', ErpStockMovementType.ISSUE),
+    buildFuelRefillRecap(deps),
     buildMovementReport(deps, 'returns', 'Return Items', ErpStockMovementType.RETURN),
     buildStockCountReport(deps),
     buildStockAdjustmentReport(deps),
     buildPriceAdjustmentReport(deps),
     buildOpeningStockReport(deps),
     buildDailyCheckReport(deps),
+    buildDailyCheckRecap(deps),
     buildWeighbridgeReport(deps),
     buildBatchReport(deps, 'batch-items', 'Batch Items'),
     buildBatchReport(deps, 'batch-cards', 'Batch Item Cards'),

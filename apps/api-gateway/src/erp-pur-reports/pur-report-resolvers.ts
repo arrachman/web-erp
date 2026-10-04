@@ -7,9 +7,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ReportDef } from './report-types';
 import { buildPurReportsPart1 } from './pur-report-resolvers-1';
 import { buildPurReportsPart2 } from './pur-report-resolvers-2';
+import { buildPurFactoryReports } from './pur-report-factory-configs';
 
 type Deps = { prisma: PrismaService };
 
 export function buildPurReports(deps: Deps): ReportDef[] {
-  return [...buildPurReportsPart1(deps), ...buildPurReportsPart2(deps)];
+  return [
+    ...buildPurReportsPart1(deps),
+    ...buildPurReportsPart2(deps),
+    ...buildPurFactoryReports(deps.prisma),
+  ];
 }

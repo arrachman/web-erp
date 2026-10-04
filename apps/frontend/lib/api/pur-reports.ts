@@ -62,7 +62,7 @@ export interface ReportFilters {
   dateFrom?: string;
   dateTo?: string;
   asOfDate?: string;
-  vendorId?: string;
+  partnerId?: string;
   itemId?: string;
   status?: string;
   search?: string;

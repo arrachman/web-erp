@@ -7,7 +7,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ReportDef } from './report-types';
 import { buildDocReportsA } from './report-resolvers-docs-a';
 import { buildDocReportsB } from './report-resolvers-docs-b';
+import { buildSalesFactoryReports } from './report-factory-configs';
 
 export function buildDocReports(prisma: PrismaService): ReportDef[] {
-  return [...buildDocReportsA(prisma), ...buildDocReportsB(prisma)];
+  return [
+    ...buildDocReportsA(prisma),
+    ...buildDocReportsB(prisma),
+    ...buildSalesFactoryReports(prisma),
+  ];
 }

@@ -139,8 +139,8 @@ export function PurReportToolbar({
           <SearchSelect
             placeholder={tGlobal('Semua vendor')}
             title={tGlobal('Pilih Vendor')}
-            value={filters.vendorId ?? ''}
-            onValueChange={(v) => onChange({ vendorId: v || undefined })}
+            value={filters.partnerId ?? ''}
+            onValueChange={(v) => onChange({ partnerId: v || undefined })}
             loadOptions={VENDOR_LOADER}
             disabled={busy}
           />
