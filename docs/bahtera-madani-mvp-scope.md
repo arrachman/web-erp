@@ -102,6 +102,8 @@ Minimum yang harus tersedia:
 - audit perubahan status dan referensi ke dokumen sales, delivery, invoice,
   receipt, serta BAST.
 
+> **Status 2026-10-04: selesai & live.** Kanal (SIPLah/sales/admin + portal disiapkan), external order ID unik per kanal, sumber dana BOS/non-BOS + tahun/tahap anggaran, dan tanda produksi pada ; status terpadu BARU → … → LUNAS diturunkan dari rantai dokumen dengan audit transisi di ; halaman antrean Order Hub (); impor SIPLah idempotent dari file ekspor (API merchant menyusul bila akses tersedia). Migration .
+
 ### A3 — Dokumen pengadaan
 
 Minimum yang harus tersedia:

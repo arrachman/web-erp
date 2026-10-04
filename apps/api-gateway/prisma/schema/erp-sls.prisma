@@ -168,6 +168,14 @@ model ErpSlsOrder {
   postedAt            DateTime?          @map("posted_at") @db.Timestamptz(6)
   quotationId         BigInt?            @map("quotation_id")
   metadata            Json?              @map("metadata")
+  channel             ErpSalesChannel    @default(STANDARD) @map("channel")
+  externalOrderId     String?            @map("external_order_id")
+  fundingSource       ErpFundingSource?  @map("funding_source")
+  budgetYear          Int?               @map("budget_year")
+  budgetStage         Int?               @map("budget_stage")
+  needsProduction     Boolean            @default(false) @map("needs_production")
+  marketplaceFee      Decimal?           @map("marketplace_fee") @db.Decimal(19, 4)
+  disbursementRef     String?            @map("disbursement_ref")
   customFields        Json?              @map("custom_fields") // Form Builder non-standard header fields
   deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(6)
   createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -177,6 +185,7 @@ model ErpSlsOrder {
 
   quotation           ErpSlsQuotation?        @relation(fields: [quotationId], references: [id])
   lines               ErpSlsOrderLine[]
+  statusLogs          ErpSlsOrderStatusLog[]
   proformaInvoices    ErpSlsProformaInvoice[]
   packingLists        ErpSlsPackingList[]
   invoices            ErpSlsInvoice[]
@@ -188,6 +197,7 @@ model ErpSlsOrder {
   @@index([customerId])
   @@index([fiscalPeriodId])
   @@index([quotationId])
+  @@index([channel, externalOrderId])
   @@map("sls_orders")
 }
 
@@ -1286,4 +1296,22 @@ model ErpSlsTransactionAttachment {
 
   @@index([docType, docId])
   @@map("sls_transaction_attachments")
+}
+
+/// A2 — Audit perubahan status Order Hub (hasil derivasi rantai dokumen,
+/// impor, atau aksi manual). Status resmi tetap diturunkan, tabel ini
+/// hanya mencatat transisi yang teramati.
+model ErpSlsOrderStatusLog {
+  id          BigInt            @id @default(autoincrement())
+  orderId     BigInt            @map("order_id")
+  hubStatus   ErpOrderHubStatus @map("hub_status")
+  source      String            @default("DERIVED") @map("source")
+  note        String?           @map("note")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById BigInt?           @map("created_by_id")
+
+  order ErpSlsOrder @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("sls_order_status_logs")
 }

@@ -32,6 +32,23 @@ export enum ErpPriceModeDto {
   TAX_EXCLUSIVE = 'TAX_EXCLUSIVE',
 }
 
+/** Sales channel — mirrors DB ErpSalesChannel (A2 Order Hub). */
+export enum ErpSalesChannelDto {
+  STANDARD = 'STANDARD',
+  POS = 'POS',
+  SIPLAH = 'SIPLAH',
+  SALES = 'SALES',
+  ADMIN = 'ADMIN',
+  PORTAL_SEKOLAH = 'PORTAL_SEKOLAH',
+  PORTAL_ORANGTUA = 'PORTAL_ORANGTUA',
+}
+
+/** Funding source — mirrors DB ErpFundingSource (A2 Order Hub). */
+export enum ErpFundingSourceDto {
+  BOS = 'BOS',
+  NON_BOS = 'NON_BOS',
+}
+
 /** One item line of a sales order (header + detail = master/detail document). */
 export class SlsOrderLineDto {
   @ApiProperty({ example: '1001', description: 'Item (md_items) id' })
@@ -234,6 +251,38 @@ export class CreateSlsOrderDto {
   @ApiPropertyOptional({ description: 'Custom header fields from Form Builder (JSONB)' })
   @IsOptional()
   customFields?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ enum: ErpSalesChannelDto, description: 'Sales channel (A2 Order Hub)' })
+  @IsOptional()
+  @IsEnum(ErpSalesChannelDto)
+  channel?: ErpSalesChannelDto;
+
+  @ApiPropertyOptional({ description: 'External order id from the channel (idempotency key)' })
+  @IsOptional()
+  @IsString()
+  externalOrderId?: string;
+
+  @ApiPropertyOptional({ enum: ErpFundingSourceDto, description: 'Funding source (A2 Order Hub)' })
+  @IsOptional()
+  @IsEnum(ErpFundingSourceDto)
+  fundingSource?: ErpFundingSourceDto;
+
+  @ApiPropertyOptional({ description: 'Budget year (tahun anggaran)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  budgetYear?: number;
+
+  @ApiPropertyOptional({ description: 'BOS stage (tahap) 1 or 2' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  budgetStage?: number;
+
+  @ApiPropertyOptional({ description: 'Custom-print item needs a production job' })
+  @IsOptional()
+  @IsBoolean()
+  needsProduction?: boolean;
 
   @ApiProperty({ type: [SlsOrderLineDto] })
   @IsArray()

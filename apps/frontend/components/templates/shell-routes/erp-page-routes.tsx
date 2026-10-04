@@ -40,6 +40,7 @@ import { ErpItemsPage } from '@/components/pages/items-page';
 import { ErpUnitsPage } from '@/components/pages/units-page';
 import { ErpPartnersPage } from '@/components/pages/partners-page';
 import { ErpSchoolsPage } from '@/components/pages/schools-page';
+import { OrderHubPage } from '@/components/pages/order-hub-page';
 import { ErpVendorsPage } from '@/components/pages/vendors-page';
 import { ErpItemCategoriesPage } from '@/components/pages/item-categories-page';
 import { ErpLocationsPage } from '@/components/pages/locations-page';
@@ -105,11 +106,12 @@ import { ErpCashFlowPage } from '@/components/pages/fin-cash-flow-page';
 import { ErpDailyCashBankPage } from '@/components/pages/fin-daily-cash-bank-page';
 import { ErpArCardPage } from '@/components/pages/fin-ar-card-page';
 import { ErpArAgingPage } from '@/components/pages/fin-ar-aging-page';
+import { ErpPurRebatesPage } from '@/components/pages/pur-rebates-page';
+import { ErpFinProfitAnalysisPage } from '@/components/pages/fin-profit-analysis-page';
 import { ErpApCardPage } from '@/components/pages/fin-ap-card-page';
 import { ErpApAgingPage } from '@/components/pages/fin-ap-aging-page';
 import { ErpGiroMaturityPage } from '@/components/pages/fin-giro-maturity-page';
 import { ErpBudgetRealizationPage } from '@/components/pages/fin-budget-realization-page';
-import { ErpCashbankTransfersPage } from '@/components/pages/fin-cashbank-transfers-page';
 import {
   SlsRptQuotationsPage, SlsRptOrdersPage, SlsRptCustomerAdvancesPage,
   SlsRptPaymentReceiptsPage, SlsRptProformaInvoicesPage, SlsRptPackingListsPage,
@@ -175,6 +177,7 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/master/units': () => <ErpUnitsPage />,
   '/master/partners': () => <ErpPartnersPage />,
   '/master/schools': () => <ErpSchoolsPage />,
+  '/sales/order-hub': () => <OrderHubPage />,
   '/master/vendors': () => <ErpVendorsPage />,
   '/master/item-categories': () => <ErpItemCategoriesPage />,
   '/master/locations': () => <ErpLocationsPage />,
@@ -253,11 +256,12 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/finance/daily-cash-bank': () => <ErpDailyCashBankPage />,
   '/finance/ar-card': () => <ErpArCardPage />,
   '/finance/ar-aging': () => <ErpArAgingPage />,
+  '/finance/profit-analysis': () => <ErpFinProfitAnalysisPage />,
+  '/purchasing/rebates': () => <ErpPurRebatesPage />,
   '/finance/ap-card': () => <ErpApCardPage />,
   '/finance/ap-aging': () => <ErpApAgingPage />,
   '/finance/giro-maturity': () => <ErpGiroMaturityPage />,
   '/finance/budget-realization': () => <ErpBudgetRealizationPage />,
-  '/finance/cashbank-transfers': () => <ErpCashbankTransfersPage />,
   // Sales (M5) reports
   '/sales/reports/quotations': () => <SlsRptQuotationsPage />,
   '/sales/reports/orders': () => <SlsRptOrdersPage />,

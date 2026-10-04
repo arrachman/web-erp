@@ -102,6 +102,7 @@ import { ErpRoleDocPoliciesModule } from './erp-role-doc-policies/erp-role-doc-p
 import { ErpRolesModule } from './erp-roles/erp-roles.module';
 import { ErpSectionsModule } from './erp-sections/sections.module';
 import { ErpSchoolsModule } from './erp-schools/erp-schools.module';
+import { ErpOrderHubModule } from './erp-order-hub/erp-order-hub.module';
 import { ErpSettingsModule } from './erp-settings/erp-settings.module';
 import { ErpSizesModule } from './erp-sizes/sizes.module';
 import { ErpSlsArCollectionsModule } from './erp-sls-ar-collections/erp-sls-ar-collections.module';
@@ -254,6 +255,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpRolesModule,
     ErpSectionsModule,
     ErpSchoolsModule,
+    ErpOrderHubModule,
     ErpSettingsModule,
     ErpSizesModule,
     // ERP m5 Sales
