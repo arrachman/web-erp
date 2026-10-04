@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ErpSlsOrdersModule } from '../erp-sls-orders/erp-sls-orders.module';
+import { ErpContractsModule } from '../erp-contracts/erp-contracts.module';
 import {
   ErpPortalAdminController,
   ErpPortalController,
@@ -16,6 +17,7 @@ import { ErpPortalAuthGuard } from './erp-portal.guard';
   imports: [
     PrismaModule,
     ErpSlsOrdersModule,
+    ErpContractsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

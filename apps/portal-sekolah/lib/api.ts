@@ -63,6 +63,9 @@ export interface CatalogItem {
   code: string;
   name: string;
   salePrice: string;
+  /** Harga terselesaikan untuk sekolah akun (W7); sama dengan salePrice bila standar. */
+  price: string;
+  priceSource: 'KONTRAK_ITEM' | 'KONTRAK_KATEGORI' | 'KONTRAK_SEKOLAH' | 'STANDAR' | string;
   hetPrice: string | null;
   publisherName: string | null;
   jenjang: string | null;
@@ -71,6 +74,29 @@ export interface CatalogItem {
   isCustomPrint: boolean;
   category: string | null;
   unit: string | null;
+  /** Isi paket bila item ini paket/bundle (W7). */
+  bundle: {
+    components: { itemId: string; name: string | null; quantity: string; unit: string | null }[];
+  } | null;
+}
+
+export interface PublicSchool {
+  id: string;
+  name: string;
+  jenjang: string | null;
+}
+
+export interface PortalMe {
+  account: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    schoolName: string;
+    studentName?: string | null;
+    studentClass?: string | null;
+  };
+  school: { partnerId: string; name: string } | null;
 }
 
 export interface PortalOrder {

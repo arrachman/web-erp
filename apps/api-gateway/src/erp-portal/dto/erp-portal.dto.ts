@@ -29,6 +29,7 @@ export enum PortalRoleDto {
   KEPALA_SEKOLAH = 'KEPALA_SEKOLAH',
   BENDAHARA = 'BENDAHARA',
   OPERATOR = 'OPERATOR',
+  ORANG_TUA = 'ORANG_TUA',
 }
 
 export enum PortalFundingDto {
@@ -51,6 +52,17 @@ export class PortalRegisterDto {
 export class PortalLoginDto {
   @IsEmail() email!: string;
   @IsString() password!: string;
+}
+
+/** Fase 3 W4 — pendaftaran orang tua: memilih sekolah yang SUDAH terdaftar. */
+export class PortalRegisterParentDto {
+  @IsString() fullName!: string;
+  @IsEmail() email!: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsString() @MinLength(8) password!: string;
+  @IsString() schoolPartnerId!: string;
+  @IsString() studentName!: string;
+  @IsString() studentClass!: string;
 }
 
 export class PortalLeadDto {

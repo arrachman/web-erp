@@ -13,6 +13,7 @@ import {
   PortalLeadDto,
   PortalLoginDto,
   PortalRegisterDto,
+  PortalRegisterParentDto,
   PortalUpdateProfileDto,
 } from './dto/erp-portal.dto';
 
@@ -46,6 +47,7 @@ export class ErpPortalAccountsService {
   ) {}
 
   private accountView(a: any) {
+    const meta = (a.metadata ?? {}) as Record<string, unknown>;
     return {
       id: id(a.id),
       email: a.email,
@@ -57,6 +59,12 @@ export class ErpPortalAccountsService {
       npsn: a.npsn,
       jenjang: a.jenjang,
       partnerId: id(a.partnerId),
+      ...(meta.kind === 'parent'
+        ? {
+            studentName: (meta.studentName as string) ?? null,
+            studentClass: (meta.studentClass as string) ?? null,
+          }
+        : {}),
       lastLoginAt: a.lastLoginAt,
       createdAt: a.createdAt,
     };
@@ -104,6 +112,73 @@ export class ErpPortalAccountsService {
     return {
       ...this.accountView(account),
       message: 'Pendaftaran terkirim. Tim Bahtera Madani akan memverifikasi sekolah Anda sebelum akun aktif.',
+    };
+  }
+
+  // ── Public: daftar sekolah untuk pemilih pendaftaran orang tua (W4) ─────
+
+  async listPublicSchools() {
+    const typeId = await this.schoolTypeId();
+    const partners = await this.prisma.erpPartner.findMany({
+      where: { partnerTypeId: typeId, deletedAt: null },
+      orderBy: { name: 'asc' },
+      take: 500,
+      select: { id: true, name: true },
+    });
+    const profiles = partners.length
+      ? await this.prisma.erpSchoolProfile.findMany({
+          where: { partnerId: { in: partners.map((p) => p.id) } },
+          select: { partnerId: true, jenjang: true },
+        })
+      : [];
+    const jenjang = new Map(profiles.map((p) => [p.partnerId.toString(), p.jenjang]));
+    return {
+      data: partners.map((p) => ({
+        id: id(p.id),
+        name: p.name,
+        jenjang: jenjang.get(p.id.toString()) ?? null,
+      })),
+      total: partners.length,
+    };
+  }
+
+  // ── Public: pendaftaran orang tua (W4) ────────────────────────────────────
+  // Orang tua memilih sekolah yang SUDAH ada; persetujuan admin menautkan
+  // akun ke partner sekolah itu (tidak membuat partner baru) dan data siswa
+  // (nama + kelas) disimpan di metadata akun.
+
+  async registerParent(dto: PortalRegisterParentDto) {
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.erpPortalAccount.findUnique({ where: { email } });
+    if (existing && !existing.deletedAt) {
+      throw new ConflictException('Email sudah terdaftar di portal');
+    }
+    const typeId = await this.schoolTypeId();
+    const school = await this.prisma.erpPartner.findFirst({
+      where: { id: BigInt(dto.schoolPartnerId), partnerTypeId: typeId, deletedAt: null },
+    });
+    if (!school) throw new BadRequestException('Sekolah tidak ditemukan. Pilih sekolah dari daftar.');
+    const account = await this.prisma.erpPortalAccount.create({
+      data: {
+        email,
+        passwordHash: hashPassword(dto.password),
+        fullName: dto.fullName,
+        phone: dto.phone,
+        role: 'ORANG_TUA' as any,
+        schoolName: school.name,
+        status: 'PENDING',
+        metadata: {
+          kind: 'parent',
+          schoolPartnerId: dto.schoolPartnerId,
+          studentName: dto.studentName,
+          studentClass: dto.studentClass,
+          origin: 'portal-register-parent',
+        },
+      },
+    });
+    return {
+      ...this.accountView(account),
+      message: 'Pendaftaran orang tua terkirim. Akun aktif setelah diverifikasi admin Bahtera Madani.',
     };
   }
 
@@ -279,6 +354,21 @@ export class ErpPortalAccountsService {
   async approve(accountId: string, actorId?: string) {
     const account = await this.mustAccount(accountId);
     let partnerId = account.partnerId;
+    if (!partnerId && account.role === 'ORANG_TUA') {
+      // W4: orang tua tertaut ke partner sekolah yang dipilih saat daftar —
+      // TIDAK membuat partner/profil baru.
+      const meta = (account.metadata ?? {}) as Record<string, unknown>;
+      const schoolPartnerId = meta.schoolPartnerId as string | undefined;
+      if (!schoolPartnerId) {
+        throw new BadRequestException('Akun orang tua tidak memiliki tautan sekolah.');
+      }
+      const typeId = await this.schoolTypeId();
+      const school = await this.prisma.erpPartner.findFirst({
+        where: { id: BigInt(schoolPartnerId), partnerTypeId: typeId, deletedAt: null },
+      });
+      if (!school) throw new BadRequestException('Sekolah tautan akun orang tua tidak ditemukan.');
+      partnerId = school.id;
+    }
     if (!partnerId) {
       const partner = await this.createSchoolPartner(account.schoolName, 'SCH');
       partnerId = partner.id;

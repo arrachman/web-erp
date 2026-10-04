@@ -36,7 +36,8 @@ export function addToCart(item: CatalogItem, qty = 1) {
       name: item.name,
       code: item.code,
       unit: item.unit,
-      salePrice: item.salePrice,
+      // Harga yang berlaku untuk sekolah akun (kontrak W7 bila ada).
+      salePrice: item.price ?? item.salePrice,
       qty,
     });
   if (!window.localStorage.getItem(REF_KEY)) {

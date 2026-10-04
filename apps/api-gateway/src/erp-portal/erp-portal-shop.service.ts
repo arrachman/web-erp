@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ErpSlsOrdersService } from '../erp-sls-orders/erp-sls-orders.service';
+import { ErpContractsService } from '../erp-contracts/erp-contracts.service';
+import { ErpBundlesService } from '../erp-contracts/erp-bundles.service';
 import {
   deriveHubStage,
   HUB_STAGE_LABELS,
@@ -33,11 +35,13 @@ export class ErpPortalShopService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orders: ErpSlsOrdersService,
+    private readonly contracts: ErpContractsService,
+    private readonly bundles: ErpBundlesService,
   ) {}
 
   // ── Catalog ───────────────────────────────────────────────────────────────
 
-  async catalog(opts: { search?: string; jenjang?: string; page?: number; pageSize?: number }) {
+  async catalog(opts: { search?: string; jenjang?: string; page?: number; pageSize?: number }, account?: any) {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, opts.pageSize ?? 24));
     const items = await this.prisma.erpItem.findMany({
@@ -91,9 +95,47 @@ export class ErpPortalShopService {
         isCustomPrint: p?.isCustomPrint ?? false,
         category: i.categoryId ? catName.get(i.categoryId.toString()) ?? null : null,
         unit: unitName.get(i.baseUnitId.toString()) ?? null,
+        price: money(i.salePrice),
+        priceSource: 'STANDAR' as string,
+        bundle: null as null | { components: { itemId: string; name: string | null; quantity: string; unit: string | null }[] },
       }));
     const total = rows.length;
     rows = rows.slice((page - 1) * pageSize, page * pageSize);
+    // W7: harga yang tampil = harga kontrak sekolah akun (berlapis) bila akun
+    // tertaut partner; pengunjung publik (sorotan landing) melihat standar.
+    // Item paket (bundle) menampilkan isi paketnya.
+    if (rows.length) {
+      const pageItems = rows
+        .map((r) => items.find((i) => i.id.toString() === r.id))
+        .filter(Boolean) as typeof items;
+      const bundleMap = await this.bundles.bundlesForItems(pageItems.map((i) => i.id));
+      const partnerId: bigint | null = account?.partnerId ?? null;
+      const priceMap = partnerId
+        ? await this.contracts.resolveMany(
+            partnerId,
+            pageItems.map((i) => ({ id: i.id, categoryId: i.categoryId, salePrice: i.salePrice })),
+          )
+        : null;
+      for (const row of rows) {
+        const key = row.id as string;
+        const resolved = priceMap?.get(key);
+        if (resolved) {
+          row.price = resolved.price;
+          row.priceSource = resolved.source;
+        }
+        const bundle = bundleMap.get(key);
+        if (bundle) {
+          row.bundle = {
+            components: bundle.components.map((c) => ({
+              itemId: c.itemId,
+              name: c.name,
+              quantity: c.quantity,
+              unit: c.unit,
+            })),
+          };
+        }
+      }
+    }
     return { data: rows, total, page, pageSize };
   }
 
@@ -112,11 +154,14 @@ export class ErpPortalShopService {
 
   async createOrder(account: any, dto: PortalCreateOrderDto) {
     const partnerId: bigint = account.partnerId;
+    // W4: kanal mengikuti peran akun — orang tua memakai PORTAL_ORANGTUA.
+    const isParent = account.role === 'ORANG_TUA';
+    const channel = isParent ? 'PORTAL_ORANGTUA' : 'PORTAL_SEKOLAH';
     const externalOrderId = dto.clientRef
       ? `PORTAL-${account.id}-${dto.clientRef}`
       : `PORTAL-${account.id}-${Date.now()}`;
     const existing = await this.prisma.erpSlsOrder.findFirst({
-      where: { channel: 'PORTAL_SEKOLAH' as any, externalOrderId, deletedAt: null },
+      where: { channel: channel as any, externalOrderId, deletedAt: null },
     });
     if (existing) return this.orderView(existing, await this.factsFor([existing]));
 
@@ -125,6 +170,11 @@ export class ErpPortalShopService {
       where: { id: { in: itemIds }, deletedAt: null },
     });
     const byId = new Map(items.map((i) => [i.id.toString(), i]));
+    // W7: harga baris = harga kontrak sekolah (berlapis), bukan harga standar.
+    const priceMap = await this.contracts.resolveMany(
+      partnerId,
+      items.map((i) => ({ id: i.id, categoryId: i.categoryId, salePrice: i.salePrice })),
+    );
     const lines = dto.lines.map((l, idx) => {
       const item = byId.get(l.itemId);
       if (!item) throw new BadRequestException(`Item ${l.itemId} tidak ditemukan`);
@@ -132,7 +182,7 @@ export class ErpPortalShopService {
         itemId: l.itemId,
         quantity: String(l.quantity),
         unitId: item.baseUnitId.toString(),
-        unitPrice: money(item.salePrice),
+        unitPrice: priceMap.get(l.itemId)?.price ?? money(item.salePrice),
         lineNo: idx + 1,
       };
     });
@@ -141,6 +191,7 @@ export class ErpPortalShopService {
       select: { id: true },
     });
     if (!branch) throw new BadRequestException('Cabang perusahaan belum diatur.');
+    const meta = (account.metadata ?? {}) as Record<string, unknown>;
     const created: any = await this.orders.create(
       {
         docDate: new Date().toISOString().slice(0, 10),
@@ -148,11 +199,23 @@ export class ErpPortalShopService {
         customerId: partnerId.toString(),
         currencyId: (await this.idrId()).toString(),
         exchangeRate: '1',
-        channel: 'PORTAL_SEKOLAH',
+        channel,
         externalOrderId,
-        fundingSource: dto.fundingSource,
+        // Orang tua membayar sendiri (bukan dana BOS sekolah).
+        fundingSource: isParent ? 'NON_BOS' : dto.fundingSource,
         budgetYear: dto.budgetYear,
         notes: dto.notes,
+        ...(isParent
+          ? {
+              customFields: {
+                portalParent: {
+                  accountId: account.id.toString(),
+                  studentName: (meta.studentName as string) ?? null,
+                  studentClass: (meta.studentClass as string) ?? null,
+                },
+              },
+            }
+          : {}),
         lines,
       } as any,
       undefined,
@@ -220,9 +283,22 @@ export class ErpPortalShopService {
     };
   }
 
+  /** W4: orang tua hanya boleh melihat order miliknya sendiri di sekolah itu. */
+  private isParent(account: any): boolean {
+    return account?.role === 'ORANG_TUA';
+  }
+
+  private ownOrderScope(account: any): Record<string, unknown> {
+    if (!this.isParent(account)) return {};
+    return {
+      channel: 'PORTAL_ORANGTUA' as any,
+      externalOrderId: { startsWith: `PORTAL-${account.id}-` },
+    };
+  }
+
   async listOrders(account: any) {
     const orders = await this.prisma.erpSlsOrder.findMany({
-      where: { customerId: account.partnerId, deletedAt: null },
+      where: { customerId: account.partnerId, deletedAt: null, ...this.ownOrderScope(account) },
       orderBy: { docDate: 'desc' },
       take: 100,
     });
@@ -234,6 +310,12 @@ export class ErpPortalShopService {
     const order = await this.prisma.erpSlsOrder.findUnique({ where: { id: BigInt(orderId) } });
     if (!order || order.deletedAt || order.customerId !== account.partnerId) {
       throw new NotFoundException('Pesanan tidak ditemukan');
+    }
+    if (this.isParent(account)) {
+      const prefix = `PORTAL-${account.id}-`;
+      if ((order as any).channel !== 'PORTAL_ORANGTUA' || !order.externalOrderId?.startsWith(prefix)) {
+        throw new NotFoundException('Pesanan tidak ditemukan');
+      }
     }
     const lines = await this.prisma.erpSlsOrderLine.findMany({
       where: { orderId: order.id },
@@ -282,8 +364,22 @@ export class ErpPortalShopService {
   }
 
   async listInvoices(account: any) {
+    // W4: tagihan orang tua = tagihan dari ordernya sendiri saja.
+    let ownOrderIds: bigint[] | null = null;
+    if (this.isParent(account)) {
+      const own = await this.prisma.erpSlsOrder.findMany({
+        where: { customerId: account.partnerId, deletedAt: null, ...this.ownOrderScope(account) },
+        select: { id: true },
+      });
+      ownOrderIds = own.map((o) => o.id);
+      if (!ownOrderIds.length) return { data: [], total: 0 };
+    }
     const invoices = await this.prisma.erpSlsInvoice.findMany({
-      where: { customerId: account.partnerId, deletedAt: null },
+      where: {
+        customerId: account.partnerId,
+        deletedAt: null,
+        ...(ownOrderIds ? { orderId: { in: ownOrderIds } } : {}),
+      },
       orderBy: { docDate: 'desc' },
       take: 100,
     });

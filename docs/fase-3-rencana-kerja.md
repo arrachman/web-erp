@@ -112,3 +112,22 @@ Gerbang akhir Fase 3 (PRD): **satu musim tahun ajaran berjalan lewat portal**.
 ## Progres
 
 - **2026-10-05 — Prototipe landing + portal ter-deploy & ter-rebrand.** Bundle desain ditempatkan di `apps/landing-page/` (port 3226) dan `apps/portal-sekolah/` (port 3221) sebagai service statis persisten; seluruh branding "Pena Cendekia / PT Pena Cendekia Nusantara" diganti "CV Bahtera Madani" (domain placeholder `bahteramadani.co.id`). Crosscheck terhadap dokumen scope menempatkan pekerjaan ini di Fase 3 — dokumen rencana ini dibuat agar catch-up-nya tercatat dan tidak hilang. Berikutnya: G1 (W1 landing produksi + W3 akun/approval + W2 portal sekolah MVP) setelah keputusan §2 #1–#4.
+
+## Kemajuan — Gelombang 3 (W4 + W7) SELESAI & LIVE (2026-10-05)
+
+### W7 — Mesin harga kontrak, bundling & paket kelas
+- **Harga kontrak berlapis per sekolah** (keputusan gerbang: TANPA yayasan — kontrak selalu per partner sekolah). Tabel `md_school_contract_prices` (migrasi `20261005_028`): baris berbentuk salah satu dari harga tetap per item / diskon per kategori / diskon seluruh sekolah, dengan masa berlaku opsional. Resolusi: item → kategori → sekolah → harga jual standar. Modul backend `erp-contracts` (CRUD admin + resolver) dipakai katalog & checkout portal, jadi harga yang tampil = harga yang tertagih.
+- **Paket/bundle**: `md_item_bundles` + `md_item_bundle_lines` — item paket memiliki daftar komponen; katalog portal menampilkan "Isi paket"; item paket terjual sebagai satu baris order berharga paket.
+- **Admin ERP**: halaman "Harga Kontrak & Paket" `/master/contract-prices` (menu `M1.CONTRACTS`) untuk mengelola baris kontrak + definisi paket.
+- **DoD terbukti (smoke API, data uji dibersihkan)**: sekolah A (harga item tetap Rp10.000 + diskon kategori 50%) melihat Rp10.000 — lapisan item mengalahkan kategori; sekolah B (diskon sekolah 20%) melihat Rp17.200 untuk item yang sama (standar Rp21.500).
+
+### W4 — Portal Orang Tua
+- Peran portal baru `ORANG_TUA` (enum). Orang tua mendaftar dengan **memilih sekolah yang sudah terdaftar** (`GET /erp/portal/public/schools`) + nama siswa & kelas (tersimpan di metadata akun). Persetujuan admin menautkan akun ke partner sekolah itu — **tidak membuat partner baru**; login sebelum disetujui ditolak 403 seperti akun sekolah.
+- Belanja memakai fondasi W2 yang sama: katalog menampilkan harga kontrak sekolah anaknya; checkout menjadi order kanal `PORTAL_ORANGTUA` dengan `customFields.portalParent` (akun + siswa + kelas) pada SO, sumber dana dipaksa NON_BOS. Isolasi: orang tua hanya melihat order & tagihan dari ordernya sendiri (detail order sekolah → 404).
+- Frontend portal: mode "Akun Orang Tua" di halaman daftar, banner siswa di dashboard, chip "Harga kontrak sekolah" + isi paket di katalog.
+- **DoD terbukti**: order orang tua SO uji masuk Order Hub tahap BARU tertaut sekolah + kelas yang benar, total sesuai harga kontrak (2 × Rp10.000 = Rp20.000).
+
+### Sisa Fase 3
+- G2 (W5 payment gateway + W6 WhatsApp) masih menunggu keputusan provider di §2.
+- G4 (W8 load test & hardening) belum dikerjakan.
+- Follow-up tercatat: ekspansi komponen paket ke picking/packing gudang; harga kontrak untuk order admin (saat ini resolver dipakai portal — SO admin tetap harga standar/katalog); pendaftaran orang tua multi-anak (v1 satu akun = satu siswa).

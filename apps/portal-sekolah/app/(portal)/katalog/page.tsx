@@ -109,8 +109,31 @@ export default function KatalogPage() {
                 {i.gradeLevel ? ` · Kelas ${i.gradeLevel}` : ''}
               </div>
               <div style={{ marginTop: 'auto' }}>
-                <div className="price">{fmtIDR(i.salePrice)}</div>
+                <div className="price">{fmtIDR(i.price ?? i.salePrice)}</div>
+                {i.priceSource && i.priceSource !== 'STANDAR' && (
+                  <div>
+                    <span className="chip chip-ok">Harga kontrak sekolah</span>
+                    {Number(i.price) !== Number(i.salePrice) && (
+                      <span className="het" style={{ textDecoration: 'line-through', marginLeft: 6 }}>
+                        {fmtIDR(i.salePrice)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {i.hetPrice && <div className="het">HET {fmtIDR(i.hetPrice)}</div>}
+                {i.bundle && i.bundle.components.length > 0 && (
+                  <div className="small muted" style={{ marginTop: 6 }}>
+                    <strong>Isi paket:</strong>
+                    <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                      {i.bundle.components.map((c) => (
+                        <li key={c.itemId}>
+                          {c.name ?? 'Item'} × {c.quantity}
+                          {c.unit ? ` ${c.unit}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               <button
                 className="btn btn-sm"

@@ -70,6 +70,7 @@ import { MfgJobCostsPage } from '@/components/pages/mfg-job-costs-page';
 import { MfgSchedulesPage } from '@/components/pages/mfg-schedules-page';
 import { MfgVdpPage } from '@/components/pages/mfg-vdp-page';
 import { PortalAccountsPage } from '@/components/pages/portal-accounts-page';
+import ContractPricesPage from '@/components/pages/contract-prices-page';
 import { MfgWorkOrdersPage } from '@/components/pages/mfg-work-orders-page';
 import type { TrxFormPage } from '@/lib/trx-route';
 
@@ -137,5 +138,6 @@ export const TRX_FORM_PAGES: Record<string, TrxFormPage> = {
   '/manufacturing/schedules': MfgSchedulesPage,
   '/manufacturing/vdp': MfgVdpPage,
   '/master/portal-accounts': PortalAccountsPage,
+  '/master/contract-prices': ContractPricesPage,
   '/manufacturing/work-orders': MfgWorkOrdersPage,
 };

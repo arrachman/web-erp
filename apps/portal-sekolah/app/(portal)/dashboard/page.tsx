@@ -1,24 +1,29 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, fmtDate, fmtIDR, PortalInvoice, PortalOrder } from '@/lib/api';
+import { api, fmtDate, fmtIDR, PortalInvoice, PortalMe, PortalOrder } from '@/lib/api';
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<PortalOrder[]>([]);
   const [invoices, setInvoices] = useState<PortalInvoice[]>([]);
+  const [me, setMe] = useState<PortalMe | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
       api<{ data: PortalOrder[] }>('/portal/orders'),
       api<{ data: PortalInvoice[] }>('/portal/invoices'),
+      api<PortalMe>('/portal/me').catch(() => null),
     ])
-      .then(([o, i]) => {
+      .then(([o, i, m]) => {
         setOrders(o.data);
         setInvoices(i.data);
+        setMe(m);
       })
       .catch((e) => setError(e.message));
   }, []);
+
+  const isParent = me?.account.role === 'ORANG_TUA';
 
   const open = invoices.filter((i) => i.settlementStatus !== 'PAID');
   const openTotal = open.reduce((s, i) => s + Number(i.grandTotal), 0);
@@ -28,8 +33,20 @@ export default function DashboardPage() {
     <div>
       <h1 className="page">Dashboard</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        Ringkasan pemesanan dan tagihan sekolah Anda.
+        {isParent
+          ? 'Ringkasan pesanan paket kebutuhan anak dan tagihannya.'
+          : 'Ringkasan pemesanan dan tagihan sekolah Anda.'}
       </p>
+      {isParent && me?.account.studentName && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="small muted">Paket untuk ananda</div>
+          <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--navy)' }}>
+            {me.account.studentName}
+            {me.account.studentClass ? ` · Kelas ${me.account.studentClass}` : ''}
+          </div>
+          <div className="small muted">{me.school?.name ?? me.account.schoolName}</div>
+        </div>
+      )}
       {error && <div className="error">{error}</div>}
       <div className="stat-grid">
         <div className="card stat">

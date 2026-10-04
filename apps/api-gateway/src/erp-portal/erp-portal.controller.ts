@@ -18,6 +18,7 @@ import {
   PortalLeadDto,
   PortalLoginDto,
   PortalRegisterDto,
+  PortalRegisterParentDto,
   PortalRejectDto,
   PortalUpdateProfileDto,
 } from './dto/erp-portal.dto';
@@ -36,6 +37,16 @@ export class ErpPortalPublicController {
   @Post('register')
   register(@Body() dto: PortalRegisterDto) {
     return this.accounts.register(dto);
+  }
+
+  @Post('register-parent')
+  registerParent(@Body() dto: PortalRegisterParentDto) {
+    return this.accounts.registerParent(dto);
+  }
+
+  @Get('public/schools')
+  publicSchools() {
+    return this.accounts.listPublicSchools();
   }
 
   @Post('auth/login')
@@ -75,17 +86,21 @@ export class ErpPortalController {
 
   @Get('catalog')
   catalog(
+    @Request() req: any,
     @Query('search') search?: string,
     @Query('jenjang') jenjang?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
-    return this.shop.catalog({
-      search,
-      jenjang,
-      page: page ? Number(page) : undefined,
-      pageSize: pageSize ? Number(pageSize) : undefined,
-    });
+    return this.shop.catalog(
+      {
+        search,
+        jenjang,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      },
+      req.portalAccount,
+    );
   }
 
   @Post('orders')
