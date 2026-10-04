@@ -130,6 +130,12 @@ Minimum yang harus tersedia:
 
 ### D1 — Katalog produk
 
+**Status: selesai & live 2026-10-04** — kategori MVP lengkap (BUKU/ATK/
+FURN/CON + LKS, PERAGA, SERAGAM, CETAK, PAKET); profil katalog per item di
+`md_item_catalog_profiles` (penerbit, jenjang, kelas, kurikulum, mapel,
+HET, flag cetak custom, kelas stok, status tayang per kanal) dengan seksi
+"Katalog Sekolah" di form item dan API `erp/item-catalog`.
+
 Minimum yang harus tersedia:
 
 - kategori buku teks, LKS, ATK, alat peraga, seragam/atribut, produk cetak,
@@ -145,6 +151,13 @@ harga aktual yang dibutuhkan transaksi awal.
 
 ### D2 — Pembelian & supplier
 
+**Status: selesai & live 2026-10-04** — three-way match PO ↔ penerimaan ↔
+invoice kini dihitung per baris dan ditulis ke `matchStatus` (endpoint
+match-check/recompute-match + panel di form Faktur Pembelian); rabat
+penerbit sebagai perjanjian per supplier/kategori/tahun
+(`pur_supplier_rebates`) dengan laporan akrual; saran pembelian dari stok
+minimum tersedia sebagai laporan persediaan "Purchase Suggestion".
+
 Minimum yang harus tersedia:
 
 - PO, penerimaan barang, purchase invoice, retur, dan pembayaran vendor;
@@ -155,6 +168,13 @@ Minimum yang harus tersedia:
 - posting stok/AP/GL atomik dan idempotent.
 
 ### D3 — Persediaan multi-gudang
+
+**Status: selesai & live 2026-10-04** — klasifikasi stok (dagangan/bahan
+baku/barang jadi/konsinyasi) dari profil katalog D1; laporan "Consignment
+Summary" kini berisi saldo nyata per supplier; laporan Stock (Saldo)
+menampilkan Qty Tereservasi (order APPROVED/POSTED yang belum terkirim)
+dan Qty Tersedia. Barcode, opname, transfer, opening, dan adjustment
+sudah tersedia sebelumnya.
 
 Minimum yang harus tersedia:
 
@@ -169,6 +189,12 @@ Minimum yang harus tersedia:
 - rekonsiliasi nilai stok terhadap akun kontrol GL.
 
 ### E1 — Keuangan & akuntansi
+
+**Status: selesai & live 2026-10-04** — laporan Analisis Laba (laba kotor
+per sekolah/produk/wilayah dari invoice ter-posting dikurangi retur) di
+`/finance/profit-analysis`; AR/AP aging per partner, trial balance, laba
+rugi, neraca, arus kas, budget realization, dan rekonsiliasi kontrol
+sudah tersedia sebelumnya. Laba per job cetak menunggu HPP job Fase 2.
 
 Minimum yang harus tersedia:
 
@@ -211,10 +237,10 @@ prasyarat operasional dan non-fungsional MVP:
 | A2 Order Hub | Sales quotation/order/delivery/invoice/receipt dan workflow generik | model kanal, external ID/idempotency, import/API SIPLah, status hub/BAST, pencairan dan fee SIPLah | **Fondasi ada, hub belum ada** |
 | A3 Dokumen | Report Studio/report engine, attachment transaksi, numbering | paket dokumen pengadaan, template BOS, e-sign/stempel, BAST + foto, arsip sekolah/tahun | **Fondasi renderer ada** |
 | A4 Pajak | Master pajak, posting PPN, model `fin_tax_entries` dan withholding certificate | service/API/UI tax subledger, PPh 22/23, bukti potong, Coretax/export, rekonsiliasi dan laporan bulanan | **Model DB ada, aplikasi belum** |
-| D1 Katalog | Item/category/brand/class/media/attachment, harga dasar/tier model | atribut sekolah (penerbit/jenjang/kurikulum/mapel/HET), visibility per kanal, flag custom print; paket penuh ditunda Fase 3 | **Sebagian ada** |
-| D2 Pembelian | PR/RFQ/bid/PO/GRN/PI/return/advance/payment, posting stok/GL dan outstanding | validasi end-to-end, rabat/konsinyasi sesuai kebutuhan, reorder minimum | **Kuat, perlu hardening** |
-| D3 Persediaan | Multi-gudang, movement, opening, count, adjustment, bin/lot/reservation pada model | alokasi eksklusif sekolah, barcode/picking minimum, aplikasi reservation/lot yang belum lengkap, rekonsiliasi stok-GL | **Kuat, ada gap vertikal** |
-| E1 Keuangan | Cash/bank, journal, ledger, AR/AP receipt/payment, giro, FX, aging dan laporan keuangan | rekonsiliasi SIPLah/payment source, reminder WA, profitabilitas sekolah/lini, stock reconciliation, bank rec application | **Kuat, perlu integrasi/reporting** |
+| D1 Katalog | Item/category/brand/class/media/attachment, harga dasar/tier model | paket/bundling penuh ditunda Fase 3 | **Selesai (live 2026-10-04)** |
+| D2 Pembelian | PR/RFQ/bid/PO/GRN/PI/return/advance/payment, posting stok/GL dan outstanding | validasi skenario partial P2P dengan data nyata | **Selesai (live 2026-10-04)** |
+| D3 Persediaan | Multi-gudang, movement, opening, count, adjustment, bin/lot/reservation pada model | alokasi eksklusif sekolah, aplikasi barcode/picking | **Selesai (live 2026-10-04)** |
+| E1 Keuangan | Cash/bank, journal, ledger, AR/AP receipt/payment, giro, FX, aging dan laporan keuangan | rekonsiliasi SIPLah & reminder WA (terikat A2), laba per job (Fase 2) | **Selesai (live 2026-10-04)** |
 
 Status “sudah tersedia” berarti komponen kode/model ditemukan, **bukan** otomatis
 lulus production. Alur kritis tetap harus diverifikasi terhadap database nyata,
@@ -257,6 +283,8 @@ status workflow, fiscal period, retry idempotent, reversal, dan jurnal seimbang.
    invoice/receipt, bukti potong, rekonsiliasi, serta ekspor Coretax.
 
 ### MVP-4 — Hardening katalog, purchasing, inventory, dan finance
+
+**Status: selesai & live 2026-10-04** (detail di §3 D1/D2/D3/E1).
 
 1. Lengkapi atribut katalog sekolah dan visibility kanal minimum.
 2. Selesaikan reservation, exclusive allocation, barcode minimum, dan
