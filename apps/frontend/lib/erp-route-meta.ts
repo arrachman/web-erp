@@ -131,6 +131,7 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/finance/ar-card': { group: 'Finance', title: 'AR Card', icon: 'calculator' },
   '/finance/ar-aging': { group: 'Finance', title: 'AR Aging', icon: 'calculator' },
   '/finance/profit-analysis': { group: 'Finance', title: 'Analisis Laba', icon: 'calculator' },
+  '/finance/tax-subledger': { group: 'Finance', title: 'Pajak Pengadaan', icon: 'calculator' },
   '/finance/ap-card': { group: 'Finance', title: 'AP Card', icon: 'calculator' },
   '/finance/ap-aging': { group: 'Finance', title: 'AP Aging', icon: 'calculator' },
   '/finance/giro-maturity': { group: 'Finance', title: 'Giro Maturity', icon: 'calculator' },

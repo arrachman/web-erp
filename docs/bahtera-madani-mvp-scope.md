@@ -143,6 +143,20 @@ Minimum yang harus tersedia:
 - rekonsiliasi nilai dipotong dengan bukti yang diterima;
 - laporan pajak bulanan untuk konsultan pajak.
 
+> **Status 2026-10-04: selesai & live.** Modul `erp-tax-subledger` di atas
+> tabel `fin_tax_entries` / `fin_withholding_tax_certificates` (sebelumnya
+> belum terpakai): subledger PPN disinkronkan dari invoice penjualan &
+> pembelian terposting (agregasi pajak per baris, idempotent), nomor/tanggal
+> faktur pajak dicatat di entri dan diteruskan ke invoice sumber, ekspor
+> Coretax berupa file CSV PPN Keluaran per bulan (integrasi PJAP menyusul
+> bila kredensial tersedia). PPh 22 (enum `PPH_22` baru) / PPh 23 yang
+> dipotong bendahara dicatat sebagai ekspektasi, bukti potong diterima
+> diunggah (lampiran fin/WHT) dan direkonsiliasi (LENGKAP/KURANG/LEBIH/
+> BELUM_ADA_BUKTI). Laporan bulanan (PPN keluaran/masukan/netto + PPh)
+> tersedia di halaman dan ekspor CSV untuk konsultan pajak. Halaman
+> **Pajak Pengadaan** (menu `TAX-SUBLEDGER`, `/finance/tax-subledger`).
+> Migration `20261004_014_erp_tax_subledger`.
+
 ### D1 — Katalog produk
 
 **Status: selesai & live 2026-10-04** — kategori MVP lengkap (BUKU/ATK/

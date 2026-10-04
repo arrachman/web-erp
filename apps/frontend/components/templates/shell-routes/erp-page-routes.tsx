@@ -109,6 +109,7 @@ import { ErpArCardPage } from '@/components/pages/fin-ar-card-page';
 import { ErpArAgingPage } from '@/components/pages/fin-ar-aging-page';
 import { ErpPurRebatesPage } from '@/components/pages/pur-rebates-page';
 import { ErpFinProfitAnalysisPage } from '@/components/pages/fin-profit-analysis-page';
+import { TaxSubledgerPage } from '@/components/pages/tax-subledger-page';
 import { ErpApCardPage } from '@/components/pages/fin-ap-card-page';
 import { ErpApAgingPage } from '@/components/pages/fin-ap-aging-page';
 import { ErpGiroMaturityPage } from '@/components/pages/fin-giro-maturity-page';
@@ -259,6 +260,7 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/finance/ar-card': () => <ErpArCardPage />,
   '/finance/ar-aging': () => <ErpArAgingPage />,
   '/finance/profit-analysis': () => <ErpFinProfitAnalysisPage />,
+  '/finance/tax-subledger': () => <TaxSubledgerPage />,
   '/purchasing/rebates': () => <ErpPurRebatesPage />,
   '/finance/ap-card': () => <ErpApCardPage />,
   '/finance/ap-aging': () => <ErpApAgingPage />,
