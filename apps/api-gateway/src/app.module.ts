@@ -37,6 +37,7 @@ import { ErpFinGirosModule } from './erp-fin-giros/erp-fin-giros.module';
 import { ErpFinJournalEntriesModule } from './erp-fin-journal-entries/erp-fin-journal-entries.module';
 import { ErpFinLedgerModule } from './erp-fin-ledger/erp-fin-ledger.module';
 import { ErpFinReportsModule } from './erp-fin-reports/erp-fin-reports.module';
+import { ErpFinDocReportsModule } from './erp-fin-doc-reports/erp-fin-doc-reports.module';
 import { ErpFinFxRevaluationsModule } from './erp-fin-fx-revaluations/erp-fin-fx-revaluations.module';
 import { ErpFiscalPeriodsModule } from './erp-fiscal-periods/erp-fiscal-periods.module';
 import { ErpFormFieldsModule } from './erp-form-fields/erp-form-fields.module';
@@ -51,6 +52,7 @@ import { ErpInvStatsModule } from './erp-inv-stats/erp-inv-stats.module';
 import { ErpInvStockAdjustmentsModule } from './erp-inv-stock-adjustments/erp-inv-stock-adjustments.module';
 import { ErpInvStockCountsModule } from './erp-inv-stock-counts/erp-inv-stock-counts.module';
 import { ErpInvStockMovementsModule } from './erp-inv-stock-movements/erp-inv-stock-movements.module';
+import { ErpInvLotsModule } from './erp-inv-lots/erp-inv-lots.module';
 import { ErpInvWeighbridgeTicketsModule } from './erp-inv-weighbridge-tickets/erp-inv-weighbridge-tickets.module';
 import { ErpItemCategoriesModule } from './erp-item-categories/erp-item-categories.module';
 import { ErpItemInformationsModule } from './erp-item-informations/erp-item-informations.module';
@@ -69,6 +71,7 @@ import { ErpMfgPrintJobsModule } from './erp-mfg-print-jobs/erp-mfg-print-jobs.m
 import { ErpMfgJobCostsModule } from './erp-mfg-job-costs/erp-mfg-job-costs.module';
 import { ErpMfgSchedulesModule } from './erp-mfg-schedules/erp-mfg-schedules.module';
 import { ErpMfgVdpModule } from './erp-mfg-vdp/erp-mfg-vdp.module';
+import { ErpPortalModule } from './erp-portal/erp-portal.module';
 import { ErpMiscellaneousModule } from './erp-miscellaneous/miscellaneous.module';
 import { ErpNotificationsModule } from './erp-notifications/erp-notifications.module';
 import { ErpNozzlesModule } from './erp-nozzles/nozzles.module';
@@ -201,6 +204,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpFinJournalEntriesModule,
     ErpFinLedgerModule,
     ErpFinReportsModule,
+    ErpFinDocReportsModule,
     ErpFinFxRevaluationsModule,
     ErpFiscalPeriodsModule,
     ErpFormFieldsModule,
@@ -215,6 +219,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpInvStockAdjustmentsModule,
     ErpInvStockCountsModule,
     ErpInvStockMovementsModule,
+    ErpInvLotsModule,
     ErpInvWeighbridgeTicketsModule,
     ErpItemCategoriesModule,
     ErpItemInformationsModule,
@@ -233,6 +238,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpMfgJobCostsModule,
     ErpMfgSchedulesModule,
     ErpMfgVdpModule,
+    ErpPortalModule,
     ErpMiscellaneousModule,
     ErpNotificationsModule,
     ErpNozzlesModule,

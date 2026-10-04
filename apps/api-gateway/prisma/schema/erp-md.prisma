@@ -615,6 +615,9 @@ model ErpPartner {
   @@index([currencyId])
   @@index([salesmanId])
   @@index([legacyCode])
+    portalAccounts ErpPortalAccount[]
+  portalLeads    ErpPortalLead[]
+
   @@map("md_partners")
 }
 
@@ -1929,4 +1932,82 @@ model ErpItemInformation {
 
   @@index([legacyCode])
   @@map("md_item_informations")
+}
+
+// Fase 3 W2/W3 — Portal Sekolah (Bahtera Madani)
+// Akun portal: registrasi publik (PENDING) -> approval admin (membuat/menautkan
+// partner CUST-SCHOOL + profil sekolah A1) -> login JWT khusus portal
+// (claim aud='portal', guard ErpPortalAuthGuard). Lead landing page (W1)
+// langsung menjadi partner PROSPEK di CRM Sekolah.
+
+enum ErpPortalAccountStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum ErpPortalAccountRole {
+  KEPALA_SEKOLAH
+  BENDAHARA
+  OPERATOR
+}
+
+enum ErpPortalLeadStatus {
+  NEW
+  CONVERTED
+  IGNORED
+}
+
+model ErpPortalAccount {
+  id             BigInt                 @id @default(autoincrement())
+  partnerId      BigInt?                @map("partner_id")
+  email          String                 @unique
+  passwordHash   String                 @map("password_hash")
+  fullName       String                 @map("full_name")
+  phone          String?
+  role           ErpPortalAccountRole   @default(OPERATOR)
+  status         ErpPortalAccountStatus @default(PENDING)
+  schoolName     String                 @map("school_name")
+  npsn           String?
+  jenjang        ErpSchoolJenjang?
+  address        String?
+  approvedAt     DateTime?              @map("approved_at") @db.Timestamptz(6)
+  approvedById   BigInt?                @map("approved_by_id")
+  rejectedReason String?                @map("rejected_reason")
+  lastLoginAt    DateTime?              @map("last_login_at") @db.Timestamptz(6)
+  isActive       Boolean                @default(true) @map("is_active")
+  metadata       Json?
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById    BigInt?                @map("created_by_id")
+  updatedById    BigInt?                @map("updated_by_id")
+  deletedAt      DateTime?              @map("deleted_at") @db.Timestamptz(6)
+
+  partner ErpPartner? @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([partnerId])
+  @@map("md_portal_accounts")
+}
+
+model ErpPortalLead {
+  id          BigInt              @id @default(autoincrement())
+  schoolName  String              @map("school_name")
+  contactName String              @map("contact_name")
+  phone       String?
+  email       String?
+  jenjang     ErpSchoolJenjang?
+  message     String?
+  partnerId   BigInt?             @map("partner_id")
+  status      ErpPortalLeadStatus @default(NEW)
+  metadata    Json?
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  partner ErpPartner? @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@map("md_portal_leads")
 }
