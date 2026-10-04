@@ -39,6 +39,7 @@ import { ErpBranchesPage } from '@/components/pages/branches-page';
 import { ErpItemsPage } from '@/components/pages/items-page';
 import { ErpUnitsPage } from '@/components/pages/units-page';
 import { ErpPartnersPage } from '@/components/pages/partners-page';
+import { ErpSchoolsPage } from '@/components/pages/schools-page';
 import { ErpVendorsPage } from '@/components/pages/vendors-page';
 import { ErpItemCategoriesPage } from '@/components/pages/item-categories-page';
 import { ErpLocationsPage } from '@/components/pages/locations-page';
@@ -173,6 +174,7 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/master/items': () => <ErpItemsPage />,
   '/master/units': () => <ErpUnitsPage />,
   '/master/partners': () => <ErpPartnersPage />,
+  '/master/schools': () => <ErpSchoolsPage />,
   '/master/vendors': () => <ErpVendorsPage />,
   '/master/item-categories': () => <ErpItemCategoriesPage />,
   '/master/locations': () => <ErpLocationsPage />,
@@ -298,5 +300,6 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   'md-items': () => <ErpItemsPage />,
   'md-units': () => <ErpUnitsPage />,
   'md-partners': () => <ErpPartnersPage />,
+  'md-schools': () => <ErpSchoolsPage />,
   'md-item-categories': () => <ErpItemCategoriesPage />,
 };

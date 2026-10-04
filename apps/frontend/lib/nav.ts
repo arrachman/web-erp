@@ -53,6 +53,7 @@ export const NAV: NavItem[] = [
     children: [
       { id: 'md-items', label: 'Item', code: 'ITM' },
       { id: 'md-partners', label: 'Partner', code: 'PTR' },
+      { id: 'md-schools', label: 'Sekolah', code: 'SCH' },
       { id: 'md-item-categories', label: 'Kategori Item', code: 'ICAT' },
       { id: 'md-units', label: 'Satuan', code: 'UOM' },
       { id: 'm-customer', label: 'Customer (lama)', code: 'CUS' },
