@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DateInput } from '@/components/ui/date-input';
+import { ReportOutputActions, type ReportOutputData } from '@/components/molecules/report-output-actions';
 import { SearchSelect } from '@/components/molecules/search-select';
 import { buildLookupLoader } from '@/lib/lookup-source-registry';
 import { notify } from '@/lib/feedback';
@@ -51,6 +52,8 @@ interface ReportToolbarProps {
   showItem?: boolean;
   /** Status dropdown options. When omitted, the status filter is hidden. */
   statusOptions?: StatusOption[];
+  /** Loaded rows used for client-side CSV and browser print actions. */
+  dataset: ReportOutputData | null;
   /** Disable inputs while the page is loading. */
   busy?: boolean;
 }
@@ -74,6 +77,7 @@ export function ReportToolbar({
   asOfMode,
   showItem,
   statusOptions,
+  dataset,
   busy,
 }: ReportToolbarProps) {
   const [exporting, setExporting] = React.useState<ReportExportFormat | null>(null);
@@ -96,7 +100,7 @@ export function ReportToolbar({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div data-report-toolbar className="flex flex-wrap items-center gap-2">
       {asOfMode ? (
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {tGlobal('Per tanggal')}
@@ -216,6 +220,7 @@ export function ReportToolbar({
             {tGlobal(e.label)}
           </Button>
         ))}
+        <ReportOutputActions dataset={dataset} disabled={busy || exporting !== null} />
       </div>
     </div>
   );

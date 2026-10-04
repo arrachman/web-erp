@@ -31,6 +31,14 @@ export interface ReportSummaryItem {
   type?: ReportColType;
 }
 
+/** Optional chart attached to a report dataset (scalar series only). */
+export interface ReportChart {
+  kind: 'bar' | 'donut';
+  title: string;
+  labels: string[];
+  values: number[];
+}
+
 /** Query inputs common to all reports (each report uses the subset it needs). */
 export interface ReportFilters {
   dateFrom?: string;
@@ -57,6 +65,8 @@ export interface ReportDataset {
   generatedAt: string;
   /** Total matching rows (for paginated reports); equals rows.length otherwise. */
   total: number;
+  /** Optional charts rendered above the table (absent for most reports). */
+  charts?: ReportChart[];
 }
 
 /** Catalog grouping for the report list endpoint. */
@@ -72,6 +82,7 @@ export interface ReportDef {
     rows: Record<string, unknown>[];
     summary?: ReportSummaryItem[];
     total?: number;
+    charts?: ReportChart[];
   }>;
 }
 

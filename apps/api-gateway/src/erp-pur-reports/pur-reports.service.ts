@@ -47,13 +47,14 @@ export class PurReportsService {
   /** Resolve a report to its uniform dataset (used by view AND export). */
   async getDataset(key: string, filters: ReportFilters): Promise<ReportDataset> {
     const def = this.def(key);
-    const { rows, summary, total } = await def.resolve(filters);
+    const { rows, summary, total, charts } = await def.resolve(filters);
     return {
       key: def.key,
       title: def.title,
       columns: def.columns,
       rows,
       summary: summary ?? [],
+      ...(charts ? { charts } : {}),
       filters,
       total: total ?? rows.length,
       generatedAt: new Date().toISOString(),

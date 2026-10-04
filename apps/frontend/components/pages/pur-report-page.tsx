@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import { ErpListLayout } from '@/components/organisms/erp-list-layout';
+import { ReportCharts } from '@/components/organisms/report-charts';
 import { PurReportToolbar, type StatusOption } from '@/components/organisms/pur-report-toolbar';
 import { ReportTable } from '@/components/organisms/report-table';
 import {
@@ -150,6 +151,7 @@ export function PurReportPage({
           showVendor={showVendor}
           showItem={showItem}
           statusOptions={statusOptions}
+          dataset={dataset}
           busy={loading}
         />
       }
@@ -177,7 +179,12 @@ export function PurReportPage({
           : undefined
       }
     >
-      {dataset && <ReportTable dataset={dataset} searchTerm={debouncedSearch} />}
+      {dataset && (
+        <div data-report-content className="flex min-h-0 flex-1 flex-col gap-3">
+          <ReportCharts charts={dataset.charts} />
+          <ReportTable dataset={dataset} searchTerm={debouncedSearch} />
+        </div>
+      )}
     </ErpListLayout>
   );
 }

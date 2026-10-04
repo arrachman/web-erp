@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import { ErpListLayout } from '@/components/organisms/erp-list-layout';
+import { ReportCharts } from '@/components/organisms/report-charts';
 import { ReportToolbar, type StatusOption } from '@/components/organisms/report-toolbar';
 import { ReportTable } from '@/components/organisms/report-table';
 import {
@@ -146,6 +147,7 @@ export function InvReportPage({
           asOfMode={asOfMode}
           showItem={showItem}
           statusOptions={statusOptions}
+          dataset={dataset}
           busy={loading}
         />
       }
@@ -173,7 +175,12 @@ export function InvReportPage({
           : undefined
       }
     >
-      {dataset && <ReportTable dataset={dataset} searchTerm={debouncedSearch} />}
+      {dataset && (
+        <div data-report-content className="flex min-h-0 flex-1 flex-col gap-3">
+          <ReportCharts charts={dataset.charts} />
+          <ReportTable dataset={dataset} searchTerm={debouncedSearch} />
+        </div>
+      )}
     </ErpListLayout>
   );
 }

@@ -36,12 +36,20 @@ export interface ReportSummaryItem {
   type?: ReportCellType;
 }
 
+export interface ReportChart {
+  kind: 'bar' | 'donut';
+  title: string;
+  labels: string[];
+  values: number[];
+}
+
 export interface ReportDataset {
   key: string;
   title: string;
   columns: ReportColumn[];
   rows: Record<string, unknown>[];
   summary: ReportSummaryItem[];
+  charts?: ReportChart[];
   filters: Record<string, unknown>;
   generatedAt: string;
   total: number;
