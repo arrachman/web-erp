@@ -87,7 +87,7 @@ export function ErpSlsCustomerAdvancesPage({ formMode, recordId, onNavigate }: T
 
   const [search, setSearch] = React.useState('');
   const [filters, setFilters] = React.useState<SlsAsFilters>(emptySlsAsFilters);
-  const [sortBy, setSortBy] = React.useState('docDate');
+  const [sortBy, setSortBy] = React.useState('docNumber');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const { page, pageSize, setPage, setPageSize } = useListPagination('sls-customer-advances');
 

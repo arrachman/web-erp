@@ -123,7 +123,7 @@ export function InvStockCountsPage(
         status: (debF.status || undefined) as ErpDocumentStatus | undefined,
         dateFrom: debF.dateFrom || undefined,
         dateTo: debF.dateTo || undefined,
-        sortBy: 'countDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

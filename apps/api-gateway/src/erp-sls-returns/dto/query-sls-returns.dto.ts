@@ -35,7 +35,7 @@ export class QuerySlsReturnsDto {
   @ApiPropertyOptional({ enum: SLS_RETURN_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_RETURN_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

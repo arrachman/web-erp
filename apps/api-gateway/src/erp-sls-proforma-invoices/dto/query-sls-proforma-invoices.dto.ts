@@ -35,7 +35,7 @@ export class QuerySlsProformaInvoicesDto {
   @ApiPropertyOptional({ enum: SLS_PROFORMA_INVOICE_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_PROFORMA_INVOICE_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -85,7 +85,7 @@ export function ErpCashReceiptsPage({
     return () => clearTimeout(t);
   }, [filters]);
 
-  // Fixed transaction-date descending sort is set in the API request (not
+  // Fixed document-number descending sort is set in the API request (not
   // via clickable sort headers in the table) — preserve this exactly.
   const { rows, meta, loading, error, reload } = useErpList(
     () =>
@@ -104,7 +104,7 @@ export function ErpCashReceiptsPage({
         description: debF.uraian || undefined,
         notes: debF.catatan || undefined,
         createdById: debF.userId || undefined,
-        sortBy: 'transactionDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

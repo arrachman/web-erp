@@ -57,7 +57,7 @@ export function ErpSlsFreightReceivablesPage({ formMode, recordId, onNavigate }:
   }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listSlsInvoices({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docDate', sortDir: 'desc' }),
+    () => listSlsInvoices({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch],
   );
   React.useEffect(() => { setPage(1); }, [debouncedSearch, pageSize]);

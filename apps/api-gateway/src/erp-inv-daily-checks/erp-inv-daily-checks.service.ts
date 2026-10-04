@@ -119,7 +119,7 @@ export class ErpInvDailyChecksService {
     const limit = query.limit ?? 10;
     const where = buildDailyCheckWhere(query);
 
-    const sortBy = query.sortBy ?? 'checkDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpInvDailyCheck.findMany({

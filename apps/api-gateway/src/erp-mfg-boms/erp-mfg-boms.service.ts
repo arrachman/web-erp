@@ -144,7 +144,7 @@ export class ErpMfgBomsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where = buildBomWhere(query);
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
 
     const [items, total] = await this.prisma.$transaction([

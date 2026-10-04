@@ -143,7 +143,7 @@ export class ErpInvOpeningStocksService {
     const limit = query.limit ?? 10;
     const where = buildInvOpeningStockWhere(query);
 
-    const sortBy = query.sortBy ?? 'openingDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpInvOpeningStock.findMany({

@@ -44,7 +44,7 @@ export function ErpOpeningApBalancePage({ formMode, recordId, onNavigate }: TrxF
   React.useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listPurInvoices({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docDate', sortDir: 'desc' }),
+    () => listPurInvoices({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch],
   );
   React.useEffect(() => { setPage(1); }, [debouncedSearch, pageSize]);

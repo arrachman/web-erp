@@ -116,7 +116,7 @@ export class ErpFinJournalEntriesService {
     const includeTotal = query.includeTotal !== false;
     // Default last 31 days + max 366 when range set (see buildJournalWhere).
     const where = buildJournalWhere(query);
-    const sortBy = query.sortBy ?? 'entryDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
 
     // List includes only line ids so existing grid can show count without

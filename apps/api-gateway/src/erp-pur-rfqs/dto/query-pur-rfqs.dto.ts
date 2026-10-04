@@ -9,7 +9,7 @@ export class QueryPurRfqsDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number = 10;
   @IsOptional() @IsString() search?: string;
-  @IsOptional() @IsIn(PUR_RFQ_SORTABLE as unknown as string[]) sortBy?: string = 'docDate';
+  @IsOptional() @IsIn(PUR_RFQ_SORTABLE as unknown as string[]) sortBy?: string = 'docNumber';
   @IsOptional() @IsIn(['asc', 'desc']) sortDir?: 'asc' | 'desc' = 'desc';
   @IsOptional() @IsEnum(ErpDocumentStatusDto) status?: ErpDocumentStatusDto;
   @IsOptional() @IsString() branchId?: string;

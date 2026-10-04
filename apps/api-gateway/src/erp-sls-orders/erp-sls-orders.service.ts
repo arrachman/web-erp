@@ -164,7 +164,7 @@ export class ErpSlsOrdersService {
     const limit = query.limit ?? 10;
     const where = buildSlsOrderWhere(query);
 
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total, agg] = await this.prisma.$transaction([
       this.prisma.erpSlsOrder.findMany({

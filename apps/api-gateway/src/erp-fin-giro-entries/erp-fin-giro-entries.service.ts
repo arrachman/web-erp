@@ -153,7 +153,7 @@ export class ErpFinGiroEntriesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where = buildGiroEntryWhere(query);
-    const sortBy = query.sortBy ?? 'entryDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
 
     const [items, total] = await this.prisma.$transaction([

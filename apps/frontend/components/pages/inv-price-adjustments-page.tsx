@@ -108,7 +108,7 @@ export function ErpInvPriceAdjustmentsPage({
         status: (debF.status || undefined) as ErpInvPriceAdjustmentStatus | undefined,
         dateFrom: debF.dateFrom || undefined,
         dateTo: debF.dateTo || undefined,
-        sortBy: 'fromDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

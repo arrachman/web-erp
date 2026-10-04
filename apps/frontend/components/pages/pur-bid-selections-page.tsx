@@ -50,7 +50,7 @@ export function ErpBidSelectionsPage({ formMode, recordId, onNavigate }: TrxForm
   React.useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listPurBidSelections({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurBidSelection['status'] | undefined, sortBy: 'docDate', sortDir: 'desc' }),
+    () => listPurBidSelections({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurBidSelection['status'] | undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch, statusFilter],
   );
 

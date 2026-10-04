@@ -34,7 +34,7 @@ export class QueryInvDailyChecksDto {
   @ApiPropertyOptional({ enum: INV_DAILY_CHECK_SORTABLE, default: 'checkDate' })
   @IsOptional()
   @IsIn(INV_DAILY_CHECK_SORTABLE as unknown as string[])
-  sortBy?: string = 'checkDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

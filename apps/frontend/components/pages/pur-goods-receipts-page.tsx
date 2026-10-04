@@ -53,7 +53,7 @@ export function ErpGoodsReceiptsPage({ formMode, recordId, onNavigate }: TrxForm
   React.useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listPurGoodsReceipts({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurGoodsReceipt['status'] | undefined, sortBy: 'docDate', sortDir: 'desc' }),
+    () => listPurGoodsReceipts({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurGoodsReceipt['status'] | undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch, statusFilter],
   );
 

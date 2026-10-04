@@ -139,7 +139,7 @@ export class ErpMfgWorkOrdersService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where = buildWorkOrderWhere(query);
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
 
     const [items, total] = await this.prisma.$transaction([

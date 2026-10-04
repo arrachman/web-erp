@@ -146,7 +146,7 @@ export class ErpPurOrdersService {
     const limit = query.limit ?? 10;
     const where = buildPurOrderWhere(query);
 
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpPurOrder.findMany({

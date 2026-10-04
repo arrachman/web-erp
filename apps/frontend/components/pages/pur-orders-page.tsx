@@ -100,7 +100,7 @@ export function ErpPurOrdersPage({ formMode, recordId, onNavigate }: TrxFormPage
         status: (debF.status || undefined) as ErpDocumentStatus | undefined,
         dateFrom: debF.dateFrom || undefined,
         dateTo: debF.dateTo || undefined,
-        sortBy: 'docDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

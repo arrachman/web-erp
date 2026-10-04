@@ -130,7 +130,7 @@ export function InvStockMovementsPage(
         status: (debF.status || undefined) as ErpDocumentStatus | undefined,
         dateFrom: debF.dateFrom || undefined,
         dateTo: debF.dateTo || undefined,
-        sortBy: 'movementDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [movementType, page, pageSize, debouncedSearch, debF],

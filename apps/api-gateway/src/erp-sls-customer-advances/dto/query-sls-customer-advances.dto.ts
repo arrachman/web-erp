@@ -50,7 +50,7 @@ export class QuerySlsCustomerAdvancesDto {
   @ApiPropertyOptional({ enum: SLS_CUSTOMER_ADVANCE_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_CUSTOMER_ADVANCE_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

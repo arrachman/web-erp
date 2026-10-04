@@ -43,7 +43,7 @@ export class QuerySlsInvoiceSwapsDto {
   @ApiPropertyOptional({ enum: SLS_INVOICE_SWAP_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_INVOICE_SWAP_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

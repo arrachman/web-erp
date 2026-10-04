@@ -76,7 +76,7 @@ export function ErpReturnShipmentsPage({
       search: debouncedSearch || undefined,
       returnType: RETURN_TYPE,
       status: (statusFilter || undefined) as ErpPurReturn['status'] | undefined,
-      sortBy: 'docDate', sortDir: 'desc',
+      sortBy: 'docNumber', sortDir: 'desc',
     }),
     [page, pageSize, debouncedSearch, statusFilter],
   );

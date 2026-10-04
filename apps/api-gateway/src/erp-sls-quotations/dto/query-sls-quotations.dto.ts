@@ -35,7 +35,7 @@ export class QuerySlsQuotationsDto {
   @ApiPropertyOptional({ enum: SLS_QUOTATION_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_QUOTATION_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

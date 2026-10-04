@@ -181,7 +181,7 @@ export function ErpSlsArCollectionsPage({ formMode, recordId, onNavigate }: TrxF
       page, limit: pageSize,
       search: debouncedSearch || undefined,
       status: (statusFilter || undefined) as ErpDocumentStatus | undefined,
-      sortBy: 'transactionDate', sortDir: 'desc',
+      sortBy: 'docNumber', sortDir: 'desc',
     }),
     [page, pageSize, debouncedSearch, statusFilter],
   );

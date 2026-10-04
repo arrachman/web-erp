@@ -34,7 +34,7 @@ export class QueryInvStockCountsDto {
   @ApiPropertyOptional({ enum: INV_COUNT_SORTABLE, default: 'countDate' })
   @IsOptional()
   @IsIn(INV_COUNT_SORTABLE as unknown as string[])
-  sortBy?: string = 'countDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -51,7 +51,7 @@ export function ErpRfqsPage({ formMode, recordId, onNavigate }: TrxFormPageProps
   React.useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listPurRfqs({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurRfq['status'] | undefined, sortBy: 'docDate', sortDir: 'desc' }),
+    () => listPurRfqs({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpPurRfq['status'] | undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch, statusFilter],
   );
 

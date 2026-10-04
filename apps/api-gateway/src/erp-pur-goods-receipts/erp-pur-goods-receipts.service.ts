@@ -102,7 +102,7 @@ export class ErpPurGoodsReceiptsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where = buildPurGrnWhere(query);
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpPurGoodsReceipt.findMany({ where, orderBy: [{ [sortBy]: sortDir }, { id: 'desc' }], skip: (page - 1) * limit, take: limit, include: { lines: { orderBy: { lineNo: 'asc' } } } }),

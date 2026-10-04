@@ -92,7 +92,7 @@ export function MfgWorkOrdersPage({ formMode, recordId, onNavigate }: TrxFormPag
         limit: pageSize,
         search: debouncedSearch || undefined,
         status: (statusFilter || undefined) as ErpDocumentStatus | undefined,
-        sortBy: 'docDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, statusFilter],

@@ -128,7 +128,7 @@ export class ErpInvStockMovementsService {
     const limit = query.limit ?? 10;
     const where = buildInvMovementWhere(query);
 
-    const sortBy = query.sortBy ?? 'movementDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpInvStockMovement.findMany({

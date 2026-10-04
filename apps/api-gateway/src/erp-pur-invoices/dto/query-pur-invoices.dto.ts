@@ -35,7 +35,7 @@ export class QueryPurInvoicesDto {
   @ApiPropertyOptional({ enum: PUR_INVOICE_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(PUR_INVOICE_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -101,7 +101,7 @@ export function ErpCashDisbursementsPage({
         description: debF.uraian || undefined,
         notes: debF.catatan || undefined,
         createdById: debF.userId || undefined,
-        sortBy: 'transactionDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

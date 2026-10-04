@@ -34,7 +34,7 @@ export class QueryInvStockAdjustmentsDto {
   @ApiPropertyOptional({ enum: INV_ADJUSTMENT_SORTABLE, default: 'adjustmentDate' })
   @IsOptional()
   @IsIn(INV_ADJUSTMENT_SORTABLE as unknown as string[])
-  sortBy?: string = 'adjustmentDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

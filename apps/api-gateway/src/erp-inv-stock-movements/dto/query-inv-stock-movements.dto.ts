@@ -34,7 +34,7 @@ export class QueryInvStockMovementsDto {
   @ApiPropertyOptional({ enum: INV_MOVEMENT_SORTABLE, default: 'movementDate' })
   @IsOptional()
   @IsIn(INV_MOVEMENT_SORTABLE as unknown as string[])
-  sortBy?: string = 'movementDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -116,7 +116,7 @@ export function JournalEntriesPage({
         search: debouncedSearch || undefined,
         journalType,
         status: (statusFilter || undefined) as ErpDocumentStatus | undefined,
-        sortBy: 'entryDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, statusFilter],

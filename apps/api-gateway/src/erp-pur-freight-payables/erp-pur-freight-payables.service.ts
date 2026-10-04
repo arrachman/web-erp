@@ -161,7 +161,7 @@ export class ErpPurFreightPayablesService {
     }
 
     const ALLOWED_SORT = ['transactionDate', 'docNumber', 'amount', 'createdAt', 'updatedAt'];
-    const sortField = query.sortBy ?? 'transactionDate';
+    const sortField = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const orderBy = ALLOWED_SORT.includes(sortField)
       ? [{ [sortField]: sortDir }, { createdAt: sortDir }]

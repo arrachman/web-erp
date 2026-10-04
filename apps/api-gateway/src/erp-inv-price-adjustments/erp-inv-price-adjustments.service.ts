@@ -82,7 +82,7 @@ export class ErpInvPriceAdjustmentsService {
     const limit = query.limit ?? 10;
     const where = buildPriceAdjWhere(query);
 
-    const sortBy = query.sortBy ?? 'fromDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
 
     const [items, total] = await this.prisma.$transaction([

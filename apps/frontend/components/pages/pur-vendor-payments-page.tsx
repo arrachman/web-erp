@@ -36,7 +36,7 @@ export function ErpVendorPaymentsPage({ formMode, recordId, onNavigate }: TrxFor
   React.useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listApPayments({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpApPayment['status'] | undefined, sortBy: 'transactionDate', sortDir: 'desc' }),
+    () => listApPayments({ page, limit: pageSize, search: debouncedSearch || undefined, status: (statusFilter || undefined) as ErpApPayment['status'] | undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch, statusFilter],
   );
 

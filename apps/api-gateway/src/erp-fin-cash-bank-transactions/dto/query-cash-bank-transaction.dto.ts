@@ -40,7 +40,7 @@ export class QueryCashBankTransactionDto {
   @ApiPropertyOptional({ enum: CASH_BANK_SORTABLE, default: 'transactionDate' })
   @IsOptional()
   @IsIn(CASH_BANK_SORTABLE as unknown as string[])
-  sortBy?: string = 'transactionDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

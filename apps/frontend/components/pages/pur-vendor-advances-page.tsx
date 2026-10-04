@@ -61,7 +61,7 @@ export function ErpVendorAdvancesPage({ formMode, recordId, onNavigate }: TrxFor
   React.useEffect(() => { setPage(1); }, [debouncedSearch, pageSize, setPage]);
 
   const { rows, meta, loading, error, reload } = useErpList(
-    () => listVendorAdvances({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'transactionDate', sortDir: 'desc' }),
+    () => listVendorAdvances({ page, limit: pageSize, search: debouncedSearch || undefined, sortBy: 'docNumber', sortDir: 'desc' }),
     [page, pageSize, debouncedSearch],
   );
 

@@ -83,7 +83,7 @@ export class ErpPurRfqsService {
     if (query.createdById) where.createdById = BigInt(query.createdById);
     if (query.dateFrom || query.dateTo) where.docDate = { ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}), ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}) };
     if (query.search?.trim()) { const q = query.search.trim(); where.OR = [{ docNumber: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }]; }
-    const sortBy = query.sortBy ?? 'docDate'; const sortDir = query.sortDir ?? 'desc';
+    const sortBy = query.sortBy ?? 'docNumber'; const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpPurRfq.findMany({ where, orderBy: [{ [sortBy]: sortDir }, { id: 'desc' }], skip: (page - 1) * limit, take: limit, include: { suppliers: { orderBy: { lineNo: 'asc' } } } }),
       this.prisma.erpPurRfq.count({ where }),

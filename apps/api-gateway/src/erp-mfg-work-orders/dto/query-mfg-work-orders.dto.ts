@@ -34,7 +34,7 @@ export class QueryMfgWorkOrdersDto {
   @ApiPropertyOptional({ enum: MFG_WO_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(MFG_WO_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

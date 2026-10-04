@@ -35,7 +35,7 @@ export class QuerySlsDeliveryReportsDto {
   @ApiPropertyOptional({ enum: SLS_DELIVERY_REPORT_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_DELIVERY_REPORT_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

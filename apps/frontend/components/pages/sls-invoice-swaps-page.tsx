@@ -75,7 +75,7 @@ export function ErpSlsInvoiceSwapsPage({ formMode, recordId, onNavigate }: TrxFo
   // list state
   const [search, setSearch] = React.useState('');
   const [filters, setFilters] = React.useState<SlsSieFiltersType>(emptySlsSieFilters);
-  const [sortBy, setSortBy] = React.useState('docDate');
+  const [sortBy, setSortBy] = React.useState('docNumber');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const { page, pageSize, setPage, setPageSize } = useListPagination('sls-invoice-swaps');
 

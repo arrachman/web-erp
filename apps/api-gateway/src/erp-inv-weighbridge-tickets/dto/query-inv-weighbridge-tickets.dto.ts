@@ -24,7 +24,7 @@ export class QueryInvWeighbridgeTicketsDto {
   @ApiPropertyOptional({ enum: WB_SORTABLE, default: 'ticketDate' })
   @IsOptional()
   @IsIn(WB_SORTABLE as unknown as string[])
-  sortBy?: string = 'ticketDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

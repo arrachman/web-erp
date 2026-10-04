@@ -123,7 +123,7 @@ export class ErpInvStockCountsService {
     const limit = query.limit ?? 10;
     const where = buildInvCountWhere(query);
 
-    const sortBy = query.sortBy ?? 'countDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpInvStockCount.findMany({

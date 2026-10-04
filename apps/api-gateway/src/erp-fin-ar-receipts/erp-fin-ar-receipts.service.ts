@@ -130,7 +130,7 @@ export class ErpFinArReceiptsService {
     const limit = query.limit ?? 10;
     const where = buildArReceiptWhere(query);
 
-    const sortBy = query.sortBy ?? 'transactionDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpFinArReceipt.findMany({

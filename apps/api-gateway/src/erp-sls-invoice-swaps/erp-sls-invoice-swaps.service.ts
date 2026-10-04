@@ -128,7 +128,7 @@ export class ErpSlsInvoiceSwapsService {
     const limit = query.limit ?? 10;
     const where = buildInvoiceSwapWhere(query);
 
-    const sortBy = query.sortBy ?? 'docDate';
+    const sortBy = query.sortBy ?? 'docNumber';
     const sortDir = query.sortDir ?? 'desc';
     const [items, total] = await this.prisma.$transaction([
       this.prisma.erpSlsInvoiceSwap.findMany({

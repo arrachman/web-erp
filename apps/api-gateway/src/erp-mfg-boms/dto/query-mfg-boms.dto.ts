@@ -33,7 +33,7 @@ export class QueryMfgBomsDto {
   @ApiPropertyOptional({ enum: MFG_BOM_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(MFG_BOM_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

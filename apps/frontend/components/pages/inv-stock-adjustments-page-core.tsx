@@ -124,7 +124,7 @@ export function InvStockAdjustmentsPage(
         status: (debF.status || undefined) as ErpDocumentStatus | undefined,
         dateFrom: debF.dateFrom || undefined,
         dateTo: debF.dateTo || undefined,
-        sortBy: 'adjustmentDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, debF],

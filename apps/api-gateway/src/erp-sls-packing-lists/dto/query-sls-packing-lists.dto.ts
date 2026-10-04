@@ -35,7 +35,7 @@ export class QuerySlsPackingListsDto {
   @ApiPropertyOptional({ enum: SLS_PACKING_LIST_SORTABLE, default: 'docDate' })
   @IsOptional()
   @IsIn(SLS_PACKING_LIST_SORTABLE as unknown as string[])
-  sortBy?: string = 'docDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

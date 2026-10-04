@@ -81,7 +81,7 @@ export function InvWeighbridgeTicketsPage(
       page, limit: pageSize, search: debouncedSearch || undefined,
       status: (debF.status || undefined) as ErpDocumentStatus | undefined,
       dateFrom: debF.dateFrom || undefined, dateTo: debF.dateTo || undefined,
-      sortBy: 'ticketDate', sortDir: 'desc',
+      sortBy: 'docNumber', sortDir: 'desc',
     }),
     [page, pageSize, debouncedSearch, debF],
   );

@@ -69,7 +69,7 @@ export function ErpSlsProformaInvoicesPage({
   const [filters, setFilters] = React.useState<SlsProformaInvoiceFilters>(
     emptySlsProformaInvoiceFilters,
   );
-  const [sortBy, setSortBy] = React.useState('docDate');
+  const [sortBy, setSortBy] = React.useState('docNumber');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const { page, pageSize, setPage, setPageSize } = useListPagination('sls-proforma-invoices');
 

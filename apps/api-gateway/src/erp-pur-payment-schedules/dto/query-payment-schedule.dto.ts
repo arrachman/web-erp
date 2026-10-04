@@ -36,7 +36,7 @@ export class QueryPaymentScheduleDto {
   @ApiPropertyOptional({ default: 'transactionDate' })
   @IsOptional()
   @IsString()
-  sortBy?: string = 'transactionDate';
+  sortBy?: string = 'docNumber';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -123,7 +123,7 @@ export function GiroEntriesPage({
         kind,
         type,
         status: (statusFilter || undefined) as ErpDocumentStatus | undefined,
-        sortBy: 'entryDate',
+        sortBy: 'docNumber',
         sortDir: 'desc',
       }),
     [page, pageSize, debouncedSearch, statusFilter],

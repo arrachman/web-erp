@@ -80,7 +80,7 @@ export function InvDailyChecksPage(
       page, limit: pageSize, search: debouncedSearch || undefined,
       status: (debF.status || undefined) as ErpDocumentStatus | undefined,
       dateFrom: debF.dateFrom || undefined, dateTo: debF.dateTo || undefined,
-      sortBy: 'checkDate', sortDir: 'desc',
+      sortBy: 'docNumber', sortDir: 'desc',
     }),
     [page, pageSize, debouncedSearch, debF],
   );
