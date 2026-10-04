@@ -339,6 +339,13 @@ export class ErpMfgPrintJobsService {
         stageLog: stageLog as unknown as Prisma.InputJsonValue,
       },
     });
+    if (to === 'CETAK') {
+      // Fase 2 P4: dataset variable-data membeku begitu job mulai cetak.
+      await this.prisma.erpMfgVdpDataset.updateMany({
+        where: { jobId: existing.id, status: 'DRAFT', deletedAt: null },
+        data: { status: 'TERKUNCI', lockedAt: new Date() },
+      });
+    }
     return this.findOne(id);
   }
 }

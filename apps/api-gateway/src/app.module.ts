@@ -67,6 +67,8 @@ import { ErpMfgWorkOrdersModule } from './erp-mfg-work-orders/erp-mfg-work-order
 import { ErpMfgPrintEstimatesModule } from './erp-mfg-print-estimates/erp-mfg-print-estimates.module';
 import { ErpMfgPrintJobsModule } from './erp-mfg-print-jobs/erp-mfg-print-jobs.module';
 import { ErpMfgJobCostsModule } from './erp-mfg-job-costs/erp-mfg-job-costs.module';
+import { ErpMfgSchedulesModule } from './erp-mfg-schedules/erp-mfg-schedules.module';
+import { ErpMfgVdpModule } from './erp-mfg-vdp/erp-mfg-vdp.module';
 import { ErpMiscellaneousModule } from './erp-miscellaneous/miscellaneous.module';
 import { ErpNotificationsModule } from './erp-notifications/erp-notifications.module';
 import { ErpNozzlesModule } from './erp-nozzles/nozzles.module';
@@ -228,6 +230,8 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpMfgPrintEstimatesModule,
     ErpMfgPrintJobsModule,
     ErpMfgJobCostsModule,
+    ErpMfgSchedulesModule,
+    ErpMfgVdpModule,
     ErpMiscellaneousModule,
     ErpNotificationsModule,
     ErpNozzlesModule,

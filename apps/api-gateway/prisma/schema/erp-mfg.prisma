@@ -982,6 +982,8 @@ model ErpMfgPrintJob {
   costJournalDoc String?         @map("cost_journal_doc")
 
   costEntries ErpMfgJobCostEntry[]
+  schedules   ErpMfgJobSchedule[]
+  vdpDatasets ErpMfgVdpDataset[]
   notes          String?
   legacyCode     String?         @map("legacy_code")
   createdAt      DateTime        @default(now()) @map("created_at")
@@ -1020,4 +1022,96 @@ model ErpMfgJobCostEntry {
   @@index([jobId])
   @@index([costType])
   @@map("mfg_job_cost_entries")
+}
+// ── Fase 2 P3: Master mesin cetak & jadwal produksi ─────────────────────────
+model ErpMfgMachine {
+  id              BigInt           @id @default(autoincrement())
+  code            String           @unique
+  name            String
+  machineType     ErpMachineType   @map("machine_type")
+  capacityPerHour Decimal          @default(0) @map("capacity_per_hour") @db.Decimal(19, 4)
+  capacityUnit    String?          @map("capacity_unit")
+  workStart       String           @default("08:00") @map("work_start")
+  workEnd         String           @default("17:00") @map("work_end")
+  branchId        BigInt?          @map("branch_id") // FK -> md_branches (ErpBranch)
+  status          ErpMachineStatus @default(ACTIVE)
+  legacyCode      String?          @map("legacy_code")
+  notes           String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  deletedAt       DateTime?        @map("deleted_at")
+  createdById     BigInt?          @map("created_by_id")
+  updatedById     BigInt?          @map("updated_by_id")
+
+  schedules ErpMfgJobSchedule[]
+
+  @@map("mfg_machines")
+}
+
+model ErpMfgJobSchedule {
+  id           BigInt               @id @default(autoincrement())
+  jobId        BigInt               @map("job_id")
+  machineId    BigInt               @map("machine_id")
+  stage        String?
+  plannedStart DateTime             @map("planned_start")
+  plannedEnd   DateTime             @map("planned_end")
+  actualStart  DateTime?            @map("actual_start")
+  actualEnd    DateTime?            @map("actual_end")
+  status       ErpJobScheduleStatus @default(TERJADWAL)
+  sequenceNo   Int                  @default(0) @map("sequence_no")
+  notes        String?
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  deletedAt    DateTime?            @map("deleted_at")
+  createdById  BigInt?              @map("created_by_id")
+  updatedById  BigInt?              @map("updated_by_id")
+
+  job     ErpMfgPrintJob @relation(fields: [jobId], references: [id])
+  machine ErpMfgMachine  @relation(fields: [machineId], references: [id])
+
+  @@index([machineId, plannedStart])
+  @@index([jobId])
+  @@map("mfg_job_schedules")
+}
+// ── Fase 2 P4: Dataset variable data printing per job ───────────────────────
+model ErpMfgVdpDataset {
+  id              BigInt              @id @default(autoincrement())
+  jobId           BigInt              @map("job_id")
+  name            String
+  sourceFilename  String?             @map("source_filename")
+  version         Int                 @default(1)
+  columns         Json                @default("[]")
+  requiredColumns Json                @default("[]") @map("required_columns")
+  rowCount        Int                 @default(0) @map("row_count")
+  validCount      Int                 @default(0) @map("valid_count")
+  status          ErpVdpDatasetStatus @default(DRAFT)
+  lockedAt        DateTime?           @map("locked_at")
+  notes           String?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  deletedAt       DateTime?           @map("deleted_at")
+  createdById     BigInt?             @map("created_by_id")
+  updatedById     BigInt?             @map("updated_by_id")
+
+  job  ErpMfgPrintJob  @relation(fields: [jobId], references: [id])
+  rows ErpMfgVdpRow[]
+
+  @@index([jobId])
+  @@map("mfg_vdp_datasets")
+}
+
+model ErpMfgVdpRow {
+  id        BigInt   @id @default(autoincrement())
+  datasetId BigInt   @map("dataset_id")
+  rowNo     Int      @map("row_no")
+  data      Json     @default("{}")
+  isValid   Boolean  @default(true) @map("is_valid")
+  errorNote String?  @map("error_note")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dataset ErpMfgVdpDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, rowNo])
+  @@map("mfg_vdp_rows")
 }

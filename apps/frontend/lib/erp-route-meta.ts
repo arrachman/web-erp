@@ -83,6 +83,8 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/master/transaction-notes': { group: 'Data Master', title: 'Transaction Note', icon: 'database' },
   '/master/txn-note-details': { group: 'Data Master', title: 'Txn Note Detail', icon: 'database' },
   // MD production batch (2026-05-23)
+  '/manufacturing/schedules': { group: 'Production', title: 'Jadwal Produksi', icon: 'calendar' },
+  '/manufacturing/vdp': { group: 'Production', title: 'Data Variabel (VDP)', icon: 'database' },
   '/manufacturing/job-costs': { group: 'Production', title: 'HPP Job', icon: 'calculator' },
   '/manufacturing/print-jobs': { group: 'Production', title: 'Job Cetak', icon: 'factory' },
   '/manufacturing/print-estimates': { group: 'Production', title: 'Estimasi Cetak', icon: 'calculator' },

@@ -64,6 +64,8 @@ import { ErpMfgBomsPage } from '@/components/pages/mfg-boms-page';
 import { MfgPrintEstimatesPage } from '@/components/pages/mfg-print-estimates-page';
 import { MfgPrintJobsPage } from '@/components/pages/mfg-print-jobs-page';
 import { MfgJobCostsPage } from '@/components/pages/mfg-job-costs-page';
+import { MfgSchedulesPage } from '@/components/pages/mfg-schedules-page';
+import { MfgVdpPage } from '@/components/pages/mfg-vdp-page';
 import { MfgWorkOrdersPage } from '@/components/pages/mfg-work-orders-page';
 import type { TrxFormPage } from '@/lib/trx-route';
 
@@ -125,5 +127,7 @@ export const TRX_FORM_PAGES: Record<string, TrxFormPage> = {
   '/manufacturing/print-estimates': MfgPrintEstimatesPage,
   '/manufacturing/print-jobs': MfgPrintJobsPage,
   '/manufacturing/job-costs': MfgJobCostsPage,
+  '/manufacturing/schedules': MfgSchedulesPage,
+  '/manufacturing/vdp': MfgVdpPage,
   '/manufacturing/work-orders': MfgWorkOrdersPage,
 };
