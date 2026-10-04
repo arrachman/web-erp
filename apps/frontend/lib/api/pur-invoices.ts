@@ -88,6 +88,7 @@ export interface ErpPurInvoice {
   payableAccount?: ErpRef | null;
   status: ErpDocumentStatus;
   postingStatus: ErpPostingStatus;
+  matchStatus?: string;
   postedAt?: string | null;
   legacyCode?: string | null;
   createdAt: string;
@@ -210,4 +211,40 @@ export async function transitionPurInvoice(
 
 export async function deletePurInvoice(id: string): Promise<void> {
   await apiDelete<void>(`${BASE}/${id}`);
+}
+
+// ─── D2: three-way match ────────────────────────────────────────────────────
+
+export interface PurInvoiceMatchLine {
+  lineId: number;
+  itemId: number;
+  itemLabel: string;
+  orderLineId: number | null;
+  orderedQty: number | null;
+  receivedQty: number | null;
+  invoicedQty: number;
+  orderPrice: number | null;
+  invoicePrice: number;
+  qtyMatched: boolean | null;
+  priceMatched: boolean | null;
+  issues: string[];
+}
+
+export interface PurInvoiceMatchResult {
+  invoiceId: number;
+  docNumber: string;
+  orderId: number | null;
+  persistedStatus: string;
+  computedStatus: 'PENDING' | 'MATCHED' | 'MISMATCH';
+  lines: PurInvoiceMatchLine[];
+}
+
+export async function getPurInvoiceMatch(id: string): Promise<PurInvoiceMatchResult> {
+  const res = await apiGet<ApiResponse<PurInvoiceMatchResult>>(`/pur/invoices/${id}/match-check`);
+  return res.data;
+}
+
+export async function recomputePurInvoiceMatch(id: string): Promise<PurInvoiceMatchResult> {
+  const res = await apiPost<ApiResponse<PurInvoiceMatchResult>>(`/pur/invoices/${id}/recompute-match`, {});
+  return res.data;
 }

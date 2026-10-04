@@ -15,7 +15,7 @@ import { isStockable } from './items-form-parts';
 export type Mode = 'cepat' | 'lengkap';
 export type SectionId =
   | 'identitas' | 'klasifikasi' | 'media' | 'lampiran' | 'atribut' | 'inventory'
-  | 'pergerakanstok' | 'harga' | 'pajak' | 'akuntansi' | 'dimensi' | 'supplier';
+  | 'pergerakanstok' | 'harga' | 'pajak' | 'akuntansi' | 'dimensi' | 'supplier' | 'katalog';
 
 export const CEPAT_SECTIONS: SectionId[] = ['identitas', 'klasifikasi'];
 
@@ -44,10 +44,11 @@ const SECTION_META: Record<SectionId, SectionMeta> = {
   akuntansi: { label: 'Akuntansi', icon: 'calculator', group: 'keuangan' },
   dimensi: { label: 'Dimensi GL', icon: 'building', group: 'lainnya' },
   supplier: { label: 'Supplier', icon: 'truck', group: 'lainnya' },
+  katalog: { label: 'Katalog Sekolah', icon: 'tag', group: 'detail' },
 };
 
 const ORDER: SectionId[] = [
-  'identitas', 'klasifikasi', 'media', 'lampiran', 'atribut', 'inventory',
+  'identitas', 'klasifikasi', 'media', 'lampiran', 'atribut', 'katalog', 'inventory',
   'pergerakanstok', 'harga', 'pajak', 'akuntansi', 'dimensi', 'supplier',
 ];
 
@@ -103,7 +104,7 @@ export function buildSections(data: ItemFormData, errors: FormErrors<ItemFormDat
     label: SECTION_META[id].label,
     icon: SECTION_META[id].icon,
     group: SECTION_META[id].group,
-    available: id === 'inventory' || id === 'pergerakanstok' ? isStockable(data.itemType) : true,
+    available: id === 'katalog' ? !!data.id : id === 'inventory' || id === 'pergerakanstok' ? isStockable(data.itemType) : true,
     hasError: !!errorById[id],
     filled: sectionFilled(id, data),
   }));

@@ -1,4 +1,5 @@
 'use client';
+import { ItemCatalogSection } from './item-catalog-section';
 
 /**
  * Item form section bodies. Each `SectionId` maps to one panel of fields.
@@ -251,6 +252,8 @@ export function SectionBody({ id, ...p }: SectionBodyProps & { id: SectionId }) 
         </Section>
       );
 
+    case 'katalog':
+      return <ItemCatalogSection itemId={data.id} />;
     case 'supplier':
       return (
         <Section title="Supplier" icon="truck">

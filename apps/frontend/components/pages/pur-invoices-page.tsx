@@ -60,6 +60,7 @@ import {
 import { useAllowedCreationStatuses } from '@/lib/use-allowed-creation-statuses';
 import { defaultPurOrderForm, type PurOrderFormData } from './pur-order-form-model';
 import { PurInvoiceForm } from './pur-invoice-form';
+import { PurInvoiceMatchPanel } from './pur-invoice-match-panel';
 import { fromPurInvoice, toPurInvoicePayload } from './pur-invoice-form-model';
 
 /** Canonical list path (seeded `sys_menus.path`); base for /new and /:id. */
@@ -236,6 +237,7 @@ export function ErpPurInvoicesPage({ formMode, recordId, onNavigate }: TrxFormPa
         </div>
         <div className="page-body overflow-auto p-4">
           {formReady ? (
+            <>
             <PurInvoiceForm
               data={form}
               onChange={setForm}
@@ -245,6 +247,8 @@ export function ErpPurInvoicesPage({ formMode, recordId, onNavigate }: TrxFormPa
               onSaveNew={() => persist(false, true)}
               onReset={loadForm}
             />
+            {form.id ? <PurInvoiceMatchPanel invoiceId={form.id} /> : null}
+            </>
           ) : (
             <div className="p-8 text-center text-muted">Memuat…</div>
           )}

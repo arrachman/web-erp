@@ -110,3 +110,45 @@ export async function downloadReport(
     fallbackFileName(report, format),
   );
 }
+
+// ─── E1: Profit analysis (per school / product / region) ─────────────────────
+
+import type { ApiResponse } from './types';
+
+export type ProfitDimension = 'SCHOOL' | 'PRODUCT' | 'REGION';
+
+export interface ProfitAnalysisRow {
+  key: string;
+  label: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  marginPercent: number;
+  docCount: number;
+}
+
+export interface ProfitAnalysisResult {
+  dimension: ProfitDimension;
+  from: string;
+  to: string;
+  rows: ProfitAnalysisRow[];
+  totals: {
+    revenue: number;
+    cogs: number;
+    grossProfit: number;
+    marginPercent: number;
+    docCount: number;
+  };
+}
+
+export async function getProfitAnalysis(params: {
+  from?: string;
+  to?: string;
+  dimension?: ProfitDimension;
+}): Promise<ProfitAnalysisResult> {
+  const res = await apiGet<ApiResponse<ProfitAnalysisResult>>(
+    '/fin/reports/profit-analysis',
+    params as Record<string, string | number | boolean | undefined>,
+  );
+  return res.data;
+}
