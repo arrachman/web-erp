@@ -75,6 +75,17 @@ Minimum yang harus tersedia:
 > MVP-1**. Lihat §7 — ditunda ke Fase 3/B1. MVP-1 hanya membutuhkan profil
 > sekolah, bukan profil yayasan.
 
+> **Status 2026-10-04: selesai & live.** Profil sekolah di atas partner tipe
+> `SCHOOL` (tabel `md_school_profiles`), kontak dengan peran baku, log
+> aktivitas kunjungan/negosiasi/catatan (`md_school_activities`), pipeline
+> (tahap manual PROSPEK/PENAWARAN + turunan dari dokumen
+> penawaran/order/pengiriman/invoice lunas), jumlah siswa per kelas (JSON
+> `students_per_grade`), penanda tahap BOS, endpoint peringatan belum belanja
+> (per tahun BOS) dan kontrak berakhir (≤ 90 hari), serta riwayat pesanan
+> lintas dokumen per sekolah. UI di Master Data → Partners → **Sekolah**
+> (`/master/schools`). Migration `20261004_002_erp_school_crm` +
+> `20261004_006_erp_school_crm_completion`.
+
 ### A2 — Order Hub multi-kanal
 
 Minimum yang harus tersedia:
@@ -194,7 +205,7 @@ prasyarat operasional dan non-fungsional MVP:
 | Kapabilitas | Yang sudah tersedia | Gap menuju MVP | Status |
 |---|---|---|---|
 | Fondasi admin/master | Auth ERP, user/role/permission, scope cabang/gudang/lokasi, audit, fiscal period, numbering, setting, item/partner/account/tax/currency | 2FA, verifikasi retensi audit/backup, kelengkapan data go-live | **Sebagian besar ada** |
-| A1 CRM sekolah | Partner, alamat, kontak, kategori, salesman, dimensi wilayah | NPSN, profil BOS/sekolah, role kontak baku, kunjungan/negosiasi, pipeline, alert | **Gap besar** |
+| A1 CRM sekolah | Partner, alamat, kontak, kategori, salesman, dimensi wilayah; profil sekolah (NPSN, jenjang, negeri/swasta, wilayah, pagu BOS, tahap BOS), role kontak baku (kepala sekolah/bendahara/operator/TU), log kunjungan/negosiasi, pipeline prospek→lunas, siswa per kelas, alert belum belanja & kontrak berakhir, histori pesanan | — | **Selesai (live 2026-10-04)** |
 | A2 Order Hub | Sales quotation/order/delivery/invoice/receipt dan workflow generik | model kanal, external ID/idempotency, import/API SIPLah, status hub/BAST, pencairan dan fee SIPLah | **Fondasi ada, hub belum ada** |
 | A3 Dokumen | Report Studio/report engine, attachment transaksi, numbering | paket dokumen pengadaan, template BOS, e-sign/stempel, BAST + foto, arsip sekolah/tahun | **Fondasi renderer ada** |
 | A4 Pajak | Master pajak, posting PPN, model `fin_tax_entries` dan withholding certificate | service/API/UI tax subledger, PPh 22/23, bukti potong, Coretax/export, rekonsiliasi dan laporan bulanan | **Model DB ada, aplikasi belum** |
@@ -218,6 +229,8 @@ status workflow, fiscal period, retry idempotent, reversal, dan jurnal seimbang.
 3. Lengkapi test posting stok/GL, reversal/void, outstanding, dan rekonsiliasi.
 
 ### MVP-1 — Model sekolah dan CRM
+
+**Status: selesai & live 2026-10-04** (detail di §3 A1).
 
 1. Tambahkan profil sekolah di atas master partner.
 2. Tambahkan NPSN, atribut sekolah/BOS, role kontak, activity/visit, serta
@@ -347,6 +360,10 @@ Fiscal Period, Data Validity Check, Fiscal Periods, Audit Log, dan
 Settings Manager.
 Menu Appearance (`/settings/appearance`) kemudian ditampilkan lagi atas
 permintaan pemilik lewat migration `20261004_005_erp_mvp_show_appearance_menu`.
+
+Menu **Sekolah** (`M1.PARTNER.SCHOOLS`, path `/master/schools`) ditambahkan
+lewat migration `20261004_006_erp_school_crm_completion` di bawah grup
+Master Data → Partners, dengan grant role mengikuti menu Partners.
 
 ## 9. Open decisions sebelum estimasi final
 
