@@ -118,3 +118,5 @@ Di akhir Fase 2, putuskan fondasi **yayasan** sesuai dokumen scope §7: bila tet
 ## Progres
 
 - **P1 Estimasi Cetak — SELESAI & LIVE (2026-10-04).** Tabel mfg_print_estimates(+lines) (migration 015), modul erp-mfg-print-estimates (CRUD + hitung server + konversi ke Penawaran SQ), menu M6 Production aktif + M6.TX.EST, halaman /manufacturing/print-estimates. Terverifikasi E2E: estimasi EST000001 biaya Rp800.000 + margin 25% -> harga Rp1.000.000 -> penawaran SQ000001 (data uji dibersihkan). Berikutnya: P2 Job Cetak & Pre-press (Gelombang 1).
+
+- **P2 Job Cetak & Pre-press — SELESAI & LIVE (2026-10-05).** Tabel mfg_print_jobs (migration 016), modul erp-mfg-print-jobs: job membuat Work Order via service WO generik + profil cetak (tahap PRE_PRESS -> CETAK -> FINISHING -> QC -> SELESAI, checklist pre-press 5 item sebagai gerbang tahap CETAK, log tahap). Menu M6.TX.JOB, halaman /manufacturing/print-jobs. Terverifikasi E2E: gerbang menolak pindah tahap sebelum checklist lengkap (400), alur s/d SELESAI lulus, checklist terkunci setelah pre-press; data uji dibersihkan. Gelombang 1 SELESAI. Berikutnya Gelombang 2: P5 HPP per job & P6 Packing per siswa.
