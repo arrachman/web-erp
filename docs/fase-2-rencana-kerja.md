@@ -114,3 +114,7 @@ T1 berjalan paralel kapan pun ada kapasitas. Setiap gelombang ditutup dengan: uj
 ## 7. Gerbang akhir Fase 2
 
 Di akhir Fase 2, putuskan fondasi **yayasan** sesuai dokumen scope §7: bila tetap tidak ada pelanggan grup (satu yayasan ≥2 sekolah), yayasan tidak dibangun; bila ada, masuk Fase 3/B1 dengan model relasi opsional yayasan → banyak sekolah (transaksi tetap di sekolah).
+
+## Progres
+
+- **P1 Estimasi Cetak — SELESAI & LIVE (2026-10-04).** Tabel mfg_print_estimates(+lines) (migration 015), modul erp-mfg-print-estimates (CRUD + hitung server + konversi ke Penawaran SQ), menu M6 Production aktif + M6.TX.EST, halaman /manufacturing/print-estimates. Terverifikasi E2E: estimasi EST000001 biaya Rp800.000 + margin 25% -> harga Rp1.000.000 -> penawaran SQ000001 (data uji dibersihkan). Berikutnya: P2 Job Cetak & Pre-press (Gelombang 1).

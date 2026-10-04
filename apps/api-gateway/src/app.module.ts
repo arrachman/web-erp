@@ -64,6 +64,7 @@ import { ErpMachinesModule } from './erp-machines/machines.module';
 import { ErpMaterialsModule } from './erp-materials/materials.module';
 import { ErpMfgBomsModule } from './erp-mfg-boms/erp-mfg-boms.module';
 import { ErpMfgWorkOrdersModule } from './erp-mfg-work-orders/erp-mfg-work-orders.module';
+import { ErpMfgPrintEstimatesModule } from './erp-mfg-print-estimates/erp-mfg-print-estimates.module';
 import { ErpMiscellaneousModule } from './erp-miscellaneous/miscellaneous.module';
 import { ErpNotificationsModule } from './erp-notifications/erp-notifications.module';
 import { ErpNozzlesModule } from './erp-nozzles/nozzles.module';
@@ -221,6 +222,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpMaterialsModule,
     ErpMfgBomsModule,
     ErpMfgWorkOrdersModule,
+    ErpMfgPrintEstimatesModule,
     ErpMiscellaneousModule,
     ErpNotificationsModule,
     ErpNozzlesModule,
