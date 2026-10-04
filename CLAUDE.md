@@ -659,21 +659,38 @@ working tree atau feature branch.
 Tanya user. Aturan-aturan di atas tidak punya pengecualian diam-diam —
 kalau ada kebutuhan menyimpang, eskalasi dulu.
 
-## 6. Data yang kurang: minta ke klien (WAJIB)
+## 6. Data yang kurang: isi provisional dulu (WAJIB)
 
-Bila data yang dibutuhkan untuk membangun/mengisi fitur **tidak ada** di
-repo, database, maupun `data-client/` — **jangan dikarang**. Biarkan field
-kosong (NULL) apa adanya, lalu **minta data tersebut ke klien lewat user**
-dan laporkan persis field apa saja yang kurang.
+Keputusan user 2026-10-04 (mencabut aturan sebelumnya "jangan dikarang,
+minta ke klien"): bila data yang dibutuhkan untuk membangun/mengisi fitur
+**tidak ada** di repo, database, maupun `data-client/` — **isi dulu dengan
+data provisional (karangan yang wajar)** agar implementasi dan pengujian
+end-to-end bisa lanjut. Fitur tidak boleh tertahan hanya karena data klien
+belum datang.
 
-- Berlaku untuk data bisnis klien: master (NPSN, jumlah siswa, pagu BOS,
-  nama penerbit/supplier, HET), angka perjanjian (persentase rabat,
-  diskon), dan kebijakan operasional (stok minimum/maksimum, dsb).
-- Nilai turunan dari sumber eksplisit yang sudah ada (mis. jenjang dari
-  awalan nama sekolah) boleh dipakai **hanya bila** dicatat jelas sebagai
-  hasil turunan, bukan sebagai data asli klien.
-- Fitur tetap dibangun sampai selesai; yang tertahan hanya pengisian
-  datanya, dan statusnya dilaporkan sebagai "menunggu data klien".
+Syarat wajib data provisional:
+
+- **Ditandai jelas dan bisa dicari**: baris yang dikarang wajib memakai
+  penanda `legacy_code='provisional'` (dan/atau metadata
+  `{"origin": "provisional"}`); untuk master yang namanya terlihat user
+  (mis. nama supplier/penerbit) tambahkan awalan `[PROVISIONAL]` bila
+  tidak ada field penanda yang lebih baik. Data provisional tidak boleh
+  tercampur tanpa jejak dengan data asli klien.
+- **Dicatat daftarnya**: setiap pengisian provisional dilaporkan ke user
+  (field apa, nilai apa) dan dicatat di dokumen rekap progres, agar saat
+  data klien asli tiba tinggal diganti — pergantian provisional -> data
+  asli adalah pekerjaan lanjutan yang eksplisit, dan penandanya dicabut.
+- **Wajar & konsisten**: harga beli < harga jual, persentase rabat dalam
+  rentang umum, stok minimum < stok maksimum, dan seterusnya.
+
+Pengecualian — **tetap jangan dikarang** (biarkan NULL):
+
+- Identitas resmi/pemerintah: NPWP, NPSN.
+- Nomor dokumen eksternal: nomor faktur pajak, nomor pesanan SIPLah, dsb.
+
+Nilai turunan dari sumber eksplisit yang sudah ada (mis. jenjang dari
+awalan nama sekolah) tetap boleh dipakai dan dicatat sebagai hasil
+turunan, bukan data asli klien.
 
 ---
 
