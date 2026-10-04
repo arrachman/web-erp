@@ -331,6 +331,21 @@ Point Categories, Production Categories, Transaction Notes + Detail, Work
 Estimate), dan Project dinonaktifkan dengan cara yang sama (daftar kode lengkap
 ada di file migration). Menu di luar daftar itu tetap tampil.
 
+Admin (`/app/admin/*`) juga dirampingkan ke menu MVP saja lewat migration
+`20261004_004_erp_mvp_hide_non_mvp_admin_menus`: 23 menu dinonaktifkan —
+duplikat (Document Numbering dan Menu Manager versi System, User Log),
+menu kosmetik/format dan lanjutan (Form Builder, Kustomisasi Grid,
+Appearance, Number Format, Date Format, Account Code Format, Language,
+Online Users, Home Layout, Format Tampilan, Deskripsi Dokumen, Opsi
+Lanjutan, Default Laporan, Preferensi), serta — varian lebih ramping atas
+keputusan pemilik 2026-10-04 — Report Designer, Pengaturan Tanda Tangan,
+Pengaturan Approval, Doc Creation Policy, Recalculate COGS, dan Repost
+Journals. Yang tetap tampil (16): Pengaturan Perusahaan, Pengaturan
+Akuntansi, Pengaturan Pajak, Bank Accounts, Document Numbering, Import
+Data, Nilai Default, Users, Roles, Permissions, Menu Management, Close
+Fiscal Period, Data Validity Check, Fiscal Periods, Audit Log, dan
+Settings Manager.
+
 ## 9. Open decisions sebelum estimasi final
 
 Jawaban wajib dicatat sebelum workstream terkait dikunci:
