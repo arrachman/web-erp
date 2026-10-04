@@ -22,6 +22,7 @@ import { ErpSlsOrdersPage } from '@/components/pages/sls-orders-page';
 import { ErpSlsQuotationsPage } from '@/components/pages/sls-quotations-page';
 import { ErpSlsProformaInvoicesPage } from '@/components/pages/sls-proforma-invoices-page';
 import { ErpSlsPackingListsPage } from '@/components/pages/sls-packing-lists-page';
+import { SlsPackingUnitsPage } from '@/components/pages/sls-packing-units-page';
 import { ErpSlsDeliveryOrdersPage } from '@/components/pages/sls-delivery-orders-page';
 import { ErpSlsDeliveryReportsPage } from '@/components/pages/sls-delivery-reports-page';
 import { ErpSlsInvoicesPage } from '@/components/pages/sls-invoices-page';
@@ -62,6 +63,7 @@ import { ErpOpeningApBalancePage } from '@/components/pages/pur-opening-ap-balan
 import { ErpMfgBomsPage } from '@/components/pages/mfg-boms-page';
 import { MfgPrintEstimatesPage } from '@/components/pages/mfg-print-estimates-page';
 import { MfgPrintJobsPage } from '@/components/pages/mfg-print-jobs-page';
+import { MfgJobCostsPage } from '@/components/pages/mfg-job-costs-page';
 import { MfgWorkOrdersPage } from '@/components/pages/mfg-work-orders-page';
 import type { TrxFormPage } from '@/lib/trx-route';
 
@@ -83,6 +85,7 @@ export const TRX_FORM_PAGES: Record<string, TrxFormPage> = {
   '/sales/quotations': ErpSlsQuotationsPage,
   '/sales/proforma-invoices': ErpSlsProformaInvoicesPage,
   '/sales/packing-lists': ErpSlsPackingListsPage,
+  '/sales/packing-units': SlsPackingUnitsPage,
   '/sales/delivery-orders': ErpSlsDeliveryOrdersPage,
   '/sales/delivery-reports': ErpSlsDeliveryReportsPage,
   '/sales/invoices': ErpSlsInvoicesPage,
@@ -121,5 +124,6 @@ export const TRX_FORM_PAGES: Record<string, TrxFormPage> = {
   '/manufacturing/boms': ErpMfgBomsPage,
   '/manufacturing/print-estimates': MfgPrintEstimatesPage,
   '/manufacturing/print-jobs': MfgPrintJobsPage,
+  '/manufacturing/job-costs': MfgJobCostsPage,
   '/manufacturing/work-orders': MfgWorkOrdersPage,
 };

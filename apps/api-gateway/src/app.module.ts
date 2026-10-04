@@ -66,6 +66,7 @@ import { ErpMfgBomsModule } from './erp-mfg-boms/erp-mfg-boms.module';
 import { ErpMfgWorkOrdersModule } from './erp-mfg-work-orders/erp-mfg-work-orders.module';
 import { ErpMfgPrintEstimatesModule } from './erp-mfg-print-estimates/erp-mfg-print-estimates.module';
 import { ErpMfgPrintJobsModule } from './erp-mfg-print-jobs/erp-mfg-print-jobs.module';
+import { ErpMfgJobCostsModule } from './erp-mfg-job-costs/erp-mfg-job-costs.module';
 import { ErpMiscellaneousModule } from './erp-miscellaneous/miscellaneous.module';
 import { ErpNotificationsModule } from './erp-notifications/erp-notifications.module';
 import { ErpNozzlesModule } from './erp-nozzles/nozzles.module';
@@ -119,6 +120,7 @@ import { ErpSlsInvoicesModule } from './erp-sls-invoices/erp-sls-invoices.module
 import { ErpSlsInvoiceSwapsModule } from './erp-sls-invoice-swaps/erp-sls-invoice-swaps.module';
 import { ErpSlsOrdersModule } from './erp-sls-orders/erp-sls-orders.module';
 import { ErpSlsPackingListsModule } from './erp-sls-packing-lists/erp-sls-packing-lists.module';
+import { ErpSlsPackingUnitsModule } from './erp-sls-packing-units/erp-sls-packing-units.module';
 import { ErpSlsProformaInvoicesModule } from './erp-sls-proforma-invoices/erp-sls-proforma-invoices.module';
 import { ErpSlsQuotationsModule } from './erp-sls-quotations/erp-sls-quotations.module';
 import { ErpSlsReportsModule } from './erp-sls-reports/erp-sls-reports.module';
@@ -225,6 +227,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpMfgWorkOrdersModule,
     ErpMfgPrintEstimatesModule,
     ErpMfgPrintJobsModule,
+    ErpMfgJobCostsModule,
     ErpMiscellaneousModule,
     ErpNotificationsModule,
     ErpNozzlesModule,
@@ -279,6 +282,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpSlsInvoiceSwapsModule,
     ErpSlsOrdersModule,
     ErpSlsPackingListsModule,
+    ErpSlsPackingUnitsModule,
     ErpSlsProformaInvoicesModule,
     ErpSlsQuotationsModule,
     ErpSlsReportsModule,

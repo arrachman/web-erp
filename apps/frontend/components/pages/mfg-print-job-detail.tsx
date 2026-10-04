@@ -19,6 +19,7 @@ import {
   type PrintJob,
   type PrintJobStage,
 } from '@/lib/api/mfg-print-jobs';
+import { PrintJobCostsPanel } from './mfg-print-job-costs';
 
 const NEXT: Partial<Record<PrintJobStage, { to: PrintJobStage; label: string }[]>> = {
   PRE_PRESS: [{ to: 'CETAK', label: 'Mulai Cetak →' }],
@@ -199,6 +200,8 @@ export function PrintJobDetail({
           </ul>
         </Card>
       </div>
+
+      <PrintJobCostsPanel jobId={job.id} jobStage={job.stage} />
     </div>
   );
 }
