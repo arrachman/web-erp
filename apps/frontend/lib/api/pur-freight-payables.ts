@@ -16,18 +16,32 @@ export type ErpDocumentStatus =
   | 'CANCELLED';
 export type ErpPostingStatus = 'UNPOSTED' | 'POSTED';
 
+export interface ErpFreightPayableRef {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface ErpFreightPayable {
   id: string;
   docNumber: string;
   transactionDate: string;
   fiscalPeriodId: string;
   branchId: string;
-  partner?: { id: string; code: string; name: string } | null;
+  branch?: ErpFreightPayableRef | null;
+  partnerId: string;
+  partner?: ErpFreightPayableRef | null;
   description: string;
   currencyId: string;
+  currency?: ErpFreightPayableRef | null;
   exchangeRate: string;
   amount: string;
   notes?: string | null;
+  bankAccountId?: string | null;
+  bankAccount?: ErpFreightPayableRef | null;
+  expenseAccountId?: string | null;
+  expenseAccount?: ErpFreightPayableRef | null;
+  metadata?: unknown;
   status: string;
   postingStatus: string;
   source: string;
@@ -36,9 +50,9 @@ export interface ErpFreightPayable {
 }
 
 export interface CreateFreightPayablePayload {
-  docNumber: string;
+  docNumber?: string;
   transactionDate: string;
-  fiscalPeriodId: string;
+  fiscalPeriodId?: string;
   branchId: string;
   partnerId: string;
   description: string;
@@ -46,6 +60,8 @@ export interface CreateFreightPayablePayload {
   exchangeRate: string;
   amount: string;
   notes?: string;
+  bankAccountId?: string;
+  expenseAccountId?: string;
 }
 
 export type UpdateFreightPayablePayload = Partial<CreateFreightPayablePayload>;

@@ -62,25 +62,63 @@ export class ErpPurFreightPayablesService {
     return item;
   }
 
-  /** Enrich a single payment row with partner data (manual FK — no Prisma relation). */
+  /** Enrich a single payment row with partner + account refs (manual FK — no Prisma relation). */
   private async enrichOne(item: { partnerId: bigint; [k: string]: unknown }) {
-    const partner = await this.prisma.erpPartner.findFirst({
-      where: { id: item.partnerId },
-      select: { id: true, code: true, name: true },
-    });
-    return { ...item, partner };
+    const [enriched] = await this.enrichMany([item]);
+    return enriched;
   }
 
-  /** Enrich a list of payment rows with partner data (batched). */
+  /** Enrich a list of payment rows with partner + account refs (batched). */
   private async enrichMany(items: Array<{ partnerId: bigint; [k: string]: unknown }>) {
     if (!items.length) return items;
-    const ids = [...new Set(items.map((i) => i.partnerId))];
-    const partners = await this.prisma.erpPartner.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, code: true, name: true },
-    });
-    const map = new Map(partners.map((p) => [p.id.toString(), p]));
-    return items.map((i) => ({ ...i, partner: map.get(i.partnerId.toString()) ?? null }));
+    const uniqIds = (vals: unknown[]) => [
+      ...new Set(vals.filter((v) => v != null).map((v) => String(v))),
+    ].map((s) => BigInt(s));
+    const refSelect = { id: true, code: true, name: true } as const;
+    const expenseIdOf = (i: { [k: string]: unknown }) =>
+      (i.metadata as { expenseAccountId?: string } | null)?.expenseAccountId ?? null;
+    const [partners, branches, currencies, accounts] = await Promise.all([
+      this.prisma.erpPartner.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.partnerId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpBranch.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.branchId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpCurrency.findMany({
+        where: { id: { in: uniqIds(items.map((i) => i.currencyId)) } },
+        select: refSelect,
+      }),
+      this.prisma.erpAccount.findMany({
+        where: {
+          id: {
+            in: uniqIds([
+              ...items.map((i) => i.bankAccountId),
+              ...items.map((i) => expenseIdOf(i)),
+            ]),
+          },
+        },
+        select: refSelect,
+      }),
+    ]);
+    const byId = (rows: Array<{ id: bigint }>) =>
+      new Map(rows.map((r) => [r.id.toString(), r]));
+    const partnerMap = byId(partners);
+    const branchMap = byId(branches);
+    const currencyMap = byId(currencies);
+    const accountMap = byId(accounts);
+    const pick = (map: Map<string, unknown>, v: unknown) =>
+      v != null ? map.get(String(v)) ?? null : null;
+    return items.map((i) => ({
+      ...i,
+      partner: pick(partnerMap, i.partnerId),
+      branch: pick(branchMap, i.branchId),
+      currency: pick(currencyMap, i.currencyId),
+      bankAccount: pick(accountMap, i.bankAccountId),
+      expenseAccountId: expenseIdOf(i),
+      expenseAccount: pick(accountMap, expenseIdOf(i)),
+    }));
   }
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
