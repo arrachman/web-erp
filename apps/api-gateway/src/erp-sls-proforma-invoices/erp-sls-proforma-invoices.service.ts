@@ -25,8 +25,8 @@ import {
   buildSlsProformaInvoiceTotalsInput,
 } from './sls-proforma-invoice-persistence.mapper';
 
-const DOC_CODE = 'PI';
-const FALLBACK_PREFIX = 'PI';
+const DOC_CODE = 'PFI';
+const FALLBACK_PREFIX = 'PFI';
 
 @Injectable()
 export class ErpSlsProformaInvoicesService {
