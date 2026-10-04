@@ -40,7 +40,7 @@ export class ErpOrderHubService {
     const drs = doIds.length
       ? await this.prisma.erpSlsDeliveryReport.findMany({
           where: { deliveryOrderId: { in: doIds }, deletedAt: null },
-          select: { deliveryOrderId: true, status: true },
+          select: { deliveryOrderId: true, status: true, acceptedAt: true },
         })
       : [];
     const invoices = await this.prisma.erpSlsInvoice.findMany({
@@ -61,7 +61,7 @@ export class ErpOrderHubService {
       const orderId = doOrderById.get(String(dr.deliveryOrderId));
       if (!orderId) continue;
       drCountByOrder.set(orderId, (drCountByOrder.get(orderId) ?? 0) + 1);
-      if (dr.status === 'POSTED') postedDrOrderIds = postedDrOrderIds.add(orderId);
+      if (dr.acceptedAt) postedDrOrderIds = postedDrOrderIds.add(orderId);
     }
     const invByOrder = new Map<string, typeof invoices>();
     for (const inv of invoices) {
@@ -77,7 +77,7 @@ export class ErpOrderHubService {
         orderStatus: o.status,
         hasDeliveryOrder: myDos.length > 0,
         hasPostedDeliveryOrder: myDos.some((d) => postedDoIds.has(String(d.id))),
-        hasPostedDeliveryReport: postedDrOrderIds.has(k),
+        hasAcceptedDeliveryReport: postedDrOrderIds.has(k),
         hasInvoice: myInvoices.some((i) => i.postingStatus === 'POSTED'),
         hasPaidInvoice: myInvoices.some((i) => i.settlementStatus === 'PAID'),
       };
@@ -232,7 +232,7 @@ export class ErpOrderHubService {
       ? await this.prisma.erpSlsDeliveryReport.findMany({
           where: { deliveryOrderId: { in: dos.map((d) => d.id) }, deletedAt: null },
           orderBy: { docDate: 'asc' },
-          select: { id: true, docNumber: true, docDate: true, status: true, deliveryOrderId: true },
+          select: { id: true, docNumber: true, docDate: true, status: true, deliveryOrderId: true, acceptedAt: true, acceptedByName: true },
         })
       : [];
     const invoices = await this.prisma.erpSlsInvoice.findMany({

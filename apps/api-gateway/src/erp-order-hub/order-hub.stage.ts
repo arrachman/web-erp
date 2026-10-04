@@ -11,7 +11,7 @@ import { ErpOrderHubStatus } from '@prisma/client';
  *   DIKONFIRMASI order left DRAFT (submitted/approved/posted)
  *   DISIAPKAN   a delivery order exists (being prepared)
  *   DIKIRIM     a delivery order is posted (goods shipped)
- *   DITERIMA    a delivery report is posted (BAST / handover accepted)
+ *   DITERIMA    a delivery report has a recorded BAST acceptance
  *   DITAGIH     a sales invoice exists for the order
  *   LUNAS       an invoice of the order is fully settled (PAID)
  */
@@ -19,7 +19,7 @@ export interface HubFacts {
   orderStatus: string;
   hasDeliveryOrder: boolean;
   hasPostedDeliveryOrder: boolean;
-  hasPostedDeliveryReport: boolean;
+  hasAcceptedDeliveryReport: boolean;
   hasInvoice: boolean;
   hasPaidInvoice: boolean;
 }
@@ -27,7 +27,7 @@ export interface HubFacts {
 export function deriveHubStage(f: HubFacts): ErpOrderHubStatus {
   if (f.hasPaidInvoice) return ErpOrderHubStatus.LUNAS;
   if (f.hasInvoice) return ErpOrderHubStatus.DITAGIH;
-  if (f.hasPostedDeliveryReport) return ErpOrderHubStatus.DITERIMA;
+  if (f.hasAcceptedDeliveryReport) return ErpOrderHubStatus.DITERIMA;
   if (f.hasPostedDeliveryOrder) return ErpOrderHubStatus.DIKIRIM;
   if (f.hasDeliveryOrder) return ErpOrderHubStatus.DISIAPKAN;
   if (f.orderStatus !== 'DRAFT') return ErpOrderHubStatus.DIKONFIRMASI;

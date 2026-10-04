@@ -41,6 +41,7 @@ import { ErpUnitsPage } from '@/components/pages/units-page';
 import { ErpPartnersPage } from '@/components/pages/partners-page';
 import { ErpSchoolsPage } from '@/components/pages/schools-page';
 import { OrderHubPage } from '@/components/pages/order-hub-page';
+import { DocumentPackagesPage } from '@/components/pages/document-packages-page';
 import { ErpVendorsPage } from '@/components/pages/vendors-page';
 import { ErpItemCategoriesPage } from '@/components/pages/item-categories-page';
 import { ErpLocationsPage } from '@/components/pages/locations-page';
@@ -178,6 +179,7 @@ export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/master/partners': () => <ErpPartnersPage />,
   '/master/schools': () => <ErpSchoolsPage />,
   '/sales/order-hub': () => <OrderHubPage />,
+  '/sales/document-packages': () => <DocumentPackagesPage />,
   '/master/vendors': () => <ErpVendorsPage />,
   '/master/item-categories': () => <ErpItemCategoriesPage />,
   '/master/locations': () => <ErpLocationsPage />,

@@ -103,6 +103,7 @@ import { ErpRolesModule } from './erp-roles/erp-roles.module';
 import { ErpSectionsModule } from './erp-sections/sections.module';
 import { ErpSchoolsModule } from './erp-schools/erp-schools.module';
 import { ErpOrderHubModule } from './erp-order-hub/erp-order-hub.module';
+import { ErpDocumentPackagesModule } from './erp-document-packages/erp-document-packages.module';
 import { ErpItemCatalogModule } from './erp-item-catalog/erp-item-catalog.module';
 import { ErpPurRebatesModule } from './erp-pur-rebates/erp-pur-rebates.module';
 import { ErpSettingsModule } from './erp-settings/erp-settings.module';
@@ -258,6 +259,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpSectionsModule,
     ErpSchoolsModule,
     ErpOrderHubModule,
+    ErpDocumentPackagesModule,
     ErpItemCatalogModule,
     ErpPurRebatesModule,
     ErpSettingsModule,

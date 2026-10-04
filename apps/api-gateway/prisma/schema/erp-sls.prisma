@@ -186,6 +186,7 @@ model ErpSlsOrder {
   quotation           ErpSlsQuotation?        @relation(fields: [quotationId], references: [id])
   lines               ErpSlsOrderLine[]
   statusLogs          ErpSlsOrderStatusLog[]
+  generatedDocuments  ErpSlsGeneratedDocument[]
   proformaInvoices    ErpSlsProformaInvoice[]
   packingLists        ErpSlsPackingList[]
   invoices            ErpSlsInvoice[]
@@ -627,6 +628,10 @@ model ErpSlsDeliveryReport {
   postedAt            DateTime?          @map("posted_at") @db.Timestamptz(6)
   deliveryOrderId     BigInt?            @map("delivery_order_id")
   metadata            Json?              @map("metadata")
+  acceptedAt          DateTime?           @map("accepted_at") @db.Timestamptz(6)
+  acceptedByName      String?             @map("accepted_by_name")
+  acceptedByTitle     String?             @map("accepted_by_title")
+  acceptanceNotes     String?             @map("acceptance_notes")
   deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(6)
   createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1314,4 +1319,38 @@ model ErpSlsOrderStatusLog {
 
   @@index([orderId])
   @@map("sls_order_status_logs")
+}
+
+/// A3 — Arsip dokumen pengadaan yang dihasilkan sistem (PDF) per order:
+/// penawaran, surat pesanan, invoice, kuitansi, surat jalan, BAST, PAKET.
+model ErpSlsGeneratedDocument {
+  id            BigInt    @id @default(autoincrement())
+  orderId       BigInt    @map("order_id")
+  docType       String    @map("doc_type")
+  variant       String    @map("variant")
+  sourceDocType String    @map("source_doc_type")
+  sourceId      BigInt    @map("source_id")
+  version       Int       @default(1) @map("version")
+  fileName      String    @map("file_name")
+  storedName    String    @unique @map("stored_name")
+  mimeType      String    @default("application/pdf") @map("mime_type")
+  sizeBytes     Int       @default(0) @map("size_bytes")
+  status        String    @default("GENERATED") @map("status")
+  signedByName  String?   @map("signed_by_name")
+  signedById    BigInt?   @map("signed_by_id")
+  signedAt      DateTime? @map("signed_at") @db.Timestamptz(6)
+  signatureNote String?   @map("signature_note")
+  schoolId      BigInt?   @map("school_id")
+  budgetYear    Int?      @map("budget_year")
+  createdById   BigInt?   @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  order ErpSlsOrder @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([schoolId, budgetYear])
+  @@index([docType])
+  @@map("sls_generated_documents")
 }

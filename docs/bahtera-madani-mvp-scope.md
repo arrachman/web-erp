@@ -116,6 +116,21 @@ Minimum yang harus tersedia:
 - arsip per sekolah dan tahun anggaran;
 - dokumen dihasilkan dari data transaksi yang sama, tanpa input ulang.
 
+> **Status 2026-10-04: selesai & live.** Modul `erp-document-packages` membuat
+> surat penawaran (dari quotation), surat pesanan, invoice, kuitansi, surat
+> jalan, dan BAST langsung dari rantai transaksi order — nomor dokumen
+> mengikuti dokumen sumbernya. Varian BOS/non-BOS mengikuti sumber dana
+> order; generate per dokumen atau satu paket PDF gabungan. Arsip di
+> `sls_generated_documents` per sekolah + tahun anggaran dengan versi
+> (generate ulang menandai versi lama SUPERSEDED) dan audit tanda tangan
+> (nama, waktu, versi). Penerimaan BAST dicatat pada laporan penerimaan
+> (kolom `accepted_*` di `sls_delivery_reports`), foto serah terima
+> diunggah sebagai lampiran DR; status Order Hub DITERIMA kini mensyaratkan
+> penerimaan BAST tercatat. Halaman **Paket Dokumen** (menu `M5.TX.DOCPKG`,
+> `/sales/document-packages`). Migration `20261004_013_erp_document_packages`.
+> Renderer PDF memakai template bawaan (pdfkit) agar paket selalu tersedia;
+> template yang bisa didesain pengguna tetap domain Report Designer.
+
 ### A4 — Pajak pengadaan
 
 Minimum yang harus tersedia:
