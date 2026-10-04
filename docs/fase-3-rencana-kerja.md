@@ -1,0 +1,108 @@
+# Rencana Kerja Fase 3 — Portal Sekolah & Orang Tua + Landing Page
+
+**Status:** rencana kerja (belum dimulai) — disusun 2026-10-05, setelah Fase 1/MVP live dan Fase 2 (percetakan & distribusi) berjalan.
+**Dasar scope:** `docs/bahtera-madani-mvp-scope.md` §Fase 3 (portal sekolah & orang tua) + §7 (gerbang yayasan B1).
+**Aturan main:** mengikuti `CLAUDE.md` proyek (penamaan tabel/model, list page §2.7, guard, commit atomik) dan pelajaran Fase 1–2: perubahan backend dibangun di repo ini **dan** disinkronkan ke salinan live `sentient-factory` pada workstream yang sama. Data yang belum tersedia dari klien diisi provisional bertanda sesuai §6 — kecuali identitas legal (NPWP, rekening resmi, alamat resmi) yang tidak pernah dikarang.
+
+## 1. Fondasi yang sudah ada
+
+| Aset | Kondisi | Dipakai untuk |
+|---|---|---|
+| A1 CRM Sekolah (profil, kontak berperan, pipeline, BOS) | Live Fase 1 | Akun & profil sekolah di portal (W2, W3) |
+| A2 Order Hub channel-ready | Live Fase 1 | Kanal `PORTAL_SEKOLAH` / `PORTAL_ORANGTUA` sudah berupa enum + external order id idempotent — portal tinggal menjadi producer, model order inti tidak berubah (W2, W4) |
+| A3 Dokumen pengadaan + BAST | Live Fase 1 | Penawaran/invoice/surat jalan/BAST tampil di portal dari rantai dokumen yang sama (W2) |
+| A4 Subledger pajak | Live Fase 1 | Faktur & status pajak pada tagihan portal (W2) |
+| D1 Katalog + profil per item | Live Fase 1 | Katalog portal memakai `md_item_catalog_profiles` incl. status tayang per kanal (W2, W4, W7) |
+| AR Receipt (IP) + ledger | Live Fase 1 | Penerimaan pembayaran dari payment gateway direkonsiliasi ke sini (W5) |
+| **Prototipe landing page** | **Ter-deploy 2026-10-05** — `apps/landing-page/`, port **3226** (`cendekia-landing.service`), branding sudah diganti ke CV Bahtera Madani | Bahan desain W1 — statis, belum terhubung data |
+| **Prototipe Portal Sekolah** | **Ter-deploy 2026-10-05** — `apps/portal-sekolah/`, port **3221** (`cendekia-portal.service`), branding sudah diganti ke CV Bahtera Madani | Bahan desain W2 — interaktif dengan data contoh (mock), **belum ada panggilan API ERP** |
+
+Catatan prototipe: keduanya berasal dari bundle desain "Pena Cendekia" (2026-09-25). Rebranding nama selesai; **identitas lain di prototipe masih dummy desain** (alamat Semarang, nomor telepon, instruksi rekening, domain `bahteramadani.co.id` sebagai placeholder) dan wajib diganti data asli klien sebelum produksi — lihat §2.
+
+## 2. Keputusan & data yang mengunci (open decisions)
+
+| # | Keputusan/data | Pengaruh | Asumsi provisional agar bisa mulai (§6) |
+|---|---|---|---|
+| 1 | Domain resmi (landing + portal) | W1, W2 — sertifikat & URL publik | Tetap di port fr-labs (3226/3221) selama pengembangan; domain placeholder `bahteramadani.co.id` |
+| 2 | Identitas resmi perusahaan (alamat, telepon, email, rekening penerimaan) | Footer landing, instruksi bayar portal | Tidak dikarang (§6 exception) — prototipe bertanda dummy sampai data asli diterima |
+| 3 | Model akun sekolah: self-register + approval admin, atau dibuatkan admin | W2, W3 | Self-register + approval (mengikuti alur prototipe) |
+| 4 | Harga yang tampil di portal: HET, harga jual standar, atau harga kontrak per sekolah | W2, W7 | Harga jual standar + HET sebagai referensi; harga kontrak menyusul di W7 |
+| 5 | Provider payment gateway | W5 | Belum dipilih — W5 mulai setelah keputusan; sampai itu tagihan portal tampil tanpa tombol bayar online |
+| 6 | BSP WhatsApp (provider resmi) | W6 | Belum dipilih — notifikasi mulai dari kanal email/dashboard |
+| 7 | Yayasan (B1): ada pelanggan grup ≥2 sekolah? | W7 | Sesuai gerbang §7 dokumen scope: tanpa pelanggan grup, yayasan tidak dibangun pada fase ini |
+
+## 3. Workstream
+
+Ukuran relatif kasar: S (kecil) · M (sedang) · L (besar) · XL (sangat besar).
+
+### W1 — Landing page produksi (S–M) — *catch-up: prototipe sudah ter-deploy*
+- **Tujuan:** landing page publik CV Bahtera Madani yang kontennya hidup dari data ERP, bukan HTML statis berisi contoh.
+- **Bangun:** pertahankan bentuk statis ringan di `apps/landing-page/` (port 3226); katalog unggulan & logo sekolah mitra diambil dari D1/data partner asli; form "minta penawaran" menghasilkan lead yang tercatat (masuk pipeline A1 sebagai PROSPEK); identitas footer diganti data resmi (§2 #2).
+- **Dependensi:** D1 katalog, A1 pipeline.
+- **DoD:** landing tayang dengan data asli (bukan dummy prototipe); satu lead uji masuk dan terlihat di CRM Sekolah.
+
+### W2 — Portal Sekolah MVP (L) — *catch-up: prototipe sudah ter-deploy*
+- **Tujuan:** sekolah memesan dan memantau sendiri: katalog → daftar kebutuhan → pesanan → penawaran → pengiriman/BAST → tagihan, tanpa perantara admin.
+- **Bangun:** aplikasi portal beneran di `apps/portal-sekolah/` (port 3221) menggantikan prototipe statis; login akun sekolah terikat partner `CUST-SCHOOL`; katalog dari D1 (hanya item tayang di kanal portal); checkout membuat order kanal `PORTAL_SEKOLAH` di Order Hub (A2); status pesanan, dokumen (A3), dan tagihan dibaca dari rantai dokumen ERP yang sama — tidak ada data duplikat di sisi portal; profil sekolah membaca/menulis A1.
+- **Dependensi:** A1, A2, A3, D1 (semua live); W3 untuk approval akun.
+- **DoD:** satu sekolah pilot menyelesaikan order E2E lewat portal: order muncul di Order Hub sebagai BARU → diproses admin → sekolah melihat penawaran, status kirim, dan tagihan yang benar.
+
+### W3 — Akun, peran & approval sekolah (M)
+- **Tujuan:** pendaftaran sekolah terkendali: tidak semua pendaftar otomatis bisa memesan.
+- **Bangun:** registrasi + verifikasi admin (antrean approval), peran per kontak sekolah (kepala sekolah/bendahara/operator — memakai peran kontak A1), undang/reset akses oleh admin, audit login.
+- **Dependensi:** A1 kontak berperan.
+- **DoD:** sekolah uji mendaftar → disetujui admin → bisa login; pendaftar yang ditolak tidak bisa memesan.
+
+### W4 — Portal Orang Tua (M–L)
+- **Tujuan:** orang tua melihat & memesan paket kebutuhan anak (seragam, buku, paket kelas) dan memantau statusnya.
+- **Bangun:** reuse fondasi auth & katalog W2; order kanal `PORTAL_ORANGTUA`; keterkaitan orang tua ↔ siswa ↔ sekolah (dataset siswa dari P4/packing P6 Fase 2 bila relevan).
+- **Dependensi:** W2, W7 (paket kelas).
+- **DoD:** satu order orang tua uji masuk Order Hub dan tertaut ke sekolah + kelas yang benar.
+
+### W5 — Payment gateway (M)
+- **Tujuan:** tagihan portal bisa dibayar online dan lunasnya tercatat otomatis.
+- **Bangun:** integrasi provider terpilih (§2 #5); pembayaran membuat AR Receipt (IP) terposting lewat pola Fase 1; webhook idempotent; rekonsiliasi harian terhadap mutasi.
+- **Dependensi:** W2 (tagihan tampil), keputusan provider.
+- **DoD:** satu pembayaran uji end-to-end: status invoice LUNAS/terbayar sebagian di ERP tanpa input manual.
+
+### W6 — WhatsApp & notifikasi (M)
+- **Tujuan:** sekolah tidak perlu membuka portal untuk tahu status: penawaran terbit, barang dikirim, BAST menunggu, tagihan jatuh tempo.
+- **Bangun:** BSP resmi (§2 #6); template pesan ter-approve; antrean kirim + log status; preferensi notifikasi per sekolah.
+- **Dependensi:** W2; nomor kontak valid dari A1.
+- **DoD:** notifikasi uji terkirim pada 3 peristiwa (order diterima, terkirim, tagihan terbit) dan tercatat log-nya.
+
+### W7 — Mesin harga kontrak, bundling & paket kelas (L)
+- **Tujuan:** harga per sekolah/yayasan sesuai kontrak, dan produk paket (per kelas/per siswa) bisa dijual di portal.
+- **Bangun:** harga kontrak berlapis (melengkapi model tier D1), bundling/paket yang ditunda dari Fase 1, paket kelas untuk W4; yayasan B1 **hanya bila gerbang §7 terpenuhi** (relasi opsional yayasan → banyak sekolah; transaksi tetap di sekolah).
+- **Dependensi:** D1, W2.
+- **DoD:** dua sekolah dengan kontrak berbeda melihat harga berbeda untuk item yang sama; satu paket kelas terjual lewat portal.
+
+### W8 — Load test & hardening portal (M)
+- **Tujuan:** portal aman & tahan musim puncak tahun ajaran (target dokumen scope: 1.000+ pengguna bersamaan).
+- **Bangun:** uji beban pada alur katalog/order; rate limiting & proteksi endpoint publik; pemisahan kredensial portal dari user internal ERP; audit keamanan dasar.
+- **Dependensi:** W2 (dan W4 bila sudah ada).
+- **DoD:** laporan load test lulus target; tidak ada endpoint portal yang mengekspos data sekolah lain (uji akses silang negatif).
+
+## 4. Urutan gelombang
+
+| Gelombang | Isi | Gate keluar |
+|---|---|---|
+| G1 — Portal sekolah hidup | W1, W3, W2 | Satu sekolah pilot order E2E lewat portal |
+| G2 — Bayar & kabar | W5, W6 | Pembayaran online pertama lunas tercatat otomatis |
+| G3 — Orang tua & kontrak | W4, W7 | Order orang tua + harga kontrak aktif |
+| G4 — Skala | W8 | Load test 1.000+ pengguna lulus |
+
+Gerbang akhir Fase 3 (PRD): **satu musim tahun ajaran berjalan lewat portal**.
+
+## 5. Risiko & mitigasi
+
+| Risiko | Mitigasi |
+|---|---|
+| Prototipe dianggap produk jadi → scope implementasi diremehkan | Prototipe dinyatakan eksplisit sebagai bahan desain (mock, tanpa API) di §1; W2 adalah pembangunan ulang, bukan pemolesan file statis |
+| Endpoint publik mengekspos data ERP internal | Portal hanya lewat API khusus portal dengan cakupan per-sekolah; uji akses silang negatif adalah DoD W8 |
+| Identitas dummy prototipe (alamat/rekening/domain) terbawa ke produksi | §2 #2: diganti data asli klien sebelum go-live; tidak pernah dikarang (§6 exception) |
+| Musim tahun ajaran = lonjakan serentak | W8 dijadwalkan sebelum musim; katalog portal di-cache/di-prerender |
+
+## Progres
+
+- **2026-10-05 — Prototipe landing + portal ter-deploy & ter-rebrand.** Bundle desain ditempatkan di `apps/landing-page/` (port 3226) dan `apps/portal-sekolah/` (port 3221) sebagai service statis persisten; seluruh branding "Pena Cendekia / PT Pena Cendekia Nusantara" diganti "CV Bahtera Madani" (domain placeholder `bahteramadani.co.id`). Crosscheck terhadap dokumen scope menempatkan pekerjaan ini di Fase 3 — dokumen rencana ini dibuat agar catch-up-nya tercatat dan tidak hilang. Berikutnya: G1 (W1 landing produksi + W3 akun/approval + W2 portal sekolah MVP) setelah keputusan §2 #1–#4.

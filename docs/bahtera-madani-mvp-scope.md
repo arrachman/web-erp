@@ -372,6 +372,8 @@ selesai; workflow print-specific harus dibangun pada fase ini.
 
 ### Fase 3 — Portal sekolah & orang tua
 
+> **Rencana kerja Fase 3:** [](fase-3-rencana-kerja.md) — prototipe landing page (port 3226) + portal sekolah (port 3221) ter-deploy & ter-rebrand ke CV Bahtera Madani per 2026-10-05 sebagai bahan catch-up; implementasi produksi mengikuti rencana tersebut.
+
 Mesin harga kontrak penuh, portal yayasan/sekolah, portal orang tua, dashboard
 sekolah, payment gateway, WhatsApp, paket kelas, approval sekolah, serta load test
 1.000+ pengguna bersamaan.
