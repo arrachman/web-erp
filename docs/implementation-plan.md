@@ -1,17 +1,25 @@
 # Senti ERP — Roadmap Implementasi Per File
 
-> Berdasarkan audit codebase aktual pada 2026-10-03.
+> Berdasarkan audit codebase aktual pada 2026-10-03 dan diselaraskan dengan
+> `temp/PRD-ERP-CV-Bahtera-Madani-A4.pdf` pada 2026-10-04.
+>
+> **Scope produk MVP CV Bahtera Madani** adalah Fase 1 PRD: CRM Sekolah & Yayasan,
+> Order Hub, Dokumen, Pajak, Katalog, Pembelian, Persediaan, serta Keuangan. Batas,
+> gap analysis, urutan vertikal, gerbang satu periode BOS, dan scope fase berikutnya
+> ada di [`bahtera-madani-mvp-scope.md`](bahtera-madani-mvp-scope.md). Bagian
+> “MVP-0–3” di dokumen ini adalah **fondasi teknis distributor** bagi MVP produk,
+> bukan keseluruhan MVP produk.
 >
 > Root aplikasi: `apps/api-gateway` (NestJS/Prisma) dan `apps/frontend` (Next.js/React).
-> Purchasing, Sales, Inventory, dan Finance sudah memiliki modul API serta halaman frontend. Roadmap ini membedakan **verifikasi/fix** MVP dari file **baru/diubah** untuk fitur yang belum tersedia.
+> Purchasing, Sales, Inventory, dan Finance sudah memiliki modul API serta halaman frontend. Roadmap ini membedakan **verifikasi/fix** fondasi dari file **baru/diubah** untuk fitur yang belum tersedia.
 >
 > Konvensi wajib: `ErpJwtAuthGuard`, DTO paginasi (`page`, `limit`, `search`, `sortBy`, `sortDir`), menu dikelola langsung di tabel `sys_menus`, list melalui `ErpListLayout`, file aplikasi maksimal 400 baris, migrasi additive hand-written SQL + `prisma migrate deploy` + Prisma generate di container.
 
 ---
 
-## MVP — Validasi alur inti distributor
+## Fondasi MVP produk — Validasi alur inti distributor
 
-**Tujuan:** memastikan implementasi yang sudah tersedia mampu menjalankan dua siklus bisnis utama tanpa menambah domain baru.
+**Tujuan:** memastikan implementasi yang sudah tersedia mampu menjalankan dua siklus bisnis utama sebelum kapabilitas vertikal sekolah ditambahkan. Fondasi ini tidak dianggap lulus MVP produk sampai pilot satu periode BOS memenuhi gerbang pada `bahtera-madani-mvp-scope.md`.
 
 ### MVP-1 — Procure-to-Pay: PO → GRN → Purchase Invoice → AP Payment
 
@@ -84,11 +92,26 @@ Posting GRN/DO/SI akan gagal (BadRequest) bila data berikut kosong. Kerjakan SEB
 | `apps/api-gateway/src/erp-settings/*` + FE halaman Setting | Verifikasi | Validasi di UI/endpoint: peringatan bila default account GL belum diisi sebelum go-live. |
 | `apps/api-gateway/src/**/*.spec.ts` | Baru | Baru 6 spec, semua helper. Belum ada test posting GRN/DO/SI/AP/AR (sudah di MVP-3, naikkan prioritas). |
 
-**Definition of done MVP:** kedua flow inti, retur, dan giro melewati test manual; test otomatis mencakup posting stok dan ledger untuk jalur kritis; semua ketidaksesuaian diperbaiki sebelum fitur baru dimulai.
+**Definition of done fondasi:** kedua flow inti, retur, dan giro melewati test manual; test otomatis mencakup posting stok dan ledger untuk jalur kritis; semua ketidaksesuaian diperbaiki sebelum workstream vertikal sekolah dimulai. Ini belum sama dengan definition of done MVP produk.
 
 ---
 
-## Phase 1 — Master data distributor: multi-satuan dan tier harga
+## Workstream vertikal MVP CV Bahtera Madani
+
+Urutan otoritatif ada di [`bahtera-madani-mvp-scope.md`](bahtera-madani-mvp-scope.md):
+
+1. **MVP-1:** model sekolah/yayasan dan CRM berbasis NPSN/BOS;
+2. **MVP-2:** Order Hub channel-ready + input admin/sales + adapter SIPLah;
+3. **MVP-3:** paket dokumen BOS/non-BOS + BAST + arsip;
+4. **MVP-3:** aplikasi tax subledger PPN/PPh + bukti potong + Coretax/export;
+5. **MVP-4:** hardening katalog sekolah, purchasing, inventory, finance, dan laporan margin;
+6. **MVP-5:** pilot satu periode BOS tanpa rekap Excel paralel.
+
+Pekerjaan per-file untuk workstream ini dibuat setelah open decisions PRD yang relevan dikonfirmasi. Kapabilitas vertikal harus mereuse transaksi `sls`/`pur`/`inv`/`fin`, Report Studio, attachment, dan workflow existing—jangan membuat engine transaksi kedua.
+
+---
+
+## Backlog pasca-fondasi generik — Master data distributor: multi-satuan dan tier harga
 
 **Tujuan:** item dapat dibeli/dijual dalam satuan berbeda dan harga jual otomatis mengikuti kategori pelanggan.
 
@@ -261,13 +284,19 @@ Saat ini `ErpUnit.conversionFactor` berlaku global. Fitur baru harus menyimpan k
 ## Dependency order
 
 ```text
-MVP: verify and fix P2P + O2C + giro
-  └─ Phase 1: per-item unit conversion + price tiers
-       └─ Phase 2: lot/batch + expiry
-            └─ Phase 3: planning / MRP-lite
+Fondasi teknis: verify/fix P2P + O2C + giro + baseline config
+  └─ MVP produk Bahtera Madani:
+       sekolah/yayasan CRM
+       → Order Hub + SIPLah
+       → dokumen BOS + pajak
+       → hardening katalog/purchasing/inventory/finance
+       → pilot satu periode BOS
 
-Phase 4: fixed assets (independent after MVP)
-Phase 5: tests, reports, import, notifications (starts in MVP and continues throughout)
+Backlog generik yang mendukung kebutuhan terkonfirmasi:
+  multi-satuan/tier harga → lot/batch → planning/MRP-lite
+
+Fixed assets: Fase 4 PRD (bukan MVP)
+Tests, reports, import, notifications: dimulai dari fondasi dan berlanjut sepanjang MVP
 ```
 
 ## Cross-phase completion rules

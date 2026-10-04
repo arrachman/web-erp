@@ -5091,3 +5091,35 @@ alokasi AR Receipt aktif atau Return/Return Receipt aktif (`sls-invoice-void.hel
 REOPEN tetap hard-delete (koreksi sebelum final). Frontend: item kebab **Void** (danger, hanya status POSTED) di `sls-invoices-page.tsx` →
 `confirmAction` + prompt alasan → `transition VOID`. **Belum:** VOID GRN (blokir bila ada PI/
 Return aktif, balik stok) & dokumen lain; belum diuji ke DB nyata.
+
+---
+
+## § Scope produk MVP CV Bahtera Madani (2026-10-04)
+
+Sumber: `temp/PRD-ERP-CV-Bahtera-Madani-A4.pdf`. Untuk deployment CV Bahtera
+Madani, **MVP produk = Fase 1 “Fondasi & pengadaan sekolah”**: A1 CRM Sekolah &
+Yayasan, A2 Order Hub, A3 Dokumen pengadaan, A4 Pajak pengadaan, D1 Katalog,
+D2 Pembelian, D3 Persediaan multi-gudang, dan E1 Keuangan & akuntansi. Scope
+otoritatif, gap terhadap kode saat ini, dan urutan MVP-0–5 ada di
+`docs/bahtera-madani-mvp-scope.md`.
+
+Keputusan batas:
+
+- P2P/O2C/giro dan baseline konfigurasi yang sudah dikerjakan adalah **fondasi
+  teknis**, bukan keseluruhan MVP produk.
+- Pada MVP, kanal aktif adalah input admin, input sales, dan SIPLah melalui API
+  merchant bila tersedia atau impor file bila tidak. Portal sekolah dan portal
+  orang tua tetap Fase 3; Order Hub harus channel-ready agar portal kelak menjadi
+  producer baru tanpa mengganti engine transaksi.
+- Kapabilitas vertikal sekolah wajib mereuse domain `sls`/`pur`/`inv`/`fin`,
+  Report Studio, attachment, dan workflow existing; dilarang membuat fork atau
+  engine transaksi kedua.
+- Gerbang MVP adalah **satu periode BOS berjalan penuh tanpa rekap operasional
+  Excel paralel**, dibuktikan dengan alur end-to-end dan rekonsiliasi order,
+  stok, AR/AP, pajak, bank/pencairan, serta GL.
+- Percetakan penuh = Fase 2; portal dan mesin harga kontrak penuh = Fase 3;
+  SDM, fixed assets, advanced analytics, dan AI = Fase 4.
+
+Open decisions PRD dan kebutuhan pilot-specific (API SIPLah, volume/cohort,
+rabat, konsinyasi, barcode, alokasi eksklusif, PPh 22/23) wajib dikonfirmasi
+sebelum estimasi final atau penguncian workstream terkait.
