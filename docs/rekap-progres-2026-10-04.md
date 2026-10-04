@@ -35,26 +35,33 @@ Catatan: SI000012/SI000013 diposting **sebelum** posting GL live, jadi keduanya 
 
 `CICILAN.xlsx` ternyata kosong (header + 1 baris kosong) — tidak ada data cicilan di dalamnya.
 
-## 4. Data yang perlu diminta ke klien
+## 4. Data klien — status: sebagian sudah diisi PROVISIONAL
 
-1. Daftar supplier & penerbit buku: nama, kontak, alamat — termasuk supplier ATK, konsumsi, furnitur.
-2. Harga beli per item dari masing-masing supplier.
-3. Pemetaan item → supplier utama (vendor) untuk tiap produk.
-4. Kebijakan stok minimum & maksimum per item (dasar Purchase Suggestion).
-5. Persentase rabat per penerbit/supplier, dan skema konsinyasi bila ada.
-6. Nama penerbit + HET tiap buku/item katalog; kelas dan kurikulum untuk buku yang belum terpetakan.
-7. Profil resmi CV Bahtera Madani: alamat lengkap, NPWP, telepon, email, website (saat ini masih dummy Sentient Factory — tampil di kop semua PDF dokumen).
-8. Data sekolah: NPSN, jumlah siswa, pagu BOS per sekolah per tahun/tahap (116 sekolah masih kosong).
-9. Rincian cicilan per sekolah: total pembayaran, jumlah cicilan, yang sudah dibayar, sisa.
-10. Saldo stok awal per gudang (hasil stok opname terakhir) untuk opening stock.
-11. Penetapan akun penjualan untuk kategori LKS, Alat Peraga, Seragam, Cetak, Paket — kelimanya belum punya akun; posting GL menolak item di kategori itu sampai akun ditetapkan.
+Sesuai aturan baru CLAUDE.md §6 (lihat §2 sesi malam), data yang kurang **diisi dulu dengan data provisional bertanda** agar implementasi lanjut, dan diganti saat data klien asli tiba. Script pengisian tersimpan di server: `data-client/fill-provisional-2026-10-04.sql`.
 
-Catatan aturan (CLAUDE.md §6, commit `8c6e106`): data bisnis yang tidak ada di repo/DB/file klien **tidak boleh dikarang** — field dibiarkan NULL dan datanya diminta ke klien lewat user.
+Sudah diisi provisional (4 Okt malam):
+
+- **6 supplier/penerbit** (`legacy_code='provisional'`, nama berawalan `[PROVISIONAL]`): Penerbit Buku Cendekia, Penerbit Pelita Ilmu, Distributor ATK Sentosa, Supplier Konsumsi Barokah, Furnitur Sekolah Jaya, Provider Internet Nusantara.
+- **Vendor per item: 65/65 terisi** (mengikuti kategori item; Paket Internet → provider).
+- **Harga beli: 65/65 terisi** — 75% dari harga jual (dibulatkan ke 250) untuk 24 item, median kategori untuk 16 item yang harga jualnya juga 0.
+- **Stok min/maks: 65/65 terisi** per kategori (Buku/LKS 20/100, ATK/Konsumsi/Seragam 10/50, Furnitur/Peraga 2/10, Cetak 5/25, Paket 1/5).
+- **Rabat 2026**: Cendekia 5% (kategori Buku), Pelita Ilmu 5%, ATK Sentosa 3% — semua `metadata.origin='provisional'`.
+- **Akun penjualan kategori**: LKS → Penjualan Buku (4104), Peraga/Seragam → Penjualan ATK & Perlengkapan (4106), Cetak/Paket → Penjualan Produk Jadi (4101).
+
+Hasilnya: laporan **Purchase Suggestion sekarang berisi** (sebelumnya kosong by design) — D2 bisa diuji end-to-end.
+
+Masih menunggu data klien asli (pengecualian §6 — identitas resmi tidak dikarang):
+
+1. Daftar supplier & penerbit **asli**: nama, kontak, alamat — untuk mengganti 6 partner provisional di atas, beserta harga beli, pemetaan vendor, dan % rabat yang sebenarnya.
+2. Profil resmi CV Bahtera Madani: alamat lengkap, NPWP, telepon, email, website (saat ini masih dummy Sentient Factory — tampil di kop semua PDF dokumen).
+3. Data sekolah: NPSN, jumlah siswa, pagu BOS per sekolah per tahun/tahap (116 sekolah masih kosong — NPSN tidak boleh dikarang).
+4. Rincian cicilan per sekolah: total pembayaran, jumlah cicilan, yang sudah dibayar, sisa (file CICILAN.xlsx kosong).
+5. Saldo stok awal per gudang (hasil stok opname terakhir) untuk opening stock — stok on-hand saat ini 0 untuk semua item.
+6. Nama penerbit + HET asli tiap buku untuk profil katalog (publisherName/HET masih kosong).
 
 ## 5. Kekurangan & catatan teknis tersisa
 
-- **D2 belum bisa jalan riil** — sistem 100% siap (three-way match, rabat, suggestion, counter dokumen) tapi data bisnis 0%: nol supplier, vendor item 0/60, min/max stok 0/60. Terblokir poin 1–5 di atas.
-- **Akun penjualan kategori baru** — lihat poin 11 di atas (PAKET termasuk item Paket Internet hasil impor).
+- **D2 jalan dengan data provisional** — supplier/vendor/harga beli/stok min-maks/rabat sudah terisi bertanda provisional (lihat §4); tinggal diganti data asli klien. Three-way match & alur PO sekarang bisa diuji end-to-end.
 - **VOID invoice POSTED** — ada di web-erp, belum ter-sync ke API live (invoice POSTED belum bisa dibatalkan via UI).
 - **Tepi posting GL (gagal-aman)** — invoice TAX_INCLUSIVE dengan pajak per baris dan invoice dengan biaya lain (otherCost) di header akan ditolak oleh assertion balance upstream; data saat ini tidak ada yang seperti itu.
 - **Mutasi stok dari DO** — jalur invoice standalone sudah menulis movement; jalur DO belum diaudit penuh setelah sync GL.
