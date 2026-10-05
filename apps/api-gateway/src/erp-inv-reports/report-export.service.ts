@@ -6,7 +6,7 @@
  * STUB — implemented by the export build pass.
  */
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 const MAX_EXPORT_ROWS = 5_000;
 import { ReportDataset, ReportFormat } from './report-types';
 import { buildFilename } from './report-export.format';
@@ -32,7 +32,7 @@ const CONTENT_TYPE: Record<ReportFormat, string> = {
 export class ReportExportService {
   constructor(
     private readonly engine: ReportEngineService,
-    private readonly reportModule = 'inv',
+    @Optional() private readonly reportModule: string = 'inv',
   ) {}
 
   async render(dataset: ReportDataset, format: ReportFormat): Promise<RenderedReport> {
