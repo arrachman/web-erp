@@ -54,6 +54,13 @@ export function sanitizeMrtXml(raw: string): string {
   });
   // Escape bare ampersands elsewhere.
   out = out.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
+  // Repair nameless component elements (3 corpus files, e.g.
+  // receivegirocanceldetail1.mrt): a lost element name leaves
+  // `< Ref="11" type="Text" isKey="true">` closed by `</>`. Both shapes
+  // are invalid XML anywhere else, so renaming them is safe. Runs after
+  // the SqlCommand escaping above, so SQL text can never match.
+  out = out.replace(/< Ref=/g, '<Recovered Ref=');
+  out = out.replace(/<\/>/g, '</Recovered>');
   return out;
 }
 

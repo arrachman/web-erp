@@ -10,7 +10,7 @@ import type { StiDatasetSpec, StiRelationSpec } from '../../src/erp-report-engin
 import { child, childText, propMap, type XmlEl } from './mrt-xml';
 import { fontToStyle, stiColor } from './mrt-style';
 
-export export function parseDatasets(root: XmlEl): { datasets: StiDatasetSpec[]; sqlByDs: Record<string, string> } {
+export function parseDatasets(root: XmlEl): { datasets: StiDatasetSpec[]; sqlByDs: Record<string, string> } {
   const datasets: StiDatasetSpec[] = [];
   const sqlByDs: Record<string, string> = {};
   const dict = child(root, 'Dictionary');
