@@ -91,10 +91,13 @@ function layoutSheet(wb: ExcelJS.Workbook, model: RenderModel): void {
         rowNum += 1;
         const row = ws.getRow(rowNum);
         row.height = Math.max(12, band.height * 2.83);
+        const mergedRanges: Array<[number, number]> = [];
         for (const c of rowsByY.get(key)!.sort((a, b) => a.x - b.x)) {
           const startCol = colIndex(Math.round(c.x * 10) / 10);
           const endCol = colIndex(Math.round((c.x + c.width) * 10) / 10);
           if (startCol < 1) continue;
+          // Skip components whose start cell is already covered by a merge.
+          if (mergedRanges.some(([a, b]) => startCol >= a && startCol <= b)) continue;
           const cell = row.getCell(startCol);
           cell.value =
             c.type === 'barcode'
@@ -105,8 +108,13 @@ function layoutSheet(wb: ExcelJS.Workbook, model: RenderModel): void {
                   : '☐'
                 : (c.text ?? '');
           cellStyle(cell, c);
-          if (endCol > startCol) {
-            ws.mergeCells(rowNum, startCol, rowNum, endCol - 1);
+          if (endCol > startCol + 1) {
+            const mergeEnd = endCol - 1;
+            const overlaps = mergedRanges.some(([a, b]) => mergeEnd >= a && startCol <= b);
+            if (!overlaps) {
+              ws.mergeCells(rowNum, startCol, rowNum, mergeEnd);
+              mergedRanges.push([startCol, mergeEnd]);
+            }
           }
         }
       }
