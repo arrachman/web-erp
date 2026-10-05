@@ -128,6 +128,7 @@ di `CLAUDE.md` (section "Aturan turunan lintas-fitur"); di sini detail lengkapny
 - [Report Designer — iterasi 2: Properties tab, expression pintar, multi-select, snap/align (2026-06-07)](docs/decisions/reports.md#report-designer--iterasi-2-properties-tab-expression-pintar-multi-select-snapalign-2026-06-07)
 - [Report Designer — iterasi 3: reskin penuh ke model mock prototype (2026-06-07)](docs/decisions/reports.md#report-designer--iterasi-3-reskin-penuh-ke-model-mock-prototype-2026-06-07)
 - [Report Studio — desainer laporan band-based (2026-06-17)](docs/decisions/reports.md#report-studio--desainer-laporan-band-based-2026-06-17)
+- [Registry m0_reports — katalog laporan hasil terjemahan .mrt (2026-10-05)](docs/decisions/reports.md#registry-m0_reports--katalog-laporan-hasil-terjemahan-mrt-2026-10-05)
 - [§ Desainer Laporan — drag-and-drop + edit konten report asli (2026-06-13)](docs/decisions/reports.md#desainer-laporan--drag-and-drop--edit-konten-report-asli-2026-06-13)
 
 ### [Plan PRD rantai dokumen (Fase 0–4) + scope MVP Bahtera Madani](docs/decisions/plan-prd.md)

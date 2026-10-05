@@ -315,3 +315,49 @@ rows). Penyempurnaan preview band data (bind ke dataSource nyata) = follow-up.
 
 ---
 
+
+### Registry m0_reports — katalog laporan hasil terjemahan .mrt (2026-10-05)
+
+Keputusan user (2026-10-05): seluruh template Stimulsoft `.mrt` legacy
+(1.560 file di `preferensi/Backened - myerpplus/report/mrt/`, folder `m0..m13`)
+diinventarisasi per menu → jenis laporan → template, diterjemahkan ke standar
+report engine ERP, dan registry-nya **di-insert ke tabel bernama `m0_reports`**
+di DB ERP. Halaman laporan per modul (`/app/*/reports/*`) memakai satu menu
+Reports + combo box jenis laporan; engine ditargetkan mampu export
+PDF/Word/Excel/HTML dari template yang sama.
+
+**Deviasi nama tabel (dicatat sadar):** `m0_reports` menyimpang dari pola
+`DOMAIN_snake_case_plural` di `CLAUDE.md` §1 (domain semantik `sys/adm/md/fin/…`,
+tanpa prefix numerik legacy). Nama ini **instruksi eksplisit user** — mewarisi
+registry legacy MySQL `m0_report` (`rid, rmoduleid, rmenuid, ritem, rtitle,
+rreportname, rfilename, rdefault, rsql, rfrom, rfilter, rorderby, rgroupby,
+rparam1..5, raktif, rurutan`) — dan dipertahankan apa adanya, bukan diganti
+diam-diam. `m0_reports` adalah katalog lintas-modul, bukan tabel transaksi
+satu domain.
+
+**Isi & aturan registry (migrasi `20261005_032_erp_m0_reports`, model Prisma
+`ErpM0Report` di `prisma/schema/erp-rpt.prisma`):**
+- Satu baris per **jenis laporan**: dari ekstraksi 1.560 file → **1.326 jenis
+  unik**; 218 file varian (per pelanggan/revisi/tanggal) dilipat ke kolom
+  `variant_files` baris kanonisnya (`is_default=true`); 16 file junk/test
+  (test*/coba/blank/datecoba) **tidak** di-register.
+- Pemetaan modul legacy→ERP tersimpan di `legacy_module` + `erp_module`:
+  m0→ADM, m1→M1, m2→FIN, m3→M3, m4→M4, m5→M5, m6→M6, m7→M7, m8→BI, m12→M12,
+  m13→M13 (sekolah, dipertahankan), **m11→NULL (legacy-only — milik
+  web-althea, tidak diserap ERP)**. `legacy_menu` NULL: registry legacy tidak
+  termigrasi sehingga pemetaan per-menu tidak dapat diinferensikan.
+- `sql_spec` (JSONB) menyimpan padanan `rsql/rfrom/rfilter/rgroupby/rorderby`
+  + SQL lengkap seluruh data source `.mrt` sebagai **spesifikasi dataset**
+  (dialek MySQL — tidak dieksekusi verbatim; builder per laporan dibuat dari
+  spesifikasi ini). `params` = parameter DS + inferensi runtime
+  (periode/dokumen/cabang/gudang/dll). `page_setup`/`bands`/`bindings`/
+  `functions_used`/`flags` dari ekstraksi `.mrt`.
+- Hubungan ke engine: `template_json` NULL dan `translation_status='PENDING'`
+  saat seed; layout hasil terjemahan tetap hidup di `rpt_templates` dan
+  dihubungkan via `rpt_template_id`/`report_key` pada fase terjemahan.
+  `export_formats` = PDF/Word/Excel/HTML (semua true). `urutan` = urutan
+  combo box per modul (alfabetis nama file kanonis).
+- Seed bersifat idempoten (`ON CONFLICT (code) DO NOTHING`), dihasilkan oleh
+  generator dari data ekstraksi — bukan bagian dari migrasi skema.
+
+---
