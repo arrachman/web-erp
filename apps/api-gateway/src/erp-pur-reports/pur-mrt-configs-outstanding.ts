@@ -9,9 +9,12 @@
  * deleted_at — lines live and die with their header):
  *   PO line  ← Σ pur_goods_receipt_lines.accepted_qty (by order_line_id)
  *   GRN line ← Σ pur_invoice_lines.quantity (by goods_receipt_line_id)
- *   RI line  ← Σ pur_return_lines.quantity (by invoice_line_id)
- *   PR line  ← Σ pur_order_lines.quantity (by source_line_id)
- *   RQ line  ← Σ pur_order_lines.quantity (by source_line_id)
+ *   RI line  ← Σ pur_return_lines.quantity (by goods_receipt_line_id —
+ *              the link the ERP's returns API actually writes)
+ *   PR line  ← Σ pur_order_lines.quantity (POs with requisition_id =
+ *              PR header, matched per item — the API writes no line link)
+ *   RQ line  ← Σ pur_order_lines.quantity (POs with quotation_id =
+ *              RQ header, matched per item)
  *   DNR line ← Σ pur_return_lines.quantity (by source_line_id)
  *
  * DEVIATION (documented in DECISIONS): the legacy RI-outstanding
@@ -43,11 +46,27 @@ const invoicedByGrnLine = `(SELECT COALESCE(SUM(il.quantity), 0)
 
 const returnedByRiLine = `(SELECT COALESCE(SUM(rl.quantity), 0)
   FROM pur_return_lines rl
-  WHERE rl.invoice_line_id = l.id)`;
+  WHERE rl.goods_receipt_line_id = l.goods_receipt_line_id
+    AND l.goods_receipt_line_id IS NOT NULL)`;
 
 const orderedBySourceLine = `(SELECT COALESCE(SUM(pl.quantity), 0)
   FROM pur_order_lines pl
   WHERE pl.source_line_id = l.id)`;
+
+/**
+ * PR/RQ realization: the ERP's API never writes source_line_id on PO
+ * lines (legacy-migration column, NULL everywhere) — the live link is
+ * the PO header's requisition_id / quotation_id, matched per item.
+ */
+const orderedByRequisition = `(SELECT COALESCE(SUM(pl.quantity), 0)
+  FROM pur_order_lines pl
+  JOIN pur_orders o ON o.id = pl.order_id
+  WHERE o.requisition_id = t.id AND pl.item_id = l.item_id AND o.deleted_at IS NULL)`;
+
+const orderedByQuotation = `(SELECT COALESCE(SUM(pl.quantity), 0)
+  FROM pur_order_lines pl
+  JOIN pur_orders o ON o.id = pl.order_id
+  WHERE o.quotation_id = t.id AND pl.item_id = l.item_id AND o.deleted_at IS NULL)`;
 
 const settledByReturnLine = `(SELECT COALESCE(SUM(rl.quantity), 0)
   FROM pur_return_lines rl
@@ -153,7 +172,7 @@ function prOutstanding(): PurDatasetConfig {
       ...hdrCols('pr'),
       ...lineCols(),
       ...partnerExtraCols(),
-      ...realizationCols(orderedBySourceLine),
+      ...realizationCols(orderedByRequisition),
       prdimintaoleh: 'req.name',
       prmintake: 't.requested_to',
     },
@@ -165,17 +184,17 @@ function prOutstanding(): PurDatasetConfig {
 
 /** prtracking: PR lines traced to their realizing PO and first RI. */
 function prTracking(): PurDatasetConfig {
-  const poLine = `(SELECT pl.id FROM pur_order_lines pl
-    WHERE pl.source_line_id = l.id ORDER BY pl.id LIMIT 1)`;
-  const poDoc = `(SELECT o.doc_number FROM pur_order_lines pl
+  const poField = (expr: string) => `(SELECT ${expr} FROM pur_order_lines pl
     JOIN pur_orders o ON o.id = pl.order_id
-    WHERE pl.source_line_id = l.id ORDER BY o.doc_date LIMIT 1)`;
-  const riDoc = `(SELECT inv.doc_number FROM pur_order_lines pl
+    WHERE o.requisition_id = t.id AND pl.item_id = l.item_id
+    ORDER BY o.doc_date LIMIT 1)`;
+  const riField = (expr: string) => `(SELECT ${expr} FROM pur_order_lines pl
+    JOIN pur_orders o ON o.id = pl.order_id
     JOIN pur_goods_receipt_lines gl ON gl.order_line_id = pl.id
     JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
     JOIN pur_invoices inv ON inv.id = il.invoice_id
-    WHERE pl.source_line_id = l.id ORDER BY inv.doc_date LIMIT 1)`;
-  const riDate = riDoc.replace('inv.doc_number', 'inv.doc_date');
+    WHERE o.requisition_id = t.id AND pl.item_id = l.item_id
+    ORDER BY inv.doc_date LIMIT 1)`;
   return {
     from: `
       pur_requisitions t
@@ -191,7 +210,7 @@ function prTracking(): PurDatasetConfig {
       catatan: 'l.notes',
       jml: 'l.quantity',
       satuan: 'u.name',
-      ...realizationCols(orderedBySourceLine),
+      ...realizationCols(orderedByRequisition),
       prnotransaksi: 't.doc_number',
       prtgl: 't.doc_date',
       prstatus: statusLabel('t.status'),
@@ -200,13 +219,11 @@ function prTracking(): PurDatasetConfig {
       prdimintaoleh: 'req.name',
       prmintake: 't.requested_to',
       supplier: 'p.name',
-      idpodetail: poLine,
-      ponotransaksi: poDoc,
-      potgljatuhtempo: `(SELECT o.due_date FROM pur_order_lines pl
-        JOIN pur_orders o ON o.id = pl.order_id
-        WHERE pl.source_line_id = l.id ORDER BY o.doc_date LIMIT 1)`,
-      rinotransaksi: riDoc,
-      ritgl: riDate,
+      idpodetail: poField('pl.id'),
+      ponotransaksi: poField('o.doc_number'),
+      potgljatuhtempo: poField('o.due_date'),
+      rinotransaksi: riField('inv.doc_number'),
+      ritgl: riField('inv.doc_date'),
     },
     deletedAlias: 't',
     paramFilters: docFilters('t.doc_date'),
@@ -227,7 +244,7 @@ function rqOutstanding(): PurDatasetConfig {
       ...hdrCols('rq'),
       ...lineCols(),
       ...partnerExtraCols(),
-      ...realizationCols(orderedBySourceLine),
+      ...realizationCols(orderedByQuotation),
       rqsupplier: 'p.name',
       rqid: 't.id',
     },

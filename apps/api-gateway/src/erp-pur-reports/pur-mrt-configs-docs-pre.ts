@@ -53,10 +53,13 @@ const PR_SELECT: Record<string, string> = {
   prtotaltransaksi: 't.grand_total',
   gudang: 'w.name',
   bid: 'i.id',
-  // Realization progress of the PR line (ordered via PO lines), %.
+  // Realization progress of the PR line (ordered via POs carrying this
+  // PR as requisition_id, matched per item), %.
   progress: `(CASE WHEN l.quantity = 0 THEN 0 ELSE
     (SELECT COALESCE(SUM(pl.quantity), 0) FROM pur_order_lines pl
-     WHERE pl.source_line_id = l.id) * 100.0 / l.quantity END)`,
+     JOIN pur_orders o ON o.id = pl.order_id
+     WHERE o.requisition_id = t.id AND pl.item_id = l.item_id AND o.deleted_at IS NULL)
+    * 100.0 / l.quantity END)`,
 };
 
 function prConfig(): PurDatasetConfig {
@@ -96,14 +99,15 @@ function permintaanDanaConfig(): PurDatasetConfig {
 
 const prDoc = (): PurReportConfig => ({ datasets: { DS1: prConfig() } });
 
-/** prhistorykawata: one row per PR line × the PO line that realized it. */
+/** prhistorykawata: one row per PR line × the PO line that realized it
+ *  (PO header requisition_id link, matched per item). */
 function prHistoryConfig(): PurDatasetConfig {
   return {
     from: `
       pur_requisition_lines l
       JOIN pur_requisitions t ON t.id = l.requisition_id
-      JOIN pur_order_lines pl ON pl.source_line_id = l.id
-      JOIN pur_orders po ON po.id = pl.order_id
+      JOIN pur_orders po ON po.requisition_id = t.id AND po.deleted_at IS NULL
+      JOIN pur_order_lines pl ON pl.order_id = po.id AND pl.item_id = l.item_id
       JOIN md_items i ON i.id = l.item_id
       LEFT JOIN md_partners p ON p.id = po.supplier_id
     `,

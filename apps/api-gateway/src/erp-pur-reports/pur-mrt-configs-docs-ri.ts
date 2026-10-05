@@ -209,7 +209,7 @@ function saldoAwalConfig(): PurDatasetConfig {
       pajak1: 'COALESCE(t.tax1_amount, 0)',
       pajak2: 'COALESCE(t.tax2_amount, 0)',
       saldoawal:
-        't.grand_total - (SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.doc_number)',
+        't.grand_total - (SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.id::text)',
     },
     where: 't.is_opening_balance',
     deletedAlias: 't',

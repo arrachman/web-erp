@@ -73,11 +73,13 @@ function headerConfig(x: string, source: string): PurDatasetConfig {
 
 /* --------------------------- allocations --------------------------- */
 
+// fin_settlement_allocations.invoice_ref stores the settled document's
+// numeric ID as text (ap-payment-posting.service) — join on id::text.
 const ALLOC_JOINS = `
-  LEFT JOIN pur_invoices ri ON ri.doc_number = a.invoice_ref
-  LEFT JOIN fin_ap_payments vpp ON vpp.doc_number = a.invoice_ref AND vpp.source = 'VPP'
-  LEFT JOIN fin_ap_payments ap ON ap.doc_number = a.invoice_ref AND ap.source = 'AP'
-  LEFT JOIN pur_returns rt ON rt.doc_number = a.invoice_ref
+  LEFT JOIN pur_invoices ri ON ri.id::text = a.invoice_ref
+  LEFT JOIN fin_ap_payments vpp ON vpp.id::text = a.invoice_ref AND vpp.source = 'VPP'
+  LEFT JOIN fin_ap_payments ap ON ap.id::text = a.invoice_ref AND ap.source = 'AP'
+  LEFT JOIN pur_returns rt ON rt.id::text = a.invoice_ref
 `;
 
 const SUMBER = `CASE WHEN ri.id IS NOT NULL THEN 'RI'
@@ -110,7 +112,7 @@ function allocConfig(
       idtransaksi: 'a.id',
       [`id${x}detail`]: 'a.id',
       sumber: SUMBER,
-      notransaksi: 'a.invoice_ref',
+      notransaksi: 'COALESCE(ri.doc_number, vpp.doc_number, ap.doc_number, rt.doc_number, a.invoice_ref)',
       tgl: DOC_DATE,
       tgltransaksi: DOC_DATE,
       tgljt: DOC_DUE,
@@ -183,7 +185,7 @@ export function instrumentConfig(x: 'vp' | 'vpp' | 'ap', source: string): PurDat
       cnama: `CASE WHEN ins.method::text IN ('GIRO', 'CHEQUE') THEN ga.name ELSE ba.name END`,
       cnomor: `CASE WHEN ins.method::text IN ('GIRO', 'CHEQUE') THEN ga.code ELSE ba.code END`,
       apjumlahbayar:
-        '(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.doc_number)',
+        '(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.id::text)',
     },
     where: `t.source = '${source}'`,
     deletedAlias: 't',

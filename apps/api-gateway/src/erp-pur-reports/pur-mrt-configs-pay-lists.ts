@@ -12,16 +12,16 @@ import { headerSelect, instrumentConfig, PAY_JOINS } from './pur-mrt-configs-pay
 /* ------------------------------ advances ------------------------------ */
 
 const settledSum =
-  '(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.doc_number)';
+  '(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.id::text)';
 const settledSumFx =
-  '(SELECT COALESCE(SUM(a.amount_fx), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.doc_number)';
+  '(SELECT COALESCE(SUM(a.amount_fx), 0) FROM fin_settlement_allocations a WHERE a.invoice_ref = t.id::text)';
 
 /** daftarum*: vendor advance (source AP) balances. */
 function advanceConfig(detail: boolean): PurDatasetConfig {
   return {
     from: `
       fin_ap_payments t
-      ${detail ? 'LEFT JOIN fin_settlement_allocations a ON a.invoice_ref = t.doc_number LEFT JOIN fin_ap_payments vp ON vp.id = a.ap_payment_id LEFT JOIN md_currencies vcur ON vcur.id = vp.currency_id' : ''}
+      ${detail ? 'LEFT JOIN fin_settlement_allocations a ON a.invoice_ref = t.id::text LEFT JOIN fin_ap_payments vp ON vp.id = a.ap_payment_id LEFT JOIN md_currencies vcur ON vcur.id = vp.currency_id' : ''}
       ${PAY_JOINS}
     `,
     select: {
@@ -119,12 +119,12 @@ function advanceListConfig(withTerbilang: boolean): PurDatasetConfig {
 
 const sumBySumber = (matchSql: string) =>
   `(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a WHERE a.ap_payment_id = t.id AND ${matchSql})`;
-const RI_MATCH = `EXISTS (SELECT 1 FROM pur_invoices d WHERE d.doc_number = a.invoice_ref)`;
-const AP_MATCH = `EXISTS (SELECT 1 FROM fin_ap_payments d WHERE d.doc_number = a.invoice_ref AND d.source = 'AP')`;
-const PRT_MATCH = `EXISTS (SELECT 1 FROM pur_returns d WHERE d.doc_number = a.invoice_ref)`;
-const CA_MATCH = `NOT EXISTS (SELECT 1 FROM pur_invoices d WHERE d.doc_number = a.invoice_ref)
-  AND NOT EXISTS (SELECT 1 FROM fin_ap_payments d WHERE d.doc_number = a.invoice_ref)
-  AND NOT EXISTS (SELECT 1 FROM pur_returns d WHERE d.doc_number = a.invoice_ref)`;
+const RI_MATCH = `EXISTS (SELECT 1 FROM pur_invoices d WHERE d.id::text = a.invoice_ref)`;
+const AP_MATCH = `EXISTS (SELECT 1 FROM fin_ap_payments d WHERE d.id::text = a.invoice_ref AND d.source = 'AP')`;
+const PRT_MATCH = `EXISTS (SELECT 1 FROM pur_returns d WHERE d.id::text = a.invoice_ref)`;
+const CA_MATCH = `NOT EXISTS (SELECT 1 FROM pur_invoices d WHERE d.id::text = a.invoice_ref)
+  AND NOT EXISTS (SELECT 1 FROM fin_ap_payments d WHERE d.id::text = a.invoice_ref)
+  AND NOT EXISTS (SELECT 1 FROM pur_returns d WHERE d.id::text = a.invoice_ref)`;
 
 function vpListConfig(): PurDatasetConfig {
   return {
@@ -158,7 +158,7 @@ function prtPaymentConfig(): PurDatasetConfig {
   return {
     from: `
       pur_returns t
-      LEFT JOIN fin_settlement_allocations a ON a.invoice_ref = t.doc_number
+      LEFT JOIN fin_settlement_allocations a ON a.invoice_ref = t.id::text
       LEFT JOIN fin_ap_payments vp ON vp.id = a.ap_payment_id
       LEFT JOIN md_partners p ON p.id = t.supplier_id
       LEFT JOIN md_currencies cur ON cur.id = t.currency_id
@@ -176,7 +176,7 @@ function prtPaymentConfig(): PurDatasetConfig {
       jmlbayar: 'a.amount',
       jmlbayarvalas: 'a.amount_fx',
       terbayar:
-        '(SELECT COALESCE(SUM(a2.amount), 0) FROM fin_settlement_allocations a2 WHERE a2.invoice_ref = t.doc_number)',
+        '(SELECT COALESCE(SUM(a2.amount), 0) FROM fin_settlement_allocations a2 WHERE a2.invoice_ref = t.id::text)',
       vpnotransaksi: 'vp.doc_number',
       vptgl: 'vp.transaction_date',
       vpcatatan: 'vp.notes',
