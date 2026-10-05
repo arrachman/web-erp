@@ -62,6 +62,7 @@ export function renderReportHubRoute(
 const MRT_HUBS: Record<string, { module: string; title: string }> = {
   '/master/reports': { module: 'M1', title: 'Laporan Master Data' },
   '/finance/reports': { module: 'FIN', title: 'Laporan Keuangan' },
+  '/warehouse/reports': { module: 'M3', title: 'Laporan Gudang' },
 };
 
 /** Base path for the generic Finance document-report pages. */
