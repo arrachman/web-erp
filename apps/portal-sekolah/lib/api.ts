@@ -131,9 +131,19 @@ export interface PortalPayment {
   invoiceId: string;
   invoiceNumber: string | null;
   provider: string;
+  providerRef: string;
   vaNumber: string | null;
   amount: string;
-  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
+  status: 'PENDING' | 'MENUNGGU_KONFIRMASI' | 'PAID' | 'DITOLAK' | 'EXPIRED';
   expiresAt: string | null;
   paidAt: string | null;
+  claimedAt: string | null;
+  rejectedReason: string | null;
+  instructions: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    amount: string;
+    reference: string;
+  } | null;
 }

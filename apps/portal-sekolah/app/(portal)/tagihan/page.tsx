@@ -23,8 +23,10 @@ export default function TagihanPage() {
 
   const open = invoices.filter((i) => i.settlementStatus !== 'PAID');
   const openTotal = open.reduce((s, i) => s + Number(i.grandTotal), 0);
-  const pendingByInvoice = new Map(
-    payments.filter((p) => p.status === 'PENDING').map((p) => [p.invoiceId, p]),
+  const paymentByInvoice = new Map(
+    payments
+      .filter((p) => p.status !== 'EXPIRED')
+      .map((p) => [p.invoiceId, p]),
   );
 
   async function bayar(inv: PortalInvoice) {
@@ -34,8 +36,25 @@ export default function TagihanPage() {
       const p = await api<PortalPayment>(`/portal/invoices/${inv.id}/pay`, { method: 'POST' });
       setPayments((prev) => [p, ...prev.filter((x) => x.id !== p.id)]);
       setNotice(
-        `Nomor VA untuk ${inv.docNumber} dibuat. Transfer tepat ${fmtIDR(p.amount)} ke VA ${p.vaNumber} — status terbarui otomatis setelah pembayaran diterima.`,
+        `Instruksi transfer untuk ${inv.docNumber} dibuat. Transfer tepat ${fmtIDR(p.amount)} lalu klik "Saya Sudah Transfer".`,
       );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function confirmSent(p: PortalPayment) {
+    setBusy(p.id);
+    setNotice('');
+    try {
+      const updated = await api<PortalPayment>(`/portal/payments/${p.id}/confirm-sent`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      setPayments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      setNotice('Terima kasih — klaim transfer Anda diteruskan ke admin untuk diverifikasi. Status berubah menjadi Lunas setelah dikonfirmasi.');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -59,8 +78,9 @@ export default function TagihanPage() {
         <div className="card" style={{ marginTop: 14, borderColor: '#f3d48a', background: '#fffaf0' }}>
           <strong>{open.length} tagihan belum lunas</strong> dengan total{' '}
           <strong>{fmtIDR(openTotal)}</strong>. Klik <strong>Bayar</strong> pada
-          tagihan untuk mendapatkan nomor Virtual Account; status di sini
-          terbarui otomatis setelah pembayaran Anda diterima.
+          tagihan untuk melihat instruksi transfer, lalu klik{' '}
+          <strong>Saya Sudah Transfer</strong> — admin kami memverifikasi dan
+          status berubah menjadi Lunas setelah dikonfirmasi.
         </div>
       )}
       <div className="card" style={{ marginTop: 14 }}>
@@ -81,7 +101,7 @@ export default function TagihanPage() {
             </thead>
             <tbody>
               {invoices.map((v) => {
-                const pending = pendingByInvoice.get(v.id);
+                const payment = paymentByInvoice.get(v.id);
                 return (
                   <tr key={v.id}>
                     <td style={{ fontWeight: 700 }}>{v.docNumber}</td>
@@ -100,19 +120,9 @@ export default function TagihanPage() {
                         {v.settlementStatus === 'PAID' ? 'Lunas' : v.settlementStatus === 'PARTIAL' ? 'Sebagian' : 'Belum dibayar'}
                       </span>
                     </td>
-                    <td style={{ minWidth: 210 }}>
+                    <td style={{ minWidth: 260 }}>
                       {v.settlementStatus !== 'PAID' && v.status === 'POSTED' ? (
-                        pending ? (
-                          <div style={{ fontSize: 13 }}>
-                            <div>
-                              VA <strong>{pending.vaNumber}</strong> · {fmtIDR(pending.amount)}
-                            </div>
-                            <div className="muted">
-                              Menunggu pembayaran
-                              {pending.expiresAt ? ` · s.d. ${fmtDate(pending.expiresAt)}` : ''}
-                            </div>
-                          </div>
-                        ) : (
+                        !payment ? (
                           <button
                             className="btn"
                             disabled={busy === v.id}
@@ -120,6 +130,40 @@ export default function TagihanPage() {
                           >
                             {busy === v.id ? 'Memproses…' : 'Bayar'}
                           </button>
+                        ) : payment.status === 'MENUNGGU_KONFIRMASI' ? (
+                          <div style={{ fontSize: 13 }}>
+                            <strong>Menunggu konfirmasi admin</strong>
+                            <div className="muted">
+                              Klaim transfer {fmtIDR(payment.amount)} sedang diverifikasi.
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 13 }}>
+                            {payment.status === 'DITOLAK' && (
+                              <div style={{ color: '#b91c1c', marginBottom: 4 }}>
+                                Klaim ditolak: {payment.rejectedReason ?? 'dana tidak ditemukan'}. Silakan transfer ulang lalu klaim kembali.
+                              </div>
+                            )}
+                            {payment.instructions ? (
+                              <div>
+                                Transfer ke <strong>{payment.instructions.bankName} {payment.instructions.accountNumber}</strong>
+                                <br />a.n. {payment.instructions.accountHolder} · {fmtIDR(payment.amount)}
+                                <br />
+                                <span className="muted">Cantumkan kode: </span>
+                                <strong>{payment.instructions.reference}</strong>
+                              </div>
+                            ) : (
+                              <div className="muted">Rekening tujuan belum diatur — hubungi admin.</div>
+                            )}
+                            <button
+                              className="btn"
+                              style={{ marginTop: 6 }}
+                              disabled={busy === payment.id}
+                              onClick={() => confirmSent(payment)}
+                            >
+                              {busy === payment.id ? 'Mengirim…' : 'Saya Sudah Transfer'}
+                            </button>
+                          </div>
                         )
                       ) : null}
                     </td>
@@ -131,9 +175,8 @@ export default function TagihanPage() {
         )}
       </div>
       <p className="muted" style={{ fontSize: 12 }}>
-        Pembayaran online saat ini berjalan dalam mode simulasi (VA uji) —
-        kanal pembayaran resmi diaktifkan setelah provider payment gateway
-        dipilih.
+        Pembayaran dilakukan via transfer bank manual ke rekening di atas dan
+        dikonfirmasi oleh admin CV Bahtera Madani (maksimal 1×24 jam kerja).
       </p>
     </div>
   );

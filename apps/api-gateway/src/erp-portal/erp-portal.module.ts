@@ -15,6 +15,7 @@ import {
   ErpPortalPaymentsController,
   ErpPortalPaymentsWebhookController,
 } from './erp-portal-payments.controller';
+import { ErpPortalPaymentsAdminController } from './erp-portal-payments-admin.controller';
 import { ErpPortalAccountsService } from './erp-portal-accounts.service';
 import { ErpPortalShopService } from './erp-portal-shop.service';
 import { ErpPortalPaymentsService } from './erp-portal-payments.service';
@@ -44,6 +45,7 @@ import { ErpPortalAuthGuard } from './erp-portal.guard';
     ErpPortalAdminController,
     ErpPortalPaymentsController,
     ErpPortalPaymentsWebhookController,
+    ErpPortalPaymentsAdminController,
   ],
   providers: [ErpPortalAccountsService, ErpPortalShopService, ErpPortalPaymentsService, ErpPortalAuthGuard],
   exports: [ErpPortalAccountsService, ErpPortalShopService],

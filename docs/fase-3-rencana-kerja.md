@@ -180,3 +180,26 @@ adapter SIMULASI/LOG ke provider terpilih; ganti webhook secret
 provisional via env `PORTAL_PAYMENT_WEBHOOK_SECRET`.
 
 **Addendum W6 (2026-10-05, keputusan user: "tetap pakai apps/wa-gateway")**: pengirim notifikasi diganti dari adapter LOG ke **wa-gateway self-hosted** (`apps/wa-gateway`, kompatibel Fonnte, device "WA Bahtera Madani" 6285735248244) lewat fasad `ErpWhatsappService` modul `erp-whatsapp` — `erp-outbound-notifications` kini mendelegasikan pengiriman ke fasad itu (template `sys_wa_templates`, log rinci `sys_wa_logs`, dedupe terhadap notifier pemindai lewat sys_wa_logs; orang tua dikirim via `dispatch()` ke nomor akunnya). Terbukti E2E: order uji → `sys_wa_logs` status terkirim dengan message id WA asli, log outbound SENT/WA-GATEWAY. **Saklar aktivasi `SEND_ENABLED` (sys_settings WHATSAPP) saat ini masih `false`** (staging sesi paralel) — selama nonaktif, peristiwa tercatat SKIPPED di log outbound; aktifkan di Pengaturan WhatsApp untuk pengiriman nyata ke sekolah.
+
+### Addendum W5 — keputusan provider: TRANSFER MANUAL + konfirmasi admin (2026-10-05)
+
+User memutuskan §2 #5: pembayaran portal TIDAK memakai payment gateway.
+Alur final (LIVE): sekolah/orang tua klik Bayar → sistem menampilkan
+instruksi transfer ke rekening primer perusahaan (sys_bank_accounts
+is_primary, diatur admin di ERP — bukan hardcode) + kode referensi unik
+per pembayaran (`MAN-…`) → pengguna klik "Saya Sudah Transfer"
+(status MENUNGGU_KONFIRMASI) → admin memverifikasi mutasi bank di
+halaman ERP **Konfirmasi Pembayaran** (menu FIN.TX.PAYCONF,
+`/finance/payment-confirmations`, migrasi 030) → Konfirmasi menerbitkan
+AR Receipt (IP) + POST otomatis → invoice LUNAS; Tolak mengembalikan
+klaim ke pengguna dengan alasan (bisa klaim ulang). Endpoint admin:
+`GET /erp/payments?status=`, `POST /erp/payments/:id/confirm|reject`;
+portal: `POST /erp/portal/payments/:id/confirm-sent`. Provider di
+`fin_portal_payments` sekarang 'MANUAL'; jalur webhook HMAC 'SIMULASI'
+dipertahankan sebagai kode legacy tak terpakai. Smoke E2E lulus penuh
+(rantai order→invoice→klaim→tolak→klaim ulang→konfirmasi→IP POSTED→
+invoice PAID→konfirmasi ganda 400), data uji dibersihkan ke baseline.
+CATATAN: rekening primer saat ini masih data placeholder warisan
+template (BCA 1234567890 a.n. PT Sentient Factory) — admin wajib
+mengganti dengan rekening resmi CV Bahtera Madani sebelum dipakai
+sekolah sungguhan (§2 #2: data resmi tidak dikarang).

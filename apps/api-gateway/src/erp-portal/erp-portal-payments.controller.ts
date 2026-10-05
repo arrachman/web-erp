@@ -16,6 +16,15 @@ export class ErpPortalPaymentsController {
     return this.payments.createForInvoice(req.portalAccount, invoiceId);
   }
 
+  @Post('payments/:paymentId/confirm-sent')
+  confirmSent(
+    @Req() req: ReqWithAccount,
+    @Param('paymentId') paymentId: string,
+    @Body() body: { note?: string },
+  ) {
+    return this.payments.confirmSent(req.portalAccount, paymentId, body?.note);
+  }
+
   @Get('payments')
   list(@Req() req: ReqWithAccount) {
     return this.payments.listForAccount(req.portalAccount);

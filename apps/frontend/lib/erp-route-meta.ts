@@ -47,6 +47,7 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/master/schools': { group: 'Data Master', title: 'Sekolah', icon: 'database' },
   '/master/portal-accounts': { group: 'Data Master', title: 'Akun Portal Sekolah', icon: 'database' },
   '/master/contract-prices': { group: 'Data Master', title: 'Harga Kontrak & Paket', icon: 'database' },
+  '/finance/payment-confirmations': { group: 'Finance', title: 'Konfirmasi Pembayaran', icon: 'calculator' },
   '/master/vendors': { group: 'Data Master', title: 'Vendor', icon: 'database' },
   '/master/partner-categories': { group: 'Data Master', title: 'Partner Categories', icon: 'database' },
   '/master/partner-types': { group: 'Data Master', title: 'Tipe Partner', icon: 'database' },
