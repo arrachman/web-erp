@@ -96,16 +96,40 @@ export class ErpFinDocMrtReportsService implements ReportDataProvider, OnModuleI
     declaredColumns: string[],
     params: Record<string, unknown>,
   ): Promise<Array<Record<string, unknown>>> {
+    // Wave G3: `?` placeholders inside select/from/where/groupBy/orderBy
+    // are bound from cfg.bindParams in walk order (select in declared
+    // column order, then from, where, groupBy, orderBy — the final SQL
+    // text order). Absent params bind NULL so alignment never shifts.
+    const bindList = cfg.bindParams ?? [];
+    let bindIdx = 0;
+    const bindRaw = (text: string): Prisma.Sql => {
+      if (!text.includes('?')) return Prisma.raw(text);
+      const fragments = text.split('?');
+      let composed = Prisma.sql`${Prisma.raw(fragments[0])}`;
+      for (let i = 1; i < fragments.length; i++) {
+        const def = bindList[bindIdx++];
+        let value: unknown = null;
+        if (def) {
+          const raw = params[def.name];
+          if (raw !== undefined && raw !== null && raw !== '') {
+            value = def.kind === 'number' ? Number(raw) : String(raw);
+            if (def.kind === 'number' && Number.isNaN(value as number)) value = null;
+          }
+        }
+        composed = Prisma.sql`${composed}${value}${Prisma.raw(fragments[i])}`;
+      }
+      return composed;
+    };
     const selectParts = declaredColumns.map((col) => {
       const expr = cfg.select[col];
-      return Prisma.sql`${Prisma.raw(expr ?? 'NULL')} AS ${Prisma.raw(`"${col}"`)}`;
+      return Prisma.sql`${bindRaw(expr ?? 'NULL')} AS ${Prisma.raw(`"${col}"`)}`;
     });
     if (selectParts.length === 0) return [];
-    let sql = Prisma.sql`SELECT ${Prisma.join(selectParts, ', ')} FROM ${Prisma.raw(cfg.from!)} WHERE 1 = 1`;
+    let sql = Prisma.sql`SELECT ${Prisma.join(selectParts, ', ')} FROM ${bindRaw(cfg.from!)} WHERE 1 = 1`;
     if (cfg.deletedAlias) {
       sql = Prisma.sql`${sql} AND ${Prisma.raw(cfg.deletedAlias)}.deleted_at IS NULL`;
     }
-    if (cfg.where) sql = Prisma.sql`${sql} AND (${Prisma.raw(cfg.where)})`;
+    if (cfg.where) sql = Prisma.sql`${sql} AND (${bindRaw(cfg.where)})`;
     for (const [paramName, filter] of Object.entries(cfg.paramFilters ?? {})) {
       const raw = params[paramName];
       if (raw === undefined || raw === null || raw === '') continue;
@@ -118,8 +142,8 @@ export class ErpFinDocMrtReportsService implements ReportDataProvider, OnModuleI
       }
       sql = Prisma.sql`${sql} AND (${composed})`;
     }
-    if (cfg.groupBy) sql = Prisma.sql`${sql} GROUP BY ${Prisma.raw(cfg.groupBy)}`;
-    if (cfg.orderBy) sql = Prisma.sql`${sql} ORDER BY ${Prisma.raw(cfg.orderBy)}`;
+    if (cfg.groupBy) sql = Prisma.sql`${sql} GROUP BY ${bindRaw(cfg.groupBy)}`;
+    if (cfg.orderBy) sql = Prisma.sql`${sql} ORDER BY ${bindRaw(cfg.orderBy)}`;
     sql = Prisma.sql`${sql} LIMIT ${DEFAULT_LIMIT}`;
     try {
       const rows = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(sql);

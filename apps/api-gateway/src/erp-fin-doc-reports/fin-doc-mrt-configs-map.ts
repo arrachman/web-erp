@@ -15,6 +15,33 @@ import {
 } from './fin-doc-mrt-configs';
 import { CASHBANK_DOC_CONFIGS } from './fin-doc-mrt-configs-cashbank';
 import { JOURNAL_DOC_CONFIGS } from './fin-doc-mrt-configs-journal';
+import { FIN_G3_STATEMENT_CONFIGS } from './fin-doc-mrt-configs-statements';
+import { FIN_G3_STATEMENT2_CONFIGS } from './fin-doc-mrt-configs-statements2';
+import { FIN_G3_GL_CONFIGS } from './fin-doc-mrt-configs-gl';
+import { FIN_G3_DAILY_CONFIGS } from './fin-doc-mrt-configs-daily';
+import { FIN_G3_ARAP_CONFIGS } from './fin-doc-mrt-configs-arap';
+import { FIN_G3_ARAP2_CONFIGS } from './fin-doc-mrt-configs-arap2';
+import { FIN_G3_ARAP3_CONFIGS } from './fin-doc-mrt-configs-arap3';
+import { FIN_G3_LIST_CONFIGS } from './fin-doc-mrt-configs-lists';
+
+/** Wave G3 files key datasets directly; adapt to the FinReportConfig shape. */
+const wrapG3 = (
+  m: Record<string, Record<string, FinDatasetConfig>>,
+): Record<string, FinReportConfig> =>
+  Object.fromEntries(
+    Object.entries(m).map(([key, datasets]) => [key, { datasets }]),
+  );
+
+export const FIN_G3_MRT_CONFIGS: Record<string, FinReportConfig> = {
+  ...wrapG3(FIN_G3_STATEMENT_CONFIGS),
+  ...wrapG3(FIN_G3_STATEMENT2_CONFIGS),
+  ...wrapG3(FIN_G3_GL_CONFIGS),
+  ...wrapG3(FIN_G3_DAILY_CONFIGS),
+  ...wrapG3(FIN_G3_ARAP_CONFIGS),
+  ...wrapG3(FIN_G3_ARAP2_CONFIGS),
+  ...wrapG3(FIN_G3_ARAP3_CONFIGS),
+  ...wrapG3(FIN_G3_LIST_CONFIGS),
+};
 
 /* ---------------- giro register documents (RG / SG) ---------------- */
 
@@ -241,6 +268,7 @@ const ANGGARAN_NOTE =
 export const FIN_DOC_MRT_CONFIGS: Record<string, FinReportConfig> = {
   ...CASHBANK_DOC_CONFIGS,
   ...JOURNAL_DOC_CONFIGS,
+  ...FIN_G3_MRT_CONFIGS,
   'fin.receivegirodetail1': { datasets: { DS1: giroDocConfig('rg', 'INCOMING') } },
   'fin.receivegirodetail2': { datasets: { DS1: giroDocConfig('rg', 'INCOMING') } },
   'fin.spendgirodetail1': { datasets: { DS1: giroDocConfig('sg', 'OUTGOING') } },

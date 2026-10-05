@@ -30,6 +30,11 @@ export interface FinTerbilangSpec {
   currencyColumn?: string;
 }
 
+export interface FinBindParam {
+  name: string;
+  kind: 'text' | 'number' | 'date';
+}
+
 export interface FinDatasetConfig {
   from?: string;
   select: Record<string, string>;
@@ -39,6 +44,15 @@ export interface FinDatasetConfig {
   /** Main alias whose deleted_at must be NULL. */
   deletedAlias?: string;
   paramFilters?: Record<string, FinParamFilter>;
+  /**
+   * Wave G3: ordered params bound to `?` placeholders inside
+   * select/from/where/groupBy/orderBy (walk order = final SQL text
+   * order). Needed when a value must appear inside a SELECT subquery
+   * (opening balances, running windows) — paramFilters only append
+   * WHERE fragments. Absent params bind NULL; configs supply defaults
+   * via COALESCE(?::date, …). Never put a literal `?` in SQL text.
+   */
+  bindParams?: FinBindParam[];
   empty?: boolean;
   note?: string;
   terbilang?: FinTerbilangSpec;
