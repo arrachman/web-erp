@@ -37,12 +37,12 @@ export class LayoutBuilder extends LayoutBase {
     this.startDocument();
     // Column header repeats per page; emit the first occurrence now.
     if (this.columnHeaderBand) {
-      const scope = this.makeScope(new Map([[this.primaryDataset, this.datasets[this.primaryDataset]?.[0]]]), {}, 1);
+      const scope = this.makeScope(this.firstRowsScopeMap(), {}, 1);
       this.emit({ type: 'columnHeader', name: this.columnHeaderBand.name, groupPath: '', band: this.columnHeaderBand, scope });
     }
     const rootRows = this.primaryRows();
     if (reportHeader) {
-      const scope = this.makeScope(new Map([[this.primaryDataset, rootRows[0]]]), this.rootAgg(rootRows), 1);
+      const scope = this.makeScope(this.firstRowsScopeMap(this.primaryDataset, rootRows[0]), this.rootAgg(rootRows), 1);
       this.emit({ type: 'reportHeader', name: reportHeader.name, groupPath: '', band: reportHeader, scope });
     }
     if (rootRows.length === 0 && emptyBand) {
@@ -51,11 +51,11 @@ export class LayoutBuilder extends LayoutBase {
     }
     this.emitLevel(0, rootRows, '', groupHeaders, groupFooters, dataBands);
     if (columnFooter) {
-      const scope = this.makeScope(new Map([[this.primaryDataset, rootRows[0]]]), this.rootAgg(rootRows), 1);
+      const scope = this.makeScope(this.firstRowsScopeMap(this.primaryDataset, rootRows[0]), this.rootAgg(rootRows), 1);
       this.emit({ type: 'columnFooter', name: columnFooter.name, groupPath: '', band: columnFooter, scope });
     }
     if (reportFooter) {
-      const scope = this.makeScope(new Map([[this.primaryDataset, rootRows[rootRows.length - 1]]]), this.rootAgg(rootRows), 1);
+      const scope = this.makeScope(this.firstRowsScopeMap(this.primaryDataset, rootRows[rootRows.length - 1]), this.rootAgg(rootRows), 1);
       this.emit({ type: 'reportFooter', name: reportFooter.name, groupPath: '', band: reportFooter, scope });
     }
     return this.finalize();
@@ -137,7 +137,7 @@ export class LayoutBuilder extends LayoutBase {
     for (const group of groups) {
       const path = groupPath ? `${groupPath}/${group.key}` : group.key;
       const agg = this.scopeAgg(group.rows, dataBands);
-      const headerScope = this.makeScope(new Map([[dataset, group.rows[0]]]), agg, 1);
+      const headerScope = this.makeScope(this.firstRowsScopeMap(dataset, group.rows[0]), agg, 1);
       const headerItem: FlowItem = {
         type: 'groupHeader',
         name: header.name,
@@ -152,7 +152,7 @@ export class LayoutBuilder extends LayoutBase {
       this.emit(headerItem);
       this.emitLevel(levelIdx + 1, group.rows, path, groupHeaders, groupFooters, dataBands);
       if (footer) {
-        const footerScope = this.makeScope(new Map([[dataset, group.rows[0]]]), agg, 1);
+        const footerScope = this.makeScope(this.firstRowsScopeMap(dataset, group.rows[0]), agg, 1);
         this.emit({ type: 'groupFooter', name: footer.name, groupPath: path, band: footer, scope: footerScope, level });
       }
       this.openFrames = this.openFrames.filter((f) => f !== frame);

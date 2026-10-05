@@ -165,6 +165,24 @@ export abstract class LayoutBase {
     return this.makeScope(new Map([[dataset, row]]), {}, 1);
   }
 
+  /**
+   * Scope rows for header/footer bands: every dataset contributes its
+   * FIRST row (Stimulsoft resolves {DS.field} in header/footer bands
+   * against the first data row), with one dataset's row overridden by
+   * the caller (e.g. the primary dataset's current group row).
+   */
+  protected firstRowsScopeMap(
+    overrideName?: string,
+    overrideRow?: DataRow,
+  ): Map<string, DataRow | undefined> {
+    const map = new Map<string, DataRow | undefined>();
+    for (const [name, rows] of Object.entries(this.datasets)) {
+      map.set(name, rows[0]);
+    }
+    if (overrideName) map.set(overrideName, overrideRow);
+    return map;
+  }
+
   /* ---------------- pagination ---------------- */
 
   protected contentTop(): number {
@@ -239,7 +257,7 @@ export abstract class LayoutBase {
     const modelPages = this.pages.map((flowBands, idx) => {
       const bands: ModelBand[] = [];
       if (this.pageHeaderBand) {
-        const scope = this.makeScope(new Map(), {}, 1);
+        const scope = this.makeScope(this.firstRowsScopeMap(), {}, 1);
         scope.vars.PageNumber = idx + 1;
         const { height, components } = evaluateBandComponents(this.pageHeaderBand, scope, this.ctx.company, this.onWarn);
         bands.push({
@@ -253,7 +271,7 @@ export abstract class LayoutBase {
       }
       bands.push(...flowBands);
       if (this.pageFooterBand) {
-        const scope = this.makeScope(new Map(), {}, 1);
+        const scope = this.makeScope(this.firstRowsScopeMap(), {}, 1);
         scope.vars.PageNumber = idx + 1;
         const y = this.pageH - this.template.page.margins.bottom - this.pageFooterH;
         const { height, components } = evaluateBandComponents(this.pageFooterBand, scope, this.ctx.company, this.onWarn);
