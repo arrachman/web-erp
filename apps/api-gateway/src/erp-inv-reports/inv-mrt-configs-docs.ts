@@ -9,6 +9,7 @@
  */
 
 import {
+  AVG_COST,
   balanceExpr,
   docNoFilter,
   periodFilters,
@@ -71,10 +72,13 @@ function movementDocConfig(
       jml: 'l.base_quantity',
       satuan: 'u.name',
       catatan: 'l.notes',
-      mrnotransaksi: 'rel.doc_number',
-      tsnotransaksi: 'rel.doc_number',
-      harga: 'COALESCE(l.unit_cost, i.average_cost, i.last_hpp, i.purchase_price, 0)',
-      total: 'l.base_quantity * COALESCE(l.unit_cost, i.average_cost, i.last_hpp, i.purchase_price, 0)',
+      // Related-doc columns: on an RS print, tsnotransaksi is the SOURCE
+      // transfer's number; everywhere else mrnotransaksi is the related MR.
+      // (Never override the doc's OWN <prefix>notransaksi set above.)
+      ...(p === 'rs' ? { tsnotransaksi: 'rel.doc_number' } : {}),
+      ...(p !== 'mr' ? { mrnotransaksi: 'rel.doc_number' } : {}),
+      harga: `COALESCE(l.unit_cost, ${AVG_COST})`,
+      total: `l.base_quantity * COALESCE(l.unit_cost, ${AVG_COST})`,
       jmlrealisasi: `GREATEST(${REALISASI_LINE}, ${REALISASI_DOC_ITEM})`,
       jmlsisa: `l.base_quantity - GREATEST(${REALISASI_LINE}, ${REALISASI_DOC_ITEM})`,
       stok: balanceExpr('i.id', 'm.source_warehouse_id'),

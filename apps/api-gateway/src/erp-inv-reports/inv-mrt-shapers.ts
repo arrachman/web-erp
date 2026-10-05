@@ -67,9 +67,31 @@ export function toKsRow(ev: StockEvent, cols: string[], seq: number): Record<str
 }
 
 /** Shape one event into the legacy mutasi stok (`ms*`) staging columns. */
+
+/** Legacy per-module source buckets (msm3ib/msm4grn/…) of mutasi stok. */
+function msBuckets(ev: StockEvent): Record<string, number> {
+  const src = ev.source ?? '';
+  if (ev.type === 'OPENING') return { msm3ib: ev.inQty };
+  if (ev.type === 'TRANSFER') return { msm3ts: -ev.outQty };
+  if (ev.type === 'TRANSFER_RECEIPT') {
+    return src === 'PUR_GOODS_RECEIPT' ? { msm4grn: ev.inQty } : { msm3rs: ev.inQty };
+  }
+  if (ev.type === 'RETURN') {
+    if (src.startsWith('SLS')) return { msm5sr: ev.inQty };
+    if (src.startsWith('PUR')) return { msm4prt: ev.inQty };
+    return { msm3rs: ev.inQty };
+  }
+  if (ev.type === 'ISSUE') {
+    if (src === 'SLS_DELIVERY_ORDER') return { msm5do: -ev.outQty };
+    if (src.startsWith('SLS')) return { msm5si: -ev.outQty };
+  }
+  return {};
+}
+
 export function toMsRow(ev: StockEvent, cols: string[], seq: number): Record<string, unknown> {
   const row = blankRow(cols);
   const fill: Record<string, unknown> = {
+    ...msBuckets(ev),
     msnourut: seq,
     msid: Number(ev.lineKey.slice(1)) || null,
     msgudang: ev.whId,
