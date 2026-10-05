@@ -388,7 +388,38 @@ export const MD_REPORT_CONFIGS: Record<string, MdReportConfig> = {
     datasets: { DS1: emptyConfig('Barang hauling/hourmeter belum ada padanannya di md_items') },
   },
   'md.barangkhusus': {
-    datasets: { DS1: emptyConfig('Laporan barang khusus berbasis mutasi stok — builder transaksi menyusul di gelombang inventory (G4)') },
+    // Wave G4: barang khusus = mutasi stok (POSTED movements) per baris.
+    datasets: {
+      DS1: {
+        from: `
+          inv_stock_movement_lines l
+          JOIN inv_stock_movements m ON m.id = l.stock_movement_id
+          JOIN md_items i ON i.id = l.item_id
+          LEFT JOIN md_partners p ON p.id = m.requested_partner_id
+        `,
+        select: {
+          notransaksi: 'm.doc_number',
+          tgl: 'm.movement_date',
+          namabarang: 'i.name',
+          bkode: 'i.code',
+          jmlmasuk: "CASE WHEN m.movement_type IN ('TRANSFER_RECEIPT', 'RETURN') THEN l.base_quantity ELSE 0 END",
+          jmlkeluar: "CASE WHEN m.movement_type IN ('ISSUE', 'TRANSFER') THEN l.base_quantity ELSE 0 END",
+          kkode: 'p.code',
+          knama: 'p.name',
+          harga: 'COALESCE(l.sale_price, l.unit_cost)',
+          hpp: 'COALESCE(i.average_cost, i.last_hpp, i.purchase_price, 0)',
+          hppfix: 'COALESCE(i.average_cost, i.last_hpp, i.purchase_price, 0)',
+          catatan: 'm.notes',
+          catatandetail: 'l.notes',
+        },
+        where: "m.status = 'POSTED' AND m.deleted_at IS NULL",
+        paramFilters: {
+          period_start: { sql: 'm.movement_date >= ?::date', kind: 'date' },
+          period_end: { sql: 'm.movement_date <= ?::date', kind: 'date' },
+        },
+        orderBy: 'm.movement_date, m.doc_number, l.line_no',
+      },
+    },
   },
   'md.sellingpoint': {
     datasets: { DS1: emptyConfig('Selling point belum ada padanannya di ERP') },
