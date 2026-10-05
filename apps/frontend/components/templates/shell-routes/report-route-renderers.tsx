@@ -63,6 +63,7 @@ const MRT_HUBS: Record<string, { module: string; title: string }> = {
   '/master/reports': { module: 'M1', title: 'Laporan Master Data' },
   '/finance/reports': { module: 'FIN', title: 'Laporan Keuangan' },
   '/warehouse/reports': { module: 'M3', title: 'Laporan Gudang' },
+  '/purchasing/reports': { module: 'M4', title: 'Laporan Pembelian' },
 };
 
 /** Base path for the generic Finance document-report pages. */
