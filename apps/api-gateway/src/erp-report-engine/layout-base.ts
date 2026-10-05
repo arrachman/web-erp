@@ -83,7 +83,7 @@ export abstract class LayoutBase {
     const helpers = helperDatasets(input.format);
     this.datasets = { ...input.data.datasets };
     for (const [k, v] of Object.entries(helpers)) {
-      if (!this.datasets[k]) this.datasets[k] = v;
+      if (!this.datasets[k] || this.datasets[k].length === 0) this.datasets[k] = v;
     }
     const geom = pageSizeMm(
       input.template.page.size,
