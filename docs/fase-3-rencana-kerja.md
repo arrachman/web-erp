@@ -34,7 +34,7 @@ Catatan prototipe: keduanya berasal dari bundle desain "Pena Cendekia" (2026-09-
 | 3 | Model akun sekolah: self-register + approval admin, atau dibuatkan admin | W2, W3 | Self-register + approval (mengikuti alur prototipe) |
 | 4 | Harga yang tampil di portal: HET, harga jual standar, atau harga kontrak per sekolah | W2, W7 | Harga jual standar + HET sebagai referensi; harga kontrak menyusul di W7 |
 | 5 | Provider payment gateway | W5 | Belum dipilih — W5 mulai setelah keputusan; sampai itu tagihan portal tampil tanpa tombol bayar online |
-| 6 | BSP WhatsApp (provider resmi) | W6 | Belum dipilih — notifikasi mulai dari kanal email/dashboard |
+| 6 | ~~BSP WhatsApp (provider resmi)~~ | W6 | **DIPUTUSKAN 2026-10-05: gateway self-hosted** (paket wa-gateway Baileys kompatibel Fonnte dari user) — bukan BSP resmi; risiko ban protokol tidak resmi diterima, mitigasi: nomor WA Business khusus + kill-switch + antrean/log. 
 | 7 | ~~Yayasan (B1)~~ | — | **SUDAH DIPUTUSKAN 2026-10-05: tidak dibangun (permanen), per-sekolah saja** |
 
 ## 3. Workstream
@@ -128,6 +128,6 @@ Gerbang akhir Fase 3 (PRD): **satu musim tahun ajaran berjalan lewat portal**.
 - **DoD terbukti**: order orang tua SO uji masuk Order Hub tahap BARU tertaut sekolah + kelas yang benar, total sesuai harga kontrak (2 × Rp10.000 = Rp20.000).
 
 ### Sisa Fase 3
-- G2 (W5 payment gateway + W6 WhatsApp) masih menunggu keputusan provider di §2.
+- G2: W6 selesai (lihat entri W6 di atas); W5 payment gateway masih dikerjakan sesi paralel.
 - G4 (W8 load test & hardening) belum dikerjakan.
 - Follow-up tercatat: ekspansi komponen paket ke picking/packing gudang; harga kontrak untuk order admin (saat ini resolver dipakai portal — SO admin tetap harga standar/katalog); pendaftaran orang tua multi-anak (v1 satu akun = satu siswa).

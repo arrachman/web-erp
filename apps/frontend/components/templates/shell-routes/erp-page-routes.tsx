@@ -35,6 +35,7 @@ import { ErpRecalcCogsPage } from '@/components/pages/tools-recalc-cogs-page';
 import { ErpRepostJournalPage } from '@/components/pages/tools-repost-journal-page';
 import { ErpDataValidityPage } from '@/components/pages/tools-data-validity-page';
 import { SettingsGroupPage } from '@/components/pages/settings-group-page';
+import { WhatsappPage } from '@/components/pages/whatsapp-page';
 import { ErpBranchesPage } from '@/components/pages/branches-page';
 import { ErpItemsPage } from '@/components/pages/items-page';
 import { ErpUnitsPage } from '@/components/pages/units-page';
@@ -140,6 +141,7 @@ export interface ErpPageCtx {
 
 export const ERP_PAGES: Record<string, (ctx: ErpPageCtx) => React.ReactNode> = {
   '/admin/settings/company': () => <SettingsGroupPage group="company" title="Pengaturan Perusahaan" />,
+  '/admin/settings/whatsapp': () => <WhatsappPage />,
   '/admin/settings/accounting': () => <SettingsGroupPage group="accounting" title="Pengaturan Akuntansi" />,
   '/admin/settings/bank-accounts': () => <ErpBankAccountsPage />,
   '/admin/settings/tax': () => <SettingsGroupPage group="tax" title="Pengaturan Pajak" />,

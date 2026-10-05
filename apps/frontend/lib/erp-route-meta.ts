@@ -29,6 +29,7 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/admin/tools/data-validity': { group: 'Administrator', title: 'Data Validity Check', icon: 'gear' },
   '/admin/preferences': { group: 'Administrator', title: 'Preferensi', icon: 'gear' },
   '/admin/settings/bank-accounts': { group: 'Administrator', title: 'Rekening Bank', icon: 'gear' },
+  '/admin/settings/whatsapp': { group: 'Administrator', title: 'WhatsApp', icon: 'gear' },
   '/admin/settings/approval': { group: 'Administrator', title: 'Pengaturan Persetujuan', icon: 'gear' },
   '/admin/settings/doc-creation-policies': { group: 'Administrator', title: 'Kebijakan Status Dokumen', icon: 'gear' },
   '/admin/settings/home': { group: 'Administrator', title: 'Pengaturan Beranda', icon: 'gear' },
