@@ -361,3 +361,69 @@ satu domain.
   generator dari data ekstraksi — bukan bagian dari migrasi skema.
 
 ---
+
+---
+
+## Report engine .mrt v2 + Gelombang G0/G1 — 2026-10-05
+
+**Konteks.** Registry `m0_reports` (1.326 jenis) sudah live dengan status
+semua `PENDING`. User menyetujui eksekusi ("gas") gelombang sesuai blueprint
+`engine-upgrade-design.md`: G0 = fondasi engine, G1 = Master Data (m1)
+end-to-end sebagai pembuktian.
+
+**Yang dibangun (web-erp, commit `b376b6c`, `7487f3d`, `e119f5f`, `7c1e436`,
+`13e9598`):**
+- **Template v2** di `rpt_templates.template_json` (`version: 2`): band plan
+  lengkap (page/report/column header-footer, group ≤5 level, data, child,
+  empty), ekspresi Stimulsoft disimpan **verbatim** dan dievaluasi oleh
+  evaluator AST baru (`expr-parser`/`expr-functions`, tanpa `eval`): IIF
+  bersarang, `Format` pola .NET + rantai `Replace` penukar separator,
+  agregat ter-scope `Sum/SumIf/CountIf/SumRunning/Count/Last`, `Line`,
+  `PageNumber/TotalPageCount`, terbilang (`f_nominal`). Dataset helper
+  legacy (`formatNominal.fromat` — typo legacy dipertahankan — `formatMinus`,
+  `formatTgl`, `formatQty`) menjadi pseudo-dataset dari **format service**
+  terpusat (`sys_settings` group `company`, kunci `report_format_*`, seed
+  migrasi `20261005_033`; design D7).
+- **Satu model pagination** (`layout-engine`) dikonsumsi 4 exporter:
+  PDF (@react-pdf, font DejaVu Sans sebagai substitut metrik Lao UI),
+  HTML (= pratinjau), DOCX (`docx` — rekonstruksi flow dari model),
+  XLSX (exceljs, mode layout + mode data). Barcode via `bwip-js`.
+- **Importer** `tools/report-import/`: worklist dari `m0_reports`, parser XML
+  toleran (sanitasi `SqlCommand` + regex fallback), konversi ke v2 (mm,
+  style, kondisi serial, relasi), normalisasi placeholder
+  `PTNAMA/RTITLE/PARAM1..5` → konteks perusahaan/laporan, literal sesi
+  (`idlogin/idmsmq`) dibuang + ditandai. Hasil m1: **55/55 CONVERTED**.
+  Status hanya naik via `mark-verified.ts` (CONVERTED → VERIFIED).
+- **Registry API** (`erp-report-registry`, `ErpJwtAuthGuard`):
+  `GET /erp/report-registry?module=` (feed combo box, urut `urutan`),
+  `GET /:code` (detail + `paramSchema`), `POST /:code/render`
+  (html/pdf/docx/xlsx). Provider dataset per `report_key`
+  (`ReportProviderRegistry`); modul domain mendaftar sendiri.
+- **Builder M1** (`erp-md-reports`): satu builder generik mengeksekusi
+  config SQL whitelist per laporan (identifiers hanya dari config, nilai
+  parameter selalu bound). Field template tanpa padanan dipilih `NULL`;
+  dataset tanpa padanan ERP (kategori pengecekan/produksi, barang hauling,
+  selling point, poin pelanggan, label PCI2, barang khusus) render kosong
+  secara jujur dengan catatan di config — tetap `CONVERTED`, tidak akan
+  di-VERIFIED dengan data palsu. Stok (`bstok`) diturunkan dari movement
+  POSTED + opening (konvensi `erp-inv-reports`); harga level 2–5 dari
+  `md_item_prices` (hari ini kosong → NULL). `PRICEKATEGORI` sementara
+  menampilkan kategori barang (tabel kategori harga legacy belum ada).
+- **Frontend**: halaman generik `mrt-report-page` di `/master/reports`
+  (menu `M1.RPT` + `M1.RPT.HUB` "Semua Laporan", migrasi 033, grants clone
+  `M1.FIN`) — satu menu per modul + combo box; modul lain tinggal
+  mendaftarkan rutenya ke `MRT_HUBS`.
+
+**Verifikasi live.** 15 laporan sampel (ITEM, COA, WAREHOUSE, CONTACT, TAX,
+UNIT, CURRENCY, CITY, PROVINCE, COUNTRY, BANK, AREA,
+STOCKSADJUSTMENTTYPE, ITEMDETAIL, LABEL) dirender dari data ERP riil dalam
+4 format: **60/60 pemeriksaan lolos** (marker data riil di HTML, magic
+PDF/ZIP valid). Jumlah baris mode-data XLSX cocok persis dengan DB
+(CITY 548, ITEM 65, COA 208, TAX 56, BANK 56). Ke-15 sampel kini
+**VERIFIED**; 40 sisanya CONVERTED. Batas baris builder 2.000/laporan
+(AREA 7.386 baris terpotong di batas ini — paginasi server menyusul bila
+dibutuhkan).
+
+**Catatan insiden deploy.** Controller render tidak boleh me-return objek
+`res` (interceptor serializer global akan menserialisasikannya secara
+rekursif → stack overflow); handler `@Res()` cukup memanggil `res.send()`.
