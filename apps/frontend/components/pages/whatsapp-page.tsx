@@ -74,17 +74,38 @@ export function WhatsappPage() {
     load();
   }, [load]);
 
-  // Alur pairing: ambil QR (refresh ~8 dtk bila belum siap) + polling status 4 dtk.
+  // Alur pairing: QR WAJIB di-refresh berkala — QR Baileys hidup 60 dtk
+  // (pertama) lalu berotasi tiap 20 dtk; gateway hanya menyajikan QR berumur
+  // <10–50 dtk. Menampilkan satu QR diam >1 menit = HP menolak dengan
+  // "Couldn't link device". Refresh tiap 8 dtk (kadens desain gateway) +
+  // polling status connect tiap 4 dtk.
   React.useEffect(() => {
     if (!pairing) return;
     let stopped = false;
-    let qrTimer: ReturnType<typeof setTimeout> | undefined;
-    let pollTimer: ReturnType<typeof setInterval> | undefined;
+    let activating = false;
+
+    const finishActivate = async () => {
+      if (activating) return;
+      activating = true;
+      try {
+        await activateWaDevice(pairing.token, pairing.phone);
+        notify('Device WhatsApp aktif. Notifikasi siap dikirim.', 'success');
+      } catch (e: any) {
+        notify(e?.message ?? 'Gagal mengaktifkan device.', 'danger');
+      } finally {
+        if (!stopped) {
+          setPairing(null);
+          setQrUrl(null);
+          load();
+        }
+      }
+    };
 
     const fetchQr = async () => {
+      if (activating) return;
       try {
         const r = await getWaDeviceQr(pairing.token);
-        if (stopped) return;
+        if (stopped || activating) return;
         if (r.alreadyConnected) {
           setQrNote('Device sudah terhubung — mengaktifkan…');
           await finishActivate();
@@ -92,34 +113,20 @@ export function WhatsappPage() {
         }
         if (r.qrUrl) {
           setQrUrl(r.qrUrl);
-          setQrNote('Scan dengan WhatsApp → Perangkat tertaut → Tautkan perangkat.');
+          setQrNote(
+            'Scan dengan WhatsApp → Perangkat tertaut → Tautkan perangkat. Kode berganti otomatis — pindai yang sedang tampil.',
+          );
         }
       } catch (e: any) {
-        if (stopped) return;
-        setQrNote(`${e?.message ?? 'QR belum siap'} — mencoba lagi…`);
-        qrTimer = setTimeout(fetchQr, 8000);
-      }
-    };
-
-    const finishActivate = async () => {
-      try {
-        await activateWaDevice(pairing.token, pairing.phone);
-        notify('Device WhatsApp aktif. Notifikasi siap dikirim.', 'success');
-      } catch (e: any) {
-        notify(e?.message ?? 'Gagal mengaktifkan device.', 'danger');
-      } finally {
-        setPairing(null);
-        setQrUrl(null);
-        load();
+        if (!stopped) setQrNote(`${e?.message ?? 'QR belum siap'} — mengambil ulang…`);
       }
     };
 
     const poll = async () => {
+      if (activating) return;
       try {
         const r = await checkWaDevice(pairing.token);
         if (!stopped && r.connected) {
-          if (pollTimer) clearInterval(pollTimer);
-          if (qrTimer) clearTimeout(qrTimer);
           setQrNote('Terhubung! Mengaktifkan device…');
           await finishActivate();
         }
@@ -128,12 +135,13 @@ export function WhatsappPage() {
       }
     };
 
-    fetchQr();
-    pollTimer = setInterval(poll, 4000);
+    void fetchQr();
+    const qrTimer = setInterval(() => void fetchQr(), 8000);
+    const pollTimer = setInterval(() => void poll(), 4000);
     return () => {
       stopped = true;
-      if (qrTimer) clearTimeout(qrTimer);
-      if (pollTimer) clearInterval(pollTimer);
+      clearInterval(qrTimer);
+      clearInterval(pollTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pairing]);
