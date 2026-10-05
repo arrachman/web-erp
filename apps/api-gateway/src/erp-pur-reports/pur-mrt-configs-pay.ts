@@ -3,7 +3,8 @@
  * Payment Plan) and AP (vendor advances) all live in fin_ap_payments
  * discriminated by `source` ('VP' | 'VPP' | 'AP' | 'PP'); settlements
  * in fin_settlement_allocations whose invoice_ref is the settled
- * document's number; instruments in fin_payment_instruments.
+ * document's numeric ID as text; instruments in
+ * fin_payment_instruments.
  * fin_ap_payments dates are `transaction_date`; amounts are document
  * currency in `amount` and base currency in `amount_fx`.
  *
@@ -125,11 +126,17 @@ function allocConfig(
       jmlbayar,
       jmlbayarvalas: 'a.amount_fx',
       catatan: 't.notes',
-      // daftarvp DS1 links the allocation back to its source VPP.
-      idvppdetail: 'a.id',
-      vpptgl: 'vpp.transaction_date',
-      vppnotransaksi: 'vpp.doc_number',
-      nama: 'p.name',
+      // daftarvp DS1 links the allocation back to its source VPP —
+      // only for VP documents (for VPP documents these keys ARE the
+      // header's own number/date and must not be overridden).
+      ...(x === 'vp'
+        ? {
+            idvppdetail: 'a.id',
+            vpptgl: 'vpp.transaction_date',
+            vppnotransaksi: 'vpp.doc_number',
+            nama: 'p.name',
+          }
+        : {}),
       tanggal: DOC_DATE,
       kjumlah: 't.amount',
       subt: 'a.amount',
