@@ -99,7 +99,29 @@ export const balanceExpr = (itemExpr: string, whExpr: string): string => `(
 )`;
 
 /** Current moving-average cost of an item (ERP stored valuation basis). */
-export const AVG_COST = `COALESCE(i.average_cost, i.last_hpp, i.purchase_price, 0)`;
+/**
+ * Derived weighted moving-average unit cost per item — mirrors
+ * ErpInvMovingAverageCostService: Σ value / Σ qty over POSTED opening
+ * lines + POSTED inbound movement lines (TRANSFER_RECEIPT/RETURN) that
+ * carry a unit cost; cost-less inbound lines drop out of BOTH sums.
+ * The md_items.average_cost stamp is unmaintained, so the fallbacks are
+ * last_hpp / purchase_price only.
+ */
+export const AVG_COST = `COALESCE((
+  SELECT SUM(av.v) / NULLIF(SUM(av.q), 0) FROM (
+    SELECT ol.quantity AS q, ol.quantity * ol.unit_cost AS v
+      FROM inv_opening_stock_lines ol
+      JOIN inv_opening_stocks o ON o.id = ol.opening_stock_id
+     WHERE o.status = 'POSTED' AND o.deleted_at IS NULL AND ol.item_id = i.id
+    UNION ALL
+    SELECT l.base_quantity AS q, l.base_quantity * l.unit_cost AS v
+      FROM inv_stock_movement_lines l
+      JOIN inv_stock_movements m ON m.id = l.stock_movement_id
+     WHERE m.status = 'POSTED' AND m.deleted_at IS NULL
+       AND m.movement_type IN ('TRANSFER_RECEIPT', 'RETURN')
+       AND l.unit_cost IS NOT NULL AND l.item_id = i.id
+  ) av
+), NULLIF(i.last_hpp, 0), i.purchase_price, 0)`;
 
 export const periodFilters = (dateExpr: string): Record<string, InvParamFilter> => ({
   period_start: { sql: `${dateExpr} >= ?::date`, kind: 'date' },
