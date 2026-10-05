@@ -108,29 +108,19 @@ function giroDs2Config(
   };
 }
 
-/** SM detail (non-cb): rows repeat header values per line; `a` = bank account name. */
-const SM_FROM = `
-  fin_cash_bank_transactions t
-  JOIN fin_cash_bank_lines l ON l.cash_bank_transaction_id = t.id
-  JOIN md_accounts ba ON ba.id = t.bank_account_id
-  LEFT JOIN md_banks bk ON bk.id = ba.bank_id
-  JOIN md_currencies lcur ON lcur.id = l.currency_id
-  LEFT JOIN md_partners p ON p.id = t.partner_id
-`;
-
 function spendMoneyDetail(): FinReportConfig {
   return {
     datasets: {
       DS1: {
-        from: SM_FROM,
+        from: LINE_FROM,
         select: {
           urutan: 'l.line_no',
           ckodebank: 'bk.code',
-          cnomor: 'ba.code',
-          cnama: 'ba.name',
+          cnomor: 'a.code',
+          cnama: 'a.name',
           smnorek: 'ba.code',
-          debit: 't.amount',
-          debitvalas: 't.amount_fx',
+          debit: 'l.amount',
+          debitvalas: 'l.amount_fx',
           smnotransaksi: 't.doc_number',
           catatan: 'l.notes',
           matauang: 'lcur.code',
