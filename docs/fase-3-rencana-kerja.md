@@ -178,3 +178,5 @@ jelas bertanda, supaya aktivasi provider nyata tinggal mengganti adapter:
 kanal WhatsApp) — keputusan user §2 #5/#6 + akun merchant/BSP; swap
 adapter SIMULASI/LOG ke provider terpilih; ganti webhook secret
 provisional via env `PORTAL_PAYMENT_WEBHOOK_SECRET`.
+
+**Addendum W6 (2026-10-05, keputusan user: "tetap pakai apps/wa-gateway")**: pengirim notifikasi diganti dari adapter LOG ke **wa-gateway self-hosted** (`apps/wa-gateway`, kompatibel Fonnte, device "WA Bahtera Madani" 6285735248244) lewat fasad `ErpWhatsappService` modul `erp-whatsapp` — `erp-outbound-notifications` kini mendelegasikan pengiriman ke fasad itu (template `sys_wa_templates`, log rinci `sys_wa_logs`, dedupe terhadap notifier pemindai lewat sys_wa_logs; orang tua dikirim via `dispatch()` ke nomor akunnya). Terbukti E2E: order uji → `sys_wa_logs` status terkirim dengan message id WA asli, log outbound SENT/WA-GATEWAY. **Saklar aktivasi `SEND_ENABLED` (sys_settings WHATSAPP) saat ini masih `false`** (staging sesi paralel) — selama nonaktif, peristiwa tercatat SKIPPED di log outbound; aktifkan di Pengaturan WhatsApp untuk pengiriman nyata ke sekolah.

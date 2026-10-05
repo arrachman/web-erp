@@ -1,30 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ErpWhatsappService } from '../erp-whatsapp/erp-whatsapp.service';
 
 export type NotificationEvent = 'ORDER_DITERIMA' | 'BARANG_DIKIRIM' | 'TAGIHAN_TERBIT';
 
-const TEMPLATES: Record<NotificationEvent, { code: string; render: (v: Record<string, string>) => string }> = {
-  ORDER_DITERIMA: {
-    code: 'WA_ORDER_DITERIMA',
-    render: (v) =>
-      `Halo ${v.nama}, pesanan ${v.docNumber} sebesar Rp${v.total} sudah kami terima dan sedang diproses. Terima kasih — CV Bahtera Madani.`,
-  },
-  BARANG_DIKIRIM: {
-    code: 'WA_BARANG_DIKIRIM',
-    render: (v) =>
-      `Halo ${v.nama}, pesanan ${v.docNumber} sudah dikirim (Surat Jalan ${v.doNumber}) dan sedang dalam perjalanan ke ${v.sekolah}. — CV Bahtera Madani.`,
-  },
-  TAGIHAN_TERBIT: {
-    code: 'WA_TAGIHAN_TERBIT',
-    render: (v) =>
-      `Halo ${v.nama}, tagihan ${v.invNumber} sebesar Rp${v.total} untuk pesanan ${v.docNumber} sudah terbit. Jatuh tempo ${v.dueDate}. Silakan buka portal untuk membayar. — CV Bahtera Madani.`,
-  },
+/** Nama template di sys_wa_templates (dikelola modul erp-whatsapp). */
+const EVENT_TEMPLATE: Record<NotificationEvent, string> = {
+  ORDER_DITERIMA: 'order_diterima',
+  BARANG_DIKIRIM: 'order_terkirim',
+  TAGIHAN_TERBIT: 'tagihan_terbit',
 };
 
+type DispatchResult = { success: boolean; skipped?: string; logId?: string; status?: string };
+
 function fmtRp(value: Prisma.Decimal | number | string): string {
-  const n = Number(value);
-  return n.toLocaleString('id-ID');
+  return `Rp${Number(value).toLocaleString('id-ID')}`;
 }
 
 function fmtDate(d: Date | null | undefined): string {
@@ -34,93 +25,103 @@ function fmtDate(d: Date | null | undefined): string {
 
 /**
  * W6 — Notifikasi WhatsApp (Fase 3 G2).
- * BSP WhatsApp resmi BELUM dipilih (plan §2 #6), jadi pengirim v1 adalah
- * adapter 'LOG': pesan dirender dari template, dicatat ke
- * sys_notification_logs dengan status SENT (tercatat) — bukan terkirim ke
- * WhatsApp sungguhan. Saat BSP dipilih, hanya method send() yang diganti
- * adapter nyata; template, hook peristiwa, dan log tidak berubah.
- * Service ini TIDAK PERNAH melempar error ke pemanggil: kegagalan
- * notifikasi tidak boleh menggagalkan transaksi bisnis.
+ * Pengiriman lewat **wa-gateway self-hosted** (`apps/wa-gateway`, kompatibel
+ * Fonnte, device "WA Bahtera Madani") melalui fasad ErpWhatsappService —
+ * sesuai keputusan user 2026-10-05 (bukan BSP komersial). Service ini
+ * mengorkestrasi peristiwa ERP (order dibuat / DO POST / invoice POST) dan
+ * mencatat hasilnya ke sys_notification_logs; render template + antrean +
+ * log pengiriman rinci hidup di modul erp-whatsapp (sys_wa_templates /
+ * sys_wa_logs). Saklar aktivasi: sys_settings WHATSAPP SEND_ENABLED —
+ * bila nonaktif, dispatch di-skip dan tercatat SKIPPED di sini (tidak ada
+ * pengiriman diam-diam). Dedupe dengan notifier pemindai erp-whatsapp
+ * lewat keberadaan baris sys_wa_logs untuk referensi+template yang sama.
+ * Service ini TIDAK PERNAH melempar error ke pemanggil.
  */
 @Injectable()
 export class ErpOutboundNotificationsService {
   private readonly logger = new Logger(ErpOutboundNotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wa: ErpWhatsappService,
+  ) {}
 
-  /** Pengirim v1 (LOG). Adapter BSP menggantikan isi method ini saja. */
-  private async send(_phone: string, _message: string): Promise<{ providerMessageId: string | null }> {
-    return { providerMessageId: null };
-  }
-
-  private async dispatchToAccount(params: {
+  private async writeLog(params: {
     event: NotificationEvent;
-    account: { id: bigint; fullName: string; phone: string | null; partnerId: bigint | null };
-    vars: Record<string, string>;
-    docType: string;
+    partnerId: bigint | null;
+    portalAccountId: bigint | null;
+    recipientPhone: string | null;
+    recipientName: string | null;
     docId: bigint;
     docNumber: string;
+    status: string;
+    error?: string | null;
+    waLogId?: string;
   }): Promise<void> {
-    const tpl = TEMPLATES[params.event];
-    const message = tpl.render(params.vars);
-    const base = {
-      channel: 'WHATSAPP',
-      event: params.event,
-      templateCode: tpl.code,
-      recipientPhone: params.account.phone,
-      recipientName: params.account.fullName,
-      partnerId: params.account.partnerId,
-      portalAccountId: params.account.id,
-      relatedDocType: params.docType,
-      relatedDocId: params.docId,
-      relatedDocNumber: params.docNumber,
-      message,
-      provider: 'LOG',
-    };
-    if (!params.account.phone) {
-      await this.prisma.erpNotificationLog.create({
-        data: { ...base, status: 'SKIPPED', error: 'Akun portal tidak punya nomor telepon.' },
-      });
-      return;
+    let message: string | null = null;
+    let providerMessageId: string | null = null;
+    if (params.waLogId) {
+      const waLog = await this.prisma.erpWaLog.findUnique({
+        where: { id: BigInt(params.waLogId) },
+        select: { body: true, messageId: true, errorReason: true },
+      }).catch(() => null);
+      message = waLog?.body ?? null;
+      providerMessageId = waLog?.messageId ?? null;
+      if (!params.error && waLog?.errorReason) params.error = waLog.errorReason;
     }
-    try {
-      const sent = await this.send(params.account.phone, message);
-      await this.prisma.erpNotificationLog.create({
-        data: { ...base, status: 'SENT', providerMessageId: sent.providerMessageId },
-      });
-    } catch (err) {
-      this.logger.warn(`Notifikasi ${params.event} gagal: ${(err as Error).message}`);
-      await this.prisma.erpNotificationLog.create({
-        data: { ...base, status: 'FAILED', error: (err as Error).message },
-      }).catch(() => undefined);
+    await this.prisma.erpNotificationLog.create({
+      data: {
+        channel: 'WHATSAPP',
+        event: params.event,
+        templateCode: EVENT_TEMPLATE[params.event],
+        recipientPhone: params.recipientPhone,
+        recipientName: params.recipientName,
+        partnerId: params.partnerId,
+        portalAccountId: params.portalAccountId,
+        relatedDocType: 'sls_orders',
+        relatedDocId: params.docId,
+        relatedDocNumber: params.docNumber,
+        message,
+        status: params.status,
+        provider: 'WA-GATEWAY',
+        providerMessageId,
+        error: params.error ?? null,
+        metadata: params.waLogId ? { waLogId: params.waLogId } : undefined,
+      },
+    }).catch((err) => this.logger.warn(`tulis log notifikasi gagal: ${(err as Error).message}`));
+  }
+
+  private mapResult(result: DispatchResult): { status: string; error?: string } {
+    if (result.success) return { status: 'SENT' };
+    switch (result.skipped) {
+      case 'disabled':
+        return { status: 'SKIPPED', error: 'Pengiriman WA nonaktif (SEND_ENABLED=false di Pengaturan WhatsApp).' };
+      case 'no_phone':
+        return { status: 'SKIPPED', error: 'Tidak ada nomor WA tujuan (akun portal/kontak partner kosong).' };
+      case 'template_not_found':
+        return { status: 'SKIPPED', error: 'Template WA tidak ada/nonaktif di sys_wa_templates.' };
+      default:
+        return { status: 'FAILED' }; // alasan spesifik diambil dari sys_wa_logs di writeLog
     }
   }
 
-  /** Akun portal penerima untuk sebuah order: orang tua pemesan saja, atau semua akun aktif sekolah. */
-  private async recipientsForOrder(order: {
-    id: bigint;
-    customerId: bigint | null;
-    customFields: unknown;
-  }): Promise<{ id: bigint; fullName: string; phone: string | null; partnerId: bigint | null }[]> {
-    const cf = (order.customFields ?? {}) as { portalParent?: { accountId?: string } };
-    if (cf.portalParent?.accountId) {
-      const acc = await this.prisma.erpPortalAccount.findFirst({
-        where: { id: BigInt(cf.portalParent.accountId), deletedAt: null, status: 'ACTIVE' },
-        select: { id: true, fullName: true, phone: true, partnerId: true },
-      });
-      return acc ? [acc] : [];
-    }
-    return this.prisma.erpPortalAccount.findMany({
-      where: { partnerId: order.customerId, deletedAt: null, status: 'ACTIVE' },
-      select: { id: true, fullName: true, phone: true, partnerId: true },
-      take: 20,
+  /** Sudah ada log WA untuk referensi+template ini? (dedupe vs notifier pemindai) */
+  private async alreadySentViaWa(referenceType: string, referenceId: bigint, event: NotificationEvent): Promise<boolean> {
+    const tpl = await this.prisma.erpWaTemplate.findFirst({
+      where: { name: EVENT_TEMPLATE[event] },
+      select: { id: true },
     });
+    if (!tpl) return false;
+    const count = await this.prisma.erpWaLog.count({
+      where: { referenceType, referenceId, templateId: tpl.id },
+    });
+    return count > 0;
   }
 
   private async notifyForOrder(
     orderId: bigint,
     event: NotificationEvent,
-    extra: { doNumber?: string; invNumber?: string; dueDate?: Date | null; totalOverride?: Prisma.Decimal },
+    extra: { doNumber?: string; invNumber?: string; invoiceId?: bigint; dueDate?: Date | null; totalOverride?: Prisma.Decimal },
   ): Promise<void> {
     try {
       const order = await this.prisma.erpSlsOrder.findFirst({
@@ -134,24 +135,90 @@ export class ErpOutboundNotificationsService {
       const partner = await this.prisma.erpPartner.findUnique({
         where: { id: order.customerId }, select: { name: true },
       });
-      const recipients = await this.recipientsForOrder(order);
-      if (recipients.length === 0) return;
-      const vars: Record<string, string> = {
-        nama: '',
-        docNumber: order.docNumber,
-        total: fmtRp(extra.totalOverride ?? order.grandTotal),
-        sekolah: partner?.name ?? '',
-        doNumber: extra.doNumber ?? '',
-        invNumber: extra.invNumber ?? '',
-        dueDate: fmtDate(extra.dueDate),
-      };
-      for (const acc of recipients) {
-        vars.nama = acc.fullName;
-        await this.dispatchToAccount({
-          event, account: acc, vars,
-          docType: 'sls_orders', docId: order.id, docNumber: order.docNumber,
+      const schoolName = partner?.name ?? '';
+      const cf = (order.customFields ?? {}) as { portalParent?: { accountId?: string } };
+      const referenceType = event === 'TAGIHAN_TERBIT' ? 'INVOICE' : 'ORDER';
+      const referenceId = event === 'TAGIHAN_TERBIT' && extra.invoiceId ? extra.invoiceId : order.id;
+      const total = extra.totalOverride ?? order.grandTotal;
+
+      // ── Orang tua: kirim ke nomor akun orang tua pemesan saja ──
+      if (cf.portalParent?.accountId) {
+        const account = await this.prisma.erpPortalAccount.findFirst({
+          where: { id: BigInt(cf.portalParent.accountId), deletedAt: null },
+          select: { id: true, fullName: true, phone: true },
         });
+        if (!account?.phone) {
+          await this.writeLog({
+            event, partnerId: order.customerId, portalAccountId: account?.id ?? null,
+            recipientPhone: account?.phone ?? null, recipientName: account?.fullName ?? null,
+            docId: order.id, docNumber: order.docNumber,
+            status: 'SKIPPED', error: 'Akun orang tua tidak punya nomor telepon.',
+          });
+          return;
+        }
+        const variables: Record<string, string> = {
+          sekolah: schoolName,
+          nomor_order: order.docNumber,
+          total: fmtRp(total),
+          nomor_do: extra.doNumber ?? '',
+          nomor_invoice: extra.invNumber ?? '',
+          jatuh_tempo: fmtDate(extra.dueDate),
+        };
+        const result = await this.wa.dispatch({
+          templateName: EVENT_TEMPLATE[event],
+          recipientType: 'orang_tua',
+          recipientPhone: account.phone,
+          variables,
+          referenceType,
+          referenceId,
+        }) as DispatchResult;
+        const mapped = this.mapResult(result);
+        await this.writeLog({
+          event, partnerId: order.customerId, portalAccountId: account.id,
+          recipientPhone: account.phone, recipientName: account.fullName,
+          docId: order.id, docNumber: order.docNumber,
+          status: mapped.status, error: mapped.error, waLogId: result.logId,
+        });
+        return;
       }
+
+      // ── Sekolah: fasad notify* (resolusi nomor: akun portal → kontak) ──
+      if (await this.alreadySentViaWa(referenceType, referenceId, event)) {
+        await this.writeLog({
+          event, partnerId: order.customerId, portalAccountId: null,
+          recipientPhone: null, recipientName: schoolName,
+          docId: order.id, docNumber: order.docNumber,
+          status: 'SKIPPED', error: 'Sudah diberitahu via notifier WA (dedupe sys_wa_logs).',
+        });
+        return;
+      }
+      const phone = await this.wa.resolvePartnerPhone(order.customerId);
+      let result: DispatchResult;
+      if (event === 'ORDER_DITERIMA') {
+        result = await this.wa.notifyOrderReceived({
+          partnerId: order.customerId, schoolName,
+          docNumber: order.docNumber, grandTotal: order.grandTotal.toString(), orderId: order.id,
+        }) as DispatchResult;
+      } else if (event === 'BARANG_DIKIRIM') {
+        result = await this.wa.notifyOrderShipped({
+          partnerId: order.customerId, schoolName,
+          docNumber: order.docNumber, doNumber: extra.doNumber ?? '', orderId: order.id,
+        }) as DispatchResult;
+      } else {
+        result = await this.wa.notifyInvoiceIssued({
+          partnerId: order.customerId, schoolName,
+          invoiceNumber: extra.invNumber ?? '', orderNumber: order.docNumber,
+          grandTotal: total.toString(), dueDate: fmtDate(extra.dueDate),
+          invoiceId: extra.invoiceId ?? BigInt(0),
+        }) as DispatchResult;
+      }
+      const mapped = this.mapResult(result);
+      await this.writeLog({
+        event, partnerId: order.customerId, portalAccountId: null,
+        recipientPhone: phone, recipientName: schoolName,
+        docId: order.id, docNumber: order.docNumber,
+        status: mapped.status, error: mapped.error, waLogId: result.logId,
+      });
     } catch (err) {
       this.logger.warn(`notifyForOrder ${event} order ${orderId}: ${(err as Error).message}`);
     }
@@ -185,7 +252,7 @@ export class ErpOutboundNotificationsService {
       });
       if (!inv?.orderId) return;
       await this.notifyForOrder(inv.orderId, 'TAGIHAN_TERBIT', {
-        invNumber: inv.docNumber, dueDate: inv.dueDate, totalOverride: inv.grandTotal,
+        invNumber: inv.docNumber, invoiceId, dueDate: inv.dueDate, totalOverride: inv.grandTotal,
       });
     } catch (err) {
       this.logger.warn(`notifyInvoicePosted ${invoiceId}: ${(err as Error).message}`);
