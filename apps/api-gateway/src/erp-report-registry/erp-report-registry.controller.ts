@@ -47,6 +47,8 @@ export class ErpReportRegistryController {
     if (dto.format !== 'html') {
       res.setHeader('Content-Disposition', `attachment; filename="${out.filename}"`);
     }
-    return res.send(out.body);
+    // NOTE: do not return the response object — the global bigint
+    // serializer interceptor would try to serialize it (circular).
+    res.send(out.body);
   }
 }
