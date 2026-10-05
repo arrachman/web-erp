@@ -192,6 +192,7 @@ export const ERP_ROUTE_META: Record<string, { group: string; title: string; icon
   '/purchasing/opening-ap-balance': { group: 'Pembelian', title: 'Saldo Awal AP', icon: 'shopping-cart' },
   '/settings/appearance': { group: 'Administrator', title: 'Appearance', icon: 'gear' },
   // Report hubs — the "Semua Laporan" ITEM under each module's Reports GROUP
+  '/master/reports': { group: 'Data Master', title: 'Laporan Master Data', icon: 'file' },
   '/finance/reports': { group: 'Finance', title: 'Laporan Keuangan', icon: 'file' },
   '/warehouse/reports': { group: 'Gudang', title: 'Laporan Gudang', icon: 'file' },
   '/purchasing/reports': { group: 'Pembelian', title: 'Laporan Pembelian', icon: 'file' },

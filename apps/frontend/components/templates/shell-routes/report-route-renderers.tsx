@@ -17,6 +17,7 @@ import { invReportOptions } from '@/lib/inv-report-options';
 import { PurReportPage } from '@/components/pages/pur-report-page';
 import { purReportOptions } from '@/lib/pur-report-options';
 import { ReportHubPage } from '@/components/pages/report-hub-page';
+import { MrtReportPage } from '@/components/pages/mrt-report-page';
 import type { ReportModule } from '@/lib/api/report-catalog';
 
 /**
@@ -41,6 +42,10 @@ export function renderReportHubRoute(
   onNavigate: (route: string) => void,
 ): React.ReactNode {
   const normalized = route.endsWith('/') ? route.slice(0, -1) : route;
+  const mrtHub = MRT_HUBS[normalized];
+  if (mrtHub) {
+    return <MrtReportPage module={mrtHub.module} title={mrtHub.title} code={normalized.slice(1)} />;
+  }
   const hub = REPORT_HUBS[normalized];
   if (!hub) return null;
   return (
@@ -52,6 +57,11 @@ export function renderReportHubRoute(
     />
   );
 }
+
+/** Hub laporan .mrt (Wave G1): satu menu per modul + combo box jenis laporan. */
+const MRT_HUBS: Record<string, { module: string; title: string }> = {
+  '/master/reports': { module: 'M1', title: 'Laporan Master Data' },
+};
 
 /** Base path for the generic Finance document-report pages. */
 const FIN_DOC_REPORT_PREFIX = '/finance/reports/';
