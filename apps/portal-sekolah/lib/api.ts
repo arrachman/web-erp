@@ -125,3 +125,15 @@ export interface PortalInvoice {
   orderId: string | null;
   orderDocNumber: string | null;
 }
+
+export interface PortalPayment {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string | null;
+  provider: string;
+  vaNumber: string | null;
+  amount: string;
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
+  expiresAt: string | null;
+  paidAt: string | null;
+}

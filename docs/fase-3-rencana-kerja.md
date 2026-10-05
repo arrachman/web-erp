@@ -131,3 +131,50 @@ Gerbang akhir Fase 3 (PRD): **satu musim tahun ajaran berjalan lewat portal**.
 - G2: W6 selesai (lihat entri W6 di atas); W5 payment gateway masih dikerjakan sesi paralel.
 - G4 (W8 load test & hardening) belum dikerjakan.
 - Follow-up tercatat: ekspansi komponen paket ke picking/packing gudang; harga kontrak untuk order admin (saat ini resolver dipakai portal — SO admin tetap harga standar/katalog); pendaftaran orang tua multi-anak (v1 satu akun = satu siswa).
+
+---
+
+## Kemajuan — Gelombang 2 (W5 + W6) & Gelombang 4 (W8) SELESAI & LIVE (2026-10-05)
+
+**Keputusan §2 #5/#6 BELUM dipilih user** — sesuai semangat §6 (jangan stall),
+yang dibangun adalah infrastruktur lengkap dengan adapter provisional yang
+jelas bertanda, supaya aktivasi provider nyata tinggal mengganti adapter:
+
+- **W5 Pembayaran**: tabel `fin_portal_payments` (migrasi
+  `20261005_029_erp_portal_payments_notifications`); endpoint portal
+  `POST /erp/portal/invoices/:id/pay` (idempoten, satu intent PENDING per
+  invoice; orang tua terisolasi ke invoice ordernya sendiri) menghasilkan
+  nomor VA; webhook `POST /erp/portal/payments/webhook/:provider`
+  terverifikasi HMAC-SHA256 → pembayaran PAID → **AR Receipt (IP) dibuat
+  dan di-POST otomatis** (akun penerimaan Bank BCA 1110.01.001) → invoice
+  LUNAS tanpa input manual; webhook ganda = no-op (idempoten). Provider
+  v1 = `SIMULASI` (uang sungguhan TIDAK mengalir); halaman Tagihan portal
+  menampilkan tombol Bayar + VA + status, dengan catatan mode simulasi.
+  Modul AR Receipt di SF yang masih stub disinkronkan penuh dari web-erp
+  agar alur ini jalan live. Terbukti E2E: invoice Rp43.000 → VA → webhook
+  → IP000002 POSTED → invoice PAID.
+- **W6 Notifikasi**: modul `erp-outbound-notifications` + tabel
+  `sys_notification_logs`; template WA untuk 3 peristiwa — ORDER_DITERIMA
+  (checkout portal), BARANG_DIKIRIM (DO POST), TAGIHAN_TERBIT (invoice
+  POST) — hook di controller terkait, service tidak pernah menggagalkan
+  transaksi; penerima = akun portal aktif sekolah (orang tua: hanya
+  pemesan); tanpa nomor HP tercatat SKIPPED. Pengirim v1 = adapter `LOG`
+  (pesan dirender + tercatat SENT di log; belum terkirim ke WhatsApp
+  sungguhan). Log terbaca admin di `GET /erp/outbound-notifications/logs`.
+  **Catatan discovery**: ada upaya WA paralel di SF (model
+  `sys_wa_templates`/`sys_wa_logs` + container `nuha-wa-gateway`) —
+  kandidat jalur pengirim nyata menggantikan adapter LOG, menunggu
+  keputusan user menyatukan arah.
+- **W8 Hardening & load test**: rate limit endpoint publik portal
+  (tulis/auth 15/mnt/IP, baca 240/mnt/IP — terbukti 429); uji negatif
+  lintas sekolah lolos (404/404/list kosong). Load test (laporan:
+  `docs/fase-3-load-test-2026-10-05.md`): FE katalog 1.692 req/dtk
+  100% sukses di konkurensi 50; API katalog p95 16,8 ms (550/550 sukses
+  di bawah cap); batas mengikat = throttler global gateway
+  600 req/60 dtk/IP (konfigurasi, bukan kapasitas) — dinilai LULUS untuk
+  target 1.000+ pengguna bersamaan dengan catatan pemantauan.
+
+**Sisa pekerjaan Fase 3**: aktivasi provider nyata (payment gateway +
+kanal WhatsApp) — keputusan user §2 #5/#6 + akun merchant/BSP; swap
+adapter SIMULASI/LOG ke provider terpilih; ganti webhook secret
+provisional via env `PORTAL_PAYMENT_WEBHOOK_SECRET`.

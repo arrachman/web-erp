@@ -17,13 +17,17 @@ import { QuerySlsDeliveryOrdersDto } from './dto/query-sls-delivery-orders.dto';
 import { TransitionSlsDeliveryOrderDto } from './dto/transition-sls-delivery-order.dto';
 import { UpdateSlsDeliveryOrderDto } from './dto/update-sls-delivery-order.dto';
 import { ErpSlsDeliveryOrdersService } from './erp-sls-delivery-orders.service';
+import { ErpOutboundNotificationsService } from '../erp-outbound-notifications/erp-outbound-notifications.service';
 
 @ApiTags('ERP Sls Delivery Orders')
 @ApiBearerAuth()
 @UseGuards(ErpJwtAuthGuard)
 @Controller('erp/sls/delivery-orders')
 export class ErpSlsDeliveryOrdersController {
-  constructor(private readonly service: ErpSlsDeliveryOrdersService) {}
+  constructor(
+    private readonly service: ErpSlsDeliveryOrdersService,
+    private readonly notifications: ErpOutboundNotificationsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create delivery order (header + item lines)' })
@@ -51,8 +55,11 @@ export class ErpSlsDeliveryOrdersController {
 
   @Post(':id/transition')
   @ApiOperation({ summary: 'Workflow action: SUBMIT/APPROVE/REJECT/POST/REOPEN' })
-  transition(@Param('id') id: string, @Body() dto: TransitionSlsDeliveryOrderDto, @Request() req: any) {
-    return this.service.transition(BigInt(id), dto, req.user?.id);
+  async transition(@Param('id') id: string, @Body() dto: TransitionSlsDeliveryOrderDto, @Request() req: any) {
+    const result = await this.service.transition(BigInt(id), dto, req.user?.id);
+    // W6: barang dikirim → notifikasi portal (tidak pernah menggagalkan request).
+    if (String(dto.action) === 'POST') void this.notifications.notifyDeliveryPosted(BigInt(id));
+    return result;
   }
 
   @Delete(':id')

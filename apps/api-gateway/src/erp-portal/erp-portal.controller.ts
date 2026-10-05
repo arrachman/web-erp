@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ErpJwtAuthGuard } from '../erp-auth/guards/erp-jwt-auth.guard';
 import { ErpPortalAuthGuard } from './erp-portal.guard';
+import { PortalRateLimitGuard } from './erp-portal-rate-limit.guard';
 import { ErpPortalAccountsService } from './erp-portal-accounts.service';
 import { ErpPortalShopService } from './erp-portal-shop.service';
 import {
@@ -28,6 +29,7 @@ const actorId = (req: any): string | undefined =>
 
 /** Publik: registrasi, login, lead landing (W1), sorotan katalog landing. */
 @Controller('erp/portal')
+@UseGuards(PortalRateLimitGuard)
 export class ErpPortalPublicController {
   constructor(
     private readonly accounts: ErpPortalAccountsService,

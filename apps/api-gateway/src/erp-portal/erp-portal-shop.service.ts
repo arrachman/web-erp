@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ErpSlsOrdersService } from '../erp-sls-orders/erp-sls-orders.service';
 import { ErpContractsService } from '../erp-contracts/erp-contracts.service';
 import { ErpBundlesService } from '../erp-contracts/erp-bundles.service';
+import { ErpOutboundNotificationsService } from '../erp-outbound-notifications/erp-outbound-notifications.service';
 import {
   deriveHubStage,
   HUB_STAGE_LABELS,
@@ -37,6 +38,7 @@ export class ErpPortalShopService {
     private readonly orders: ErpSlsOrdersService,
     private readonly contracts: ErpContractsService,
     private readonly bundles: ErpBundlesService,
+    private readonly notifications: ErpOutboundNotificationsService,
   ) {}
 
   // ── Catalog ───────────────────────────────────────────────────────────────
@@ -223,6 +225,8 @@ export class ErpPortalShopService {
     const order = created?.data ?? created;
     const fresh = await this.prisma.erpSlsOrder.findUnique({ where: { id: BigInt(order.id) } });
     if (!fresh) throw new BadRequestException('Order gagal dibuat');
+    // W6: pesanan diterima → notifikasi (service tidak pernah melempar error).
+    await this.notifications.notifyOrderCreated(fresh.id);
     return this.orderView(fresh, await this.factsFor([fresh]));
   }
 

@@ -73,6 +73,7 @@ import { ErpMfgSchedulesModule } from './erp-mfg-schedules/erp-mfg-schedules.mod
 import { ErpMfgVdpModule } from './erp-mfg-vdp/erp-mfg-vdp.module';
 import { ErpPortalModule } from './erp-portal/erp-portal.module';
 import { ErpContractsModule } from './erp-contracts/erp-contracts.module';
+import { ErpOutboundNotificationsModule } from './erp-outbound-notifications/erp-outbound-notifications.module';
 import { ErpMiscellaneousModule } from './erp-miscellaneous/miscellaneous.module';
 import { ErpNotificationsModule } from './erp-notifications/erp-notifications.module';
 import { ErpNozzlesModule } from './erp-nozzles/nozzles.module';
@@ -241,6 +242,7 @@ import { ErpWorkEstimatesModule } from './erp-work-estimates/work-estimates.modu
     ErpMfgVdpModule,
     ErpPortalModule,
     ErpContractsModule,
+    ErpOutboundNotificationsModule,
     ErpMiscellaneousModule,
     ErpNotificationsModule,
     ErpNozzlesModule,

@@ -17,13 +17,17 @@ import { QuerySlsInvoicesDto } from './dto/query-sls-invoices.dto';
 import { TransitionSlsInvoiceDto } from './dto/transition-sls-invoice.dto';
 import { UpdateSlsInvoiceDto } from './dto/update-sls-invoice.dto';
 import { ErpSlsInvoicesService } from './erp-sls-invoices.service';
+import { ErpOutboundNotificationsService } from '../erp-outbound-notifications/erp-outbound-notifications.service';
 
 @ApiTags('ERP Sls Invoices')
 @ApiBearerAuth()
 @UseGuards(ErpJwtAuthGuard)
 @Controller('erp/sls/invoices')
 export class ErpSlsInvoicesController {
-  constructor(private readonly service: ErpSlsInvoicesService) {}
+  constructor(
+    private readonly service: ErpSlsInvoicesService,
+    private readonly notifications: ErpOutboundNotificationsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create sales invoice (header + item lines)' })
@@ -51,8 +55,11 @@ export class ErpSlsInvoicesController {
 
   @Post(':id/transition')
   @ApiOperation({ summary: 'Workflow action: SUBMIT/APPROVE/REJECT/POST/REOPEN — POST creates AR entry' })
-  transition(@Param('id') id: string, @Body() dto: TransitionSlsInvoiceDto, @Request() req: any) {
-    return this.service.transition(BigInt(id), dto, req.user?.id);
+  async transition(@Param('id') id: string, @Body() dto: TransitionSlsInvoiceDto, @Request() req: any) {
+    const result = await this.service.transition(BigInt(id), dto, req.user?.id);
+    // W6: tagihan terbit → notifikasi portal (tidak pernah menggagalkan request).
+    if (String(dto.action) === 'POST') void this.notifications.notifyInvoicePosted(BigInt(id));
+    return result;
   }
 
   @Delete(':id')
