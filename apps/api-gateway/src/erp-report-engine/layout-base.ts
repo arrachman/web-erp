@@ -113,7 +113,12 @@ export abstract class LayoutBase {
   ): StiScope {
     const datasets: StiScope['datasets'] = {};
     for (const [name, rows] of Object.entries(this.datasets)) {
-      datasets[name] = { row: currentRows.get(name), rows };
+      // Single-row datasets are constants (format helpers, company info):
+      // their current row is always row 0 in every scope, as in Stimulsoft.
+      datasets[name] = {
+        row: currentRows.get(name) ?? (rows.length === 1 ? rows[0] : undefined),
+        rows,
+      };
     }
     const scope: StiScope = {
       datasets,
