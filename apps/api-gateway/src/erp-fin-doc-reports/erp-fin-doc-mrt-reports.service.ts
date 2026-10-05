@@ -44,7 +44,11 @@ export class ErpFinDocMrtReportsService implements ReportDataProvider, OnModuleI
   }
 
   canHandle(reportKey: string): boolean {
-    return reportKey.startsWith('fin.');
+    // Wave G4: claim only keys with a builder config. The 25 inventory
+    // analytics keys registered under fin.* belong to the inventory
+    // provider; unconfigured keys keep the generic empty fallback,
+    // exactly as build() rendered them before.
+    return reportKey in FIN_DOC_MRT_CONFIGS;
   }
 
   async build(req: ReportRenderRequest): Promise<ReportData> {
