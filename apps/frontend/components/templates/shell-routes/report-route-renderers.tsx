@@ -61,6 +61,7 @@ export function renderReportHubRoute(
 /** Hub laporan .mrt (Wave G1): satu menu per modul + combo box jenis laporan. */
 const MRT_HUBS: Record<string, { module: string; title: string }> = {
   '/master/reports': { module: 'M1', title: 'Laporan Master Data' },
+  '/finance/reports': { module: 'FIN', title: 'Laporan Keuangan' },
 };
 
 /** Base path for the generic Finance document-report pages. */
