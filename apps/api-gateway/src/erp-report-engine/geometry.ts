@@ -17,7 +17,7 @@ export const MM = 72 / 25.4;
 export const mm = (value: number): number => Math.round(value * MM * 100) / 100;
 
 /** Page dimensions in mm (portrait). */
-const PAGE_MM: Record<PageSize, { w: number; h: number }> = {
+export const PAGE_MM: Record<PageSize, { w: number; h: number }> = {
   A4: { w: 210, h: 297 },
   A5: { w: 148, h: 210 },
   Letter: { w: 215.9, h: 279.4 },
@@ -104,4 +104,19 @@ export function boxStyle(x: number, y: number, width: number, height: number): P
     width: mm(width),
     height: mm(height),
   };
+}
+
+/** Page dimensions in mm for a (possibly custom) size — used by the v2 layout engine. */
+export function pageSizeMm(
+  size: PageSize | 'Custom',
+  orientation: Orientation,
+  customSize?: { widthMm: number; heightMm: number },
+): { widthMm: number; heightMm: number } {
+  const base =
+    size === 'Custom' && customSize
+      ? { w: customSize.widthMm, h: customSize.heightMm }
+      : (PAGE_MM[size as PageSize] ?? PAGE_MM.A4);
+  return orientation === 'landscape'
+    ? { widthMm: base.h, heightMm: base.w }
+    : { widthMm: base.w, heightMm: base.h };
 }

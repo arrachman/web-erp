@@ -21,6 +21,18 @@ import type {
 } from './engine-types';
 import { buildReportPdf } from './pdf-document';
 import { buildTableTemplate, type TableColumnDef } from './template-builder';
+import {
+  isTemplateV2,
+  type RenderContextV2,
+  type ReportData,
+  type ReportTemplateV2,
+} from './engine-types-v2';
+import { buildRenderModel } from './layout-engine';
+import type { ReportFormatSettings } from './report-format';
+import { renderModelHtml } from './exporters/html-exporter';
+import { renderModelPdf } from './exporters/pdf-exporter';
+import { renderModelDocx } from './exporters/docx-exporter';
+import { renderModelXlsx } from './exporters/xlsx-exporter';
 
 /** Loose shape of the stored `templateJson` (auto or explicit). */
 interface StoredTemplate {
@@ -105,6 +117,69 @@ export class ReportEngineService {
     }
     if (!stored) return null;
     return this.tryRenderPdf(this.materialize(stored, columns), ctx);
+  }
+
+  /* ---------------- Wave G0: .mrt template v2 pipeline ---------------- */
+
+  /**
+   * Render a converted .mrt template (v2) into any of the 4 export formats
+   * from ONE pagination model (design D3). xlsxMode: 'layout' | 'data'.
+   */
+  async renderV2(
+    template: ReportTemplateV2,
+    data: ReportData,
+    ctx: RenderContextV2,
+    formatSettings: ReportFormatSettings,
+    outFormat: 'html' | 'pdf' | 'docx' | 'xlsx',
+    xlsxMode: 'layout' | 'data' = 'layout',
+  ): Promise<{ contentType: string; body: Buffer | string; ext: string }> {
+    const warnings: string[] = [];
+    const model = buildRenderModel({
+      template,
+      data,
+      ctx,
+      format: formatSettings,
+      onWarn: (m) => warnings.push(m),
+    });
+    if (warnings.length) {
+      this.logger.warn(`renderV2 ${ctx.report.code}: ${warnings.slice(0, 5).join(' | ')}`);
+    }
+    switch (outFormat) {
+      case 'html':
+        return { contentType: 'text/html; charset=utf-8', body: renderModelHtml(model), ext: 'html' };
+      case 'pdf':
+        return { contentType: 'application/pdf', body: await renderModelPdf(model), ext: 'pdf' };
+      case 'docx':
+        return {
+          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          body: await renderModelDocx(model),
+          ext: 'docx',
+        };
+      case 'xlsx':
+        return {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          body: await renderModelXlsx(model, xlsxMode),
+          ext: 'xlsx',
+        };
+    }
+  }
+
+  /**
+   * Load the active stored template by report key and render it through
+   * the v2 pipeline when it is a converted .mrt template. Null otherwise
+   * (v1 templates keep using renderReport/tryRenderPdf).
+   */
+  async renderStoredV2(
+    reportKey: string,
+    data: ReportData,
+    ctx: RenderContextV2,
+    formatSettings: ReportFormatSettings,
+    outFormat: 'html' | 'pdf' | 'docx' | 'xlsx',
+    xlsxMode: 'layout' | 'data' = 'layout',
+  ) {
+    const stored = await this.resolveActiveTemplate(reportKey);
+    if (!stored || !isTemplateV2(stored)) return null;
+    return this.renderV2(stored, data, ctx, formatSettings, outFormat, xlsxMode);
   }
 
   /**

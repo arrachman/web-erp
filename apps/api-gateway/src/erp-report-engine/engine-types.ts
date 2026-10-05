@@ -58,6 +58,8 @@ export interface TextComp {
   width: number;
   height: number;
   expression: string;
+  /** Format tampilan dari TextFormat .mrt (template v2): NumberFormat/DateFormat/dll. */
+  format?: { kind: string; pattern?: string };
   style?: CompStyle;
   canGrow?: boolean;
   canShrink?: boolean;
@@ -84,7 +86,60 @@ export interface LineComp {
   style?: { color?: string; width?: number; style?: LineStyle };
 }
 
-export type Component = TextComp | ImageComp | LineComp;
+export interface BoxComp {
+  type: 'box';
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  style?: CompStyle;
+  fill?: string;
+  border?: BorderStyle;
+}
+
+export interface BarcodeComp {
+  type: 'barcode';
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Ekspresi Stimulsoft verbatim yang menghasilkan nilai barcode. */
+  expression: string;
+  symbology: string;
+  style?: CompStyle;
+}
+
+export interface CheckboxComp {
+  type: 'checkbox';
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Ekspresi Stimulsoft verbatim; truthy = tercentang. */
+  expression: string;
+  style?: CompStyle;
+}
+
+export interface SubreportComp {
+  type: 'subreport';
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type Component =
+  | TextComp
+  | ImageComp
+  | LineComp
+  | BoxComp
+  | BarcodeComp
+  | CheckboxComp
+  | SubreportComp;
 
 export type BandType =
   | 'pageHeader'
@@ -115,6 +170,8 @@ export interface ReportTemplate {
   module?: string;
   version?: number;
   pageSize: PageSize;
+  /** Dimensi eksplisit saat pageSize='Custom' (label/form khusus). */
+  customSize?: { widthMm: number; heightMm: number };
   orientation: Orientation;
   margins: Margins;
   fonts?: string[];
