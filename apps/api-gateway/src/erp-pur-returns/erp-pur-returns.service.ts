@@ -131,6 +131,7 @@ export class ErpPurReturnsService {
           referenceNo: dto.referenceNo ?? null,
           referenceDate: dto.referenceDate ? new Date(dto.referenceDate) : null,
           payableAccountId: toBigInt(dto.payableAccountId),
+          returnPurchaseAccountId: toBigInt(dto.returnPurchaseAccountId),
           settlementStatus: 'UNPAID' as never,
           taxInvoiceNo: dto.taxInvoiceNo ?? null,
           orderId: toBigInt(dto.orderId),
@@ -214,6 +215,7 @@ export class ErpPurReturnsService {
         data.referenceDate = dto.referenceDate ? new Date(dto.referenceDate) : null;
       }
       if (dto.payableAccountId !== undefined) data.payableAccountId = toBigInt(dto.payableAccountId);
+      if (dto.returnPurchaseAccountId !== undefined) data.returnPurchaseAccountId = toBigInt(dto.returnPurchaseAccountId);
       if (dto.taxInvoiceNo !== undefined) data.taxInvoiceNo = dto.taxInvoiceNo;
       // Relation FKs use connect/disconnect (Prisma relation fields, not scalar setters).
       if (dto.orderId !== undefined) {

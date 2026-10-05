@@ -48,6 +48,7 @@ export class UpdatePurReturnDto {
   @ApiPropertyOptional() @IsOptional() @IsString() referenceNo?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() referenceDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() payableAccountId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() returnPurchaseAccountId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() taxInvoiceNo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() orderId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() goodsReceiptId?: string;

@@ -216,6 +216,14 @@ export class CreatePurReturnDto {
   @IsString()
   payableAccountId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Akun retur pembelian (md_accounts) id — wajib untuk DEBIT_NOTE bila master item tidak mengisi purchaseReturnAccountId: posting debit note membaca kolom header ini (pur-return-posting), sebelumnya tidak terekspos di DTO.',
+  })
+  @IsOptional()
+  @IsString()
+  returnPurchaseAccountId?: string;
+
   @ApiPropertyOptional({ description: 'Tax invoice number — No Faktur Pajak' })
   @IsOptional()
   @IsString()
