@@ -64,6 +64,15 @@ export function evaluateComponent(
       const text = comp.format
         ? evalStiFormatted(comp.expression, comp.format, scope, onWarn)
         : evalStiText(comp.expression, scope, onWarn);
+      // Conditional styles (StiCondition): merge in order when the
+      // verbatim Stimulsoft condition evaluates true in this scope.
+      if (comp.conditions?.length) {
+        let merged = { ...(comp.style ?? {}) };
+        for (const cond of comp.conditions) {
+          if (evalStiCondition(cond.when, scope, onWarn)) merged = { ...merged, ...cond.style };
+        }
+        base.style = merged;
+      }
       let height = comp.height;
       if (band.canGrow || band.canShrink) {
         const needed = measureTextHeight(comp, text);
