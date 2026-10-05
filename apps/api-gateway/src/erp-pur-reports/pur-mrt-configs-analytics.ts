@@ -60,22 +60,40 @@ function poTrackingConfig(): PurDatasetConfig {
         FROM pur_goods_receipt_lines gl
         JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
         WHERE gl.order_line_id = l.id)`,
-      paid: `(SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a
+      // Paid is settled per RI document; prorate it over the PO lines
+      // by invoiced amount so Σpaid per document stays exact.
+      paid: `((SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a
         WHERE a.invoice_ref IN (
           SELECT inv.id::text FROM pur_goods_receipt_lines gl
           JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
           JOIN pur_invoices inv ON inv.id = il.invoice_id
-          WHERE gl.order_line_id = l.id))`,
+          WHERE gl.order_line_id IN (SELECT id FROM pur_order_lines WHERE order_id = t.id)))
+        * (SELECT COALESCE(SUM(il.quantity * il.unit_price - COALESCE(il.discount_amount, 0)), 0)
+          FROM pur_goods_receipt_lines gl
+          JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
+          WHERE gl.order_line_id = l.id)
+        / NULLIF((SELECT COALESCE(SUM(il.quantity * il.unit_price - COALESCE(il.discount_amount, 0)), 0)
+          FROM pur_goods_receipt_lines gl
+          JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
+          WHERE gl.order_line_id IN (SELECT id FROM pur_order_lines WHERE order_id = t.id)), 0))`,
       outstanding: `(SELECT COALESCE(SUM(il.quantity * il.unit_price - COALESCE(il.discount_amount, 0)), 0)
         FROM pur_goods_receipt_lines gl
         JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
         WHERE gl.order_line_id = l.id)
-        - (SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a
+        - ((SELECT COALESCE(SUM(a.amount), 0) FROM fin_settlement_allocations a
           WHERE a.invoice_ref IN (
             SELECT inv.id::text FROM pur_goods_receipt_lines gl
             JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
             JOIN pur_invoices inv ON inv.id = il.invoice_id
-            WHERE gl.order_line_id = l.id))`,
+            WHERE gl.order_line_id IN (SELECT id FROM pur_order_lines WHERE order_id = t.id)))
+          * (SELECT COALESCE(SUM(il.quantity * il.unit_price - COALESCE(il.discount_amount, 0)), 0)
+            FROM pur_goods_receipt_lines gl
+            JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
+            WHERE gl.order_line_id = l.id)
+          / NULLIF((SELECT COALESCE(SUM(il.quantity * il.unit_price - COALESCE(il.discount_amount, 0)), 0)
+            FROM pur_goods_receipt_lines gl
+            JOIN pur_invoice_lines il ON il.goods_receipt_line_id = gl.id
+            WHERE gl.order_line_id IN (SELECT id FROM pur_order_lines WHERE order_id = t.id)), 0))`,
     },
     deletedAlias: 't',
     paramFilters: docFilters('t.doc_date'),
