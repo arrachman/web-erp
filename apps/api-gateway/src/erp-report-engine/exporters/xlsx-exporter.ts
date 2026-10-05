@@ -123,8 +123,20 @@ function layoutSheet(wb: ExcelJS.Workbook, model: RenderModel): void {
 }
 
 function dataSheets(wb: ExcelJS.Workbook, model: RenderModel): void {
+  const used = new Set<string>();
   for (const [name, rows] of Object.entries(model.datasets)) {
-    const ws = wb.addWorksheet(name.slice(0, 31) || 'Data');
+    // Excel sheet names are case-insensitive: legacy templates may
+    // declare a helper as 'FormatMinus' while the engine adds
+    // 'formatMinus' — suffix duplicates instead of throwing.
+    let sheet = name.slice(0, 31) || 'Data';
+    const base = sheet;
+    let n = 2;
+    while (used.has(sheet.toLowerCase())) {
+      const suffix = " (" + n++ + ")";
+      sheet = base.slice(0, 31 - suffix.length) + suffix;
+    }
+    used.add(sheet.toLowerCase());
+    const ws = wb.addWorksheet(sheet);
     if (rows.length === 0) {
       ws.addRow(['(tidak ada data)']);
       continue;
