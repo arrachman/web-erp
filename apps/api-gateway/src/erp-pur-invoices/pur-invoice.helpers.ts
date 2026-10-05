@@ -84,6 +84,7 @@ export function mapInvoiceLine(
     tax2Amount: line.tax2Amount != null ? new Prisma.Decimal(line.tax2Amount) : null,
     warehouseId: toBigInt(line.warehouseId),
     inventoryAccountId: toBigInt(line.inventoryAccountId),
+    accruedPayableAccountId: toBigInt(line.accruedPayableAccountId),
     costCenterId: toBigInt(line.costCenterId),
     divisionId: toBigInt(line.divisionId),
     subdivisionId: toBigInt(line.subdivisionId),

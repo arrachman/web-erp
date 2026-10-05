@@ -93,6 +93,14 @@ export class PurInvoiceLineDto {
   @IsString()
   inventoryAccountId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Akun GR/IR accrual (md_accounts) id — wajib per baris untuk PI dari GRN: posting reklasifikasi accrual membaca kolom ini (pur-invoice-posting), sebelumnya tidak terekspos di DTO sehingga PI-dari-GRN tidak pernah bisa diposting via API.',
+  })
+  @IsOptional()
+  @IsString()
+  accruedPayableAccountId?: string;
+
   @ApiPropertyOptional() @IsOptional() @IsString() costCenterId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() divisionId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() subdivisionId?: string;
